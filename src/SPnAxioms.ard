@@ -15,18 +15,18 @@
 \import Commutative
 \import SPn
 
-\func SPnAxiom \plevels p1 <= p2 {n : Nat} (A : \Type p1) (SPnA : \Type p2) : \Type (\suc p2) =>
-  \Sigma (inj : commf n A SPnA) (\Pi (T : \Type) (g : commf n A T) ->
+\func SPnAxiom {n : Nat} (A : \Type) (SPnA : \Type) : \Type =>
+  \Sigma (inj : commf n A SPnA) (\Pi (T : \oo-Type) (g : commf n A T) ->
       exists! (SPnA -> T) (\lam h => \Pi (x : Fin n -> A) ->
           h (commf.f inj x) = commf.f g x
       )
   )
 
-\func SPXBase \plevels p1 <= p2 {n : Nat} {X : \Type p1} {SPX : \Type p2}
+\func SPXBase {n : Nat} {X : \Type} {SPX : \Type}
   {pr : SPnAxiom {n} X SPX} (x : X) : SPX => pr.1 (BSnbase n) (\lam _ => x)
 
-\func isConnectedSPnX \plevels p1 <= p2 {n : Nat} (X : Connected0) {SPX : \Type p2}
-  (pr : SPnAxiom \levels (p1, p2) (\max \lh 1) {n} X SPX) : Connected0 SPX \cowith
+\func isConnectedSPnX {n : Nat} (X : Connected0) {SPX : \Type}
+  (pr : SPnAxiom {n} X SPX) : Connected0 SPX \cowith
   | isInh => TruncP.map X.isInh (SPXBase {n} {X} {SPX} {pr})
   | isConn0 => TruncP.rec
     (pi-isProp (\lam x => \Pi (y : SPX) -> TruncP (x = y))
@@ -48,7 +48,7 @@
             connectedToSPnConnected.product n x (\lam _ => bp)
           | mapMerelyConstant (y : Fin n -> X) : TruncP (mapValue = commf.f map y) =>
             TruncP.map (productConnected y) (\lam path => pmap (\lam t => f (commf.f pr.1 t)) (inv path))
-          | trivialMap (x : SPX) : Bool => mapValue
+          | trivialMap (_ : SPX) : Bool => mapValue
           | trivialCoh : TruncP (\Pi (y : Fin n -> X) -> mapValue = commf.f map y) =>
             {?} -- Here we would need to apply the axiom of choice to something that isn't a set
             -- achoice {Fin n -> X} (\lam y => mapValue = commf.f map y) mapMerelyConstant
@@ -63,7 +63,7 @@
 \func SPnUniqueness{n : Nat}
   {X Y Z : \Type}
   (spY : SPnAxiom {n} X Y)
-  (spZ : SPnAxiom {n} X Z) : Y = Z =>\let
+  (spZ : SPnAxiom {n} X Z) : Y = Z => \let
     | strF => spY.2 Z spZ.1
     | strG => spZ.2 Y spY.1
     | f : Y -> Z => strF.center.1
