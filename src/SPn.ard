@@ -14,7 +14,7 @@
 
 \func SPn (n : Nat) (A : \Type) : \Type => \Sigma (X : BSn n) (X.1 -> A)
 
-\func injSPn \plevels p1 {n : Nat} {A : \Type p1} : commf n A (SPn n A) =>
+\func injSPn {n : Nat} {A : \Type} : commf n A (SPn n A) =>
   \lam X tup => (X, tup)
 
 \func SPnIsMerelyCartesian {n : Nat} {A : \Type} (x : SPn n A) :
