@@ -1,0 +1,37 @@
+\import Data.Sigma
+\import Logic
+\import Paths
+\import Homotopy.Sphere.Circle
+
+
+-- Farjourn says that SP2X is the homotopy colimit
+-- of the diagram X ---(diagonal map) --> X^2 -- (flip) --|
+--                                         ^--------------|
+-- However adapting this diagram naively to hott doesn't work
+\data SP2 (A : \Type)
+  | delta A
+  | inSP A A
+  | deltaEq (a : A) : inSP a a = delta a
+  | inSPEq (a a' : A) : inSP a a' = inSP a' a
+
+\func SP1=S1 : SP2 (\Sigma) = Sphere1 => iso f g sec ret \where {
+  \func f (_ : SP2 (\Sigma)) : Sphere1
+    | delta () => base1
+    | inSP () () => base1
+    | deltaEq () i => idp {Sphere1} {base1} i
+    | inSPEq () () i => loop i
+
+  \func g (_ : Sphere1) : SP2 (\Sigma)
+    | base1 => inSP () ()
+    | loop i => inSPEq () () i
+
+  \func sec (x : SP2 (\Sigma)) : g (f x) = x
+    | delta () => \lam i => deltaEq () i
+    | inSP () () => idp
+    | deltaEq () i => psqueeze (\lam j => deltaEq () j) i
+    | inSPEq () () i => idp
+
+  \func ret (x : Sphere1) : f (g x) = x
+    | base1 => idp
+    | loop i => idp
+}

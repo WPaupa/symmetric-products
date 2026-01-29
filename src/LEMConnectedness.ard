@@ -1,0 +1,36 @@
+\import Data.Bool
+\import Function
+\import Homotopy.Connected
+\import Logic
+\import Logic.Classical
+\import Paths
+\import Set
+\import Utilities
+
+\func lemOnTrue {X : \Prop} {dec : Dec X} (x : X) : dec = yes x
+  | {X}, {yes e}, x => pmap yes (prop-isProp {X} e x)
+  | {X}, {no n}, x => absurd (n x)
+
+\func lemOnFalse {X : \Prop} {dec : Dec X} (nx : Not X) : dec = no nx
+  | {X}, {yes e}, nx => absurd (nx e)
+  | {X}, {no n}, nx => pmap no (prop-isProp {Not X} n nx)
+
+\func connectedLem {X : \Type} (bp : X)
+  (dec : \Pi (x : X) -> Dec (TruncP (x = bp)))
+  (pr : \Pi (f : X -> Bool) (x : X) -> f x = f bp) : Connected0 X \cowith
+  | isInh => inP bp
+  | isConn0 x y => TruncPmap2 (lemma x) (lemma y) (\lam cx cy => cx *> inv cy) \where {
+  \func lemma (x : X) : TruncP (x = bp) =>
+    \let
+      | f (y : X) : Bool => decToBool (dec y)
+      | xEq : decToBool (dec x) = decToBool (dec bp) => pr f x
+      | bpEq : decToBool (dec bp) = true => pmap decToBool
+          (lemOnTrue {TruncP (bp = bp)} {dec bp} (inP idp))
+      | hardcase (conv : Not (TruncP (x = bp))) : TruncP (x = bp) =>
+        \let
+          | xEqFalse : decToBool (dec x) = false =>
+            pmap decToBool (lemOnFalse {TruncP (x = bp)} {dec x} conv)
+          | false=true : false = true => inv xEqFalse *> xEq *> bpEq
+        \in absurd (true/=false (inv false=true))
+    \in Dec.rec id hardcase (dec x)
+}

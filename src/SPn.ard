@@ -1,0 +1,60 @@
+\import Function
+\import Homotopy.Connected
+\import Logic
+\import Logic.Unique
+\import Paths
+\import Paths.Meta
+\import Utilities
+\import BSn
+\import Commutative
+\import Equiv
+\import Equiv.Sigma
+\import Data.Sigma
+\import Equiv.Univalence
+
+\func SPn (n : Nat) (A : \Type) : \Type => \Sigma (X : BSn n) (X.1 -> A)
+
+\func injSPn \plevels p1 {n : Nat} {A : \Type p1} : commf n A (SPn n A) =>
+  \lam X tup => (X, tup)
+
+\func SPnIsMerelyCartesian {n : Nat} {A : \Type} (x : SPn n A) :
+  TruncP (\Sigma (y : Fin n -> A) (x = (BSnbase n, y))) => TruncP.map x.1.2
+    (\lam eqv => Jl (\lam B _ => \Sigma (t : B.1 -> A) (x = (B, t))) (x.2, idp)
+      (BSnPath x.1 (BSnbase n) eqv))
+
+\instance connectedToSPnConnected {n : Nat} {A : Connected0} : Connected0 (SPn n A)
+  | isInh => TruncP.map A.isInh (\lam a => (BSnbase n, \lam _ => a))
+  | isConn0 p0 p1 => TruncPrec2
+      (SPnIsMerelyCartesian p0) (SPnIsMerelyCartesian p1)
+      (\lam pr1 pr2 => TruncP.map (product n pr1.1 pr2.1)
+          (\lam prod => pr1.2 *> rewrite prod idp *> inv pr2.2)) \where {
+  \func product (m : Nat) (p0 p1 : Fin m -> A) : TruncP (p0 = p1) \elim m
+    | 0 => inP (ext (\lam abs => absurd (transport id emptyFin0 abs)))
+    | suc m' => \let
+      | p0t (f : Fin m') : A => p0 (suc f)
+      | p1t (f : Fin m') : A => p1 (suc f)
+      | ind : TruncP (p0t = p1t) => product m' p0t p1t
+      | step : TruncP (p0 0 = p1 0) => A.isConn0 (p0 0) (p1 0)
+      \in TruncPmap2 ind step (\lam i s => ext (lemma (funExt- i) s))
+  \func lemma {m' : Nat} {p0 p1 : Fin (suc m') -> A}
+              (i : \Pi (f : Fin m') -> p0 (suc f) = p1 (suc f))
+              (s : p0 0 = p1 0) (f : Fin (suc m'))
+    : p0 f = p1 f \elim f
+    | 0 => s
+    | suc f => i f
+}
+
+\func SP1X=X (X : \Type) : SPn 1 X = X =>
+  rewrite (Equiv-to-= (sigma-right (\lam A => fromContr (BS1Contr.element A))))
+  (QEquiv-to-= (contr-left BS1Contr))
+\where {
+  \func fromContr {X Y : \Type} (pr : Contr Y) : Equiv {Y -> X} {X} =>
+    rewrite (isContrEqUnit pr) (unit-func X)
+}
+
+\func SPnlifting {n : Nat} {A : \Type} {T : \Type}
+  (f : commf n A T) (x : SPn n A) : T => f x.1 x.2
+
+\func SPnUnit=BSn {n : Nat} : SPn n (\Sigma) = BSn n =>
+  rewrite (Equiv-to-= (sigma-right {BSn n} (\lam A => =-to-Equiv (funcToUnit {A.1}))))
+      (QEquiv-to-= (contr-right {BSn n} (\lam _ => unit-isContr)))

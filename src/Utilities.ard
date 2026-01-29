@@ -1,0 +1,59 @@
+\import Equiv
+\import Function
+\import Logic
+\import Logic.Unique
+\import Paths
+\import Data.Fin
+\import Paths.Meta
+\import Set
+\import Data.Sigma
+\import Equiv.Sigma
+\import Equiv.Univalence
+
+-- These are functions that I'd like to have in the standard library
+
+\func SigmaPropPath {A : \Type} {B : A -> \Type} (isPropB : \Pi (a : A) -> isProp (B a))
+                    {u v : \Sigma (a : A) (B a)} (q : u.1 = v.1) : u = v \elim u, v, q
+  | (u1, u2), (v1, v2), idp => path (\lam i => (u1, isPropB u1 u2 v2 @ i))
+-- This is almost contr-left from Equiv.Sigma, but for prop instead of contr
+
+\func TruncPmap2 {A B C : \Type} (t1 : TruncP A) (t2 : TruncP B) (f : A -> B -> C) :
+  TruncP C \elim t1, t2
+  | inP a1, inP a2 => inP (f a1 a2)
+
+\func TruncPrec2 {A B C : \Type} (t1 : TruncP A) (t2 : TruncP B) (f : A -> B -> TruncP C)
+  : TruncP C \elim t1, t2
+  | inP a1, inP a2 => f a1 a2
+
+-- This is basically flip, but using just flip doesn't work
+\func funExt- {A : \Type} {B : A -> \Type} {f g : \Pi (a : A) -> B a}
+              (p : f = g) (a : A) : f a = g a =>
+  \lam i => p i a
+
+\func exists! (A : \Type) (B : A -> \Type) : \Type => Contr (\Sigma (x : A) (B x))
+
+\func emptyFin0 : Fin 0 = Empty => iso f g sec ret \where {
+  \func f (_ : Fin 0) : Empty
+  \func g (_ : Empty) : Fin 0
+  \func ret (x : Empty) : f (g x) = x
+  \func sec (x : Fin 0) : g (f x) = x
+}
+
+\func contrFin1 : Contr (Fin 1) => Contr.make
+  (Fin.fromNat 0)
+  lem \where {
+    \func lem (a : Fin 1) : Fin.fromNat {0} 0 = a
+      | 0 => idp
+  }
+
+\func funcToUnit {A : \Type} : (A -> \Sigma) = (\Sigma) => iso
+  (\lam _ => ())
+  (\lam _ _ => ())
+  (\lam _ => ext)
+  (\lam _ => idp)
+
+\func isContrEqUnit {X : \Type} (pr : Contr X) : X = (\Sigma) => iso
+  (\lam _ => ())
+  (\lam _ => pr.center)
+  pr.contraction
+  (\lam _ => idp)

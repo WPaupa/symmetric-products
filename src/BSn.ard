@@ -1,0 +1,88 @@
+\import Algebra.Meta
+\import Data.Fin
+\import Data.Or
+\import Paths.Meta
+\import Equiv
+\import Equiv.Univalence
+\import Homotopy.Connected
+\import Logic
+\import Logic.Unique
+\import Paths
+\import Utilities
+\import Homotopy.HLevel
+
+\func BSn (n : Nat) => \Sigma (X : \Set) (TruncP (Equiv {X} {Fin n}))
+
+\func BSnbase (n : Nat) : BSn n => (Fin n , inP idEquiv)
+
+\func BSnPath {n : Nat} (a b : BSn n) (eq : Equiv {a.1} {b.1}) : a = b =>
+  SigmaPropPath (\lam _ x y i => truncP x y i) {a} {b} (Equiv-to-= eq)
+
+\instance connBSn (n : Nat) : Connected0 (BSn n)
+  | isInh => inP (BSnbase n)
+  | isConn0 b1 b2 => TruncP.map
+  (TruncPmap2 b1.2 b2.2 (\lam eq1 eq2 => Equiv-to-= eq1 *> inv (Equiv-to-= eq2)))
+  (SigmaPropPath (\lam _ x y i => truncP x y i) {b1} {b2})
+
+\lemma recPropBSn {n : Nat} {B : BSn n -> \Type}
+                  (p : \Pi (x : BSn n) -> isProp (B x))
+                  (pb : B (BSnbase n))
+                  (x : BSn n) : B x =>
+    TruncP.rec (p x) ((connBSn n).isConn0 (BSnbase n) x)
+        (\lam X=Base => transport {BSn n} B X=Base pb)
+
+\func BSnPathChar {n : Nat} (a b : BSn n) : (a.1 = b.1) = (a = b) => iso
+    (\lam eq => BSnPath a b (=-to-Equiv eq))
+    (pmap (\lam x => x.1))
+    {?}
+    (\lam y => {?})
+
+\lemma isSetBSnElt {n : Nat} (a : BSn n) : isSet a.1 => recPropBSn
+    (\lam X => isSet.levelProp {X.1}) (\lam x y p q => set-pi {Fin n} {x} {y} {p} {q}) a
+
+\func contrTotalBSn {n : Nat} : Contr (\Sigma (X : BSn n) X.1) => {?}
+
+\func JBSn {n : Nat}
+  (A : \Pi (X : BSn (suc n)) (x : X.1) -> \Type)
+  (pr : A (BSnbase (suc n)) (Fin.fromNat 0))
+  {X : BSn (suc n)} {x : X.1} : A X x => transport {\Sigma (X : BSn (suc n)) X.1}
+    (\lam t => A t.1 t.2) {BSnbase (suc n), Fin.fromNat 0} {X, x}
+    ((contrTotalBSn {suc n}).contraction (X, x))
+    pr
+
+\func BS1Contr : Contr (BSn 1) => transport {\Type} Contr (iso {\Sigma (x : BSn 1) x.1} {BSn 1}
+      (\lam t => t.1)
+      (\lam (b : BSn 1) => (b, (element b).center))
+      (\lam _ => SigmaPropPath (\lam a => isContr=>isProp (element a)) idp)
+      (\lam _ => idp)
+    ) (contrTotalBSn {1}) \where {
+
+  \func element (X : BSn 1) : Contr X.1 =>
+    recPropBSn {1} {\lam x => Contr x.1} (\lam x => Contr.levelProp x.1) contrFin1 X
+}
+
+\func extendBSn {n : Nat} (m : Nat) (x : BSn n) : BSn (n Nat.+ m) \elim m
+  | 0 => x
+  | suc m => (Or (extendBSn m x).1 (\Sigma), TruncP.map (extendBSn m x).2 (
+    \lam eqv => transport (\lam t => Equiv {Or t (\Sigma)} {Fin (suc (n Nat.+ m))})
+        (inv (Equiv-to-= eqv)) (extendFin {n Nat.+ m})
+  )) \where {
+  \func extendFin {a : Nat} : Equiv {Or (Fin a) (\Sigma)} {Fin (suc a)} \cowith
+    | f => Or.rec fsuc (\lam _ => fzero)
+    | ret => \case \elim __ \with {
+      | 0 => inr ()
+      | suc x => inl x
+    }
+    | ret_f => \case \elim __ \with {
+      | inl x => idp
+      | inr () => idp
+    }
+    | sec => \case \elim __ \with {
+      | 0 => inr ()
+      | suc x => inl x
+    }
+    | f_sec => \case \elim __ \with {
+      | 0 => idp
+      | suc x => idp
+    }
+}
