@@ -41,7 +41,7 @@
           | univmapUniv
             (g : \Sigma (x : SPX -> Bool) (\Pi (x1 : Fin n -> X) ->
                 x (Commutative.commf.f pr.1 x1) = Commutative.commf.f map x1)) =>
-            pmap (\lam x => x.1) (univmapStr.contraction g)
+            pmap __.1 (univmapStr.contraction g)
           | univmapEqF : univmap = f => univmapUniv (f, \lam _ => idp)
           | mapValue : Bool => commf.f map (\lam _ => bp)
           | productConnected (x : Fin n -> X) : TruncP (x = \lam _ => bp) =>
@@ -76,8 +76,8 @@
     | strIdZ => spZ.2 Z spZ.1
     | idmapY : Y -> Y => strIdY.center.1
     | idmapZ : Z -> Z => strIdZ.center.1
-    | idmapYUniv => \lam hs => pmap (\lam x => x.1) (strIdY.contraction hs)
-    | idmapZUniv => \lam hs => pmap (\lam x => x.1) (strIdZ.contraction hs)
+    | idmapYUniv => \lam hs => pmap __.1 (strIdY.contraction hs)
+    | idmapZUniv => \lam hs => pmap __.1 (strIdZ.contraction hs)
     | idmapYIsId : idmapY = id => idmapYUniv (id, \lam _ => idp)
     | idmapZIsId : idmapZ = id => idmapZUniv (id, \lam _ => idp)
     | gfCoh : idmapY = (\lam x => g (f x)) => idmapYUniv
@@ -96,7 +96,7 @@
     | univUnit => pr.2 X pr.1
     | bpX : X => g ()
     | univmap : X -> X => univUnit.center.1
-    | univmapUniv => \lam gf => pmap (\lam x => x.1) (univUnit.contraction gf)
+    | univmapUniv => \lam gf => pmap __.1 (univUnit.contraction gf)
     | univmapEqId : univmap = id => univmapUniv (id, \lam _ => idp)
     | isPropUnitn : isProp (Fin n -> \Sigma) => rewrite funcToUnit (isContr=>isProp unit-isContr)
     | constSat (y : Fin n -> \Sigma) : bpX = commf.f pr.1 y =>

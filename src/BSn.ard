@@ -1,6 +1,7 @@
 \import Algebra.Meta
 \import Data.Fin
 \import Data.Or
+\import Meta
 \import Paths.Meta
 \import Equiv
 \import Equiv.Univalence
@@ -21,19 +22,19 @@
 \instance connBSn (n : Nat) : Connected0 (BSn n)
   | isInh => inP (BSnbase n)
   | isConn0 b1 b2 => TruncP.map
-  (TruncPmap2 b1.2 b2.2 (\lam eq1 eq2 => Equiv-to-= eq1 *> inv (Equiv-to-= eq2)))
-  (SigmaPropPath (\lam _ x y i => truncP x y i) {b1} {b2})
+      (TruncPmap2 b1.2 b2.2 (\lam eq1 eq2 => Equiv-to-= eq1 *> inv (Equiv-to-= eq2)))
+      (SigmaPropPath (\lam _ x y i => truncP x y i) {b1} {b2})
 
 \lemma recPropBSn {n : Nat} {B : BSn n -> \Type}
                   (p : \Pi (x : BSn n) -> isProp (B x))
                   (pb : B (BSnbase n))
                   (x : BSn n) : B x =>
-    TruncP.rec (p x) ((connBSn n).isConn0 (BSnbase n) x)
-        (\lam X=Base => transport {BSn n} B X=Base pb)
+  TruncP.rec (p x) ((connBSn n).isConn0 (BSnbase n) x)
+      (\lam X=Base => transport {BSn n} B X=Base pb)
 
 \func BSnPathChar {n : Nat} (a b : BSn n) : (a.1 = b.1) = (a = b) => iso
     (\lam eq => BSnPath a b (=-to-Equiv eq))
-    (pmap (\lam x => x.1))
+    (pmap __.1)
     {?}
     (\lam y => {?})
 
@@ -43,19 +44,19 @@
 \func contrTotalBSn {n : Nat} : Contr (\Sigma (X : BSn n) X.1) => {?}
 
 \func JBSn {n : Nat}
-  (A : \Pi (X : BSn (suc n)) (x : X.1) -> \Type)
-  (pr : A (BSnbase (suc n)) (Fin.fromNat 0))
-  {X : BSn (suc n)} {x : X.1} : A X x => transport {\Sigma (X : BSn (suc n)) X.1}
+           (A : \Pi (X : BSn (suc n)) (x : X.1) -> \Type)
+           (pr : A (BSnbase (suc n)) (Fin.fromNat 0))
+           {X : BSn (suc n)} {x : X.1} : A X x => transport {\Sigma (X : BSn (suc n)) X.1}
     (\lam t => A t.1 t.2) {BSnbase (suc n), Fin.fromNat 0} {X, x}
     ((contrTotalBSn {suc n}).contraction (X, x))
     pr
 
 \func BS1Contr : Contr (BSn 1) => transport {\Type} Contr (iso {\Sigma (x : BSn 1) x.1} {BSn 1}
-      (\lam t => t.1)
-      (\lam (b : BSn 1) => (b, (element b).center))
-      (\lam _ => SigmaPropPath (\lam a => isContr=>isProp (element a)) idp)
-      (\lam _ => idp)
-    ) (contrTotalBSn {1}) \where {
+    (\lam t => t.1)
+    (\lam (b : BSn 1) => (b, (element b).center))
+    (\lam _ => SigmaPropPath (\lam a => isContr=>isProp (element a)) idp)
+    (\lam _ => idp)
+) (contrTotalBSn {1}) \where {
 
   \func element (X : BSn 1) : Contr X.1 =>
     recPropBSn {1} {\lam x => Contr x.1} (\lam x => Contr.levelProp x.1) contrFin1 X
@@ -86,3 +87,51 @@
       | suc x => idp
     }
 }
+
+\func notBS2 {X : BSn 2} : X.1 -> X.1 => equiv.1 \where {
+  \func notFin2 (_ : Fin 2) : Fin 2
+    | 0 => 1
+    | 1 => 0
+  \func notFin2Inv (x : Fin 2) : notFin2 (notFin2 x) = x
+    | 0 => idp
+    | 1 => idp
+
+  \func notFin2Eq : Equiv {Fin 2} {Fin 2} \cowith
+    | f => notFin2
+    | ret => notFin2
+    | ret_f => notFin2Inv -- this doesn't work with \case
+    | sec => notFin2
+    | f_sec => notFin2Inv
+
+  \lemma equiv : \Sigma (e : Equiv {X.1} {X.1}) (Not (e = idEquiv)) =>
+    recPropBSn (\lam X => levelProp {X}) contrEqvFin2.center X \where {
+    \func fin2Dichotomy (e : Equiv {Fin 2} {Fin 2}) (g : Not (e = idEquiv)) : e = notFin2Eq =>
+      {?}
+
+    \func contrEqvFin2 : Contr (\Sigma (e : Equiv {Fin 2} {Fin 2}) (Not (e = idEquiv))) \cowith
+      | center => (notFin2Eq, \lam p => fsuc/=0 {_} {0}
+          (pmap (eqvFun __ fzero) p)) -- why is eqvFun needed here?
+      | contraction (e, g) => SigmaPropPath
+          (\lam (a : Equiv {Fin 2} {Fin 2}) => not-isProp {a = idEquiv {Fin 2}})
+          (inv (fin2Dichotomy e g))
+
+    \lemma levelProp : isProp (\Sigma (e : Equiv {X.1} {X.1}) (Not (e = idEquiv))) =>
+      recPropBSn (\lam Y => isProp.levelProp (\Sigma (e : Equiv {Y.1} {Y.1}) (Not (e = idEquiv))))
+          (isContr=>isProp contrEqvFin2) X
+  }
+}
+
+\func notNotBS2 {X : BSn 2} (x : X.1) : notBS2 (notBS2 x) = x => {?}
+
+\func elimBS2 {X : BSn 2} (B : X.1 -> \Type)
+              (x : X.1) (a : B x) (a' : B (notBS2 x)) (y : X.1) : B y => {?}
+
+\func eltBSn {n : Nat} (X : BSn (suc n)) : TruncP X.1 => TruncP.map X.2
+    (\lam eqv => rewrite (Equiv-to-= eqv) (fzero {n})) -- (\lam eqv => eqv.ret (fzero {n}))
+                                                       -- doesn't work (unintiuitive)
+
+\func setRecBS2 {A : \Set} (X : BSn 2)
+                (f : X.1 -> A) (h : \Pi (x : X.1) -> f x = f (notBS2 x)) : A =>
+  (TruncP.rec-set (eltBSn X) (\lam x (f : X.1 -> A) _ => f x) (\lam x =>
+      elimBS2 {X} _ x idp idp
+  )).1 f h

@@ -13,8 +13,8 @@
 -- These are functions that I'd like to have in the standard library
 
 \func SigmaPropPath {A : \Type} {B : A -> \Type} (isPropB : \Pi (a : A) -> isProp (B a))
-                    {u v : \Sigma (a : A) (B a)} (q : u.1 = v.1) : u = v \elim u, v, q
-  | (u1, u2), (v1, v2), idp => path (\lam i => (u1, isPropB u1 u2 v2 @ i))
+                    {u v : \Sigma (a : A) (B a)} (q : u.1 = v.1) : u = v
+  => exts (q, isPropB _ _ _)
 -- This is almost contr-left from Equiv.Sigma, but for prop instead of contr
 
 \func TruncPmap2 {A B C : \Type} (t1 : TruncP A) (t2 : TruncP B) (f : A -> B -> C) :
@@ -29,6 +29,11 @@
 \func funExt- {A : \Type} {B : A -> \Type} {f g : \Pi (a : A) -> B a}
               (p : f = g) (a : A) : f a = g a =>
   \lam i => p i a
+
+\func eqvFun {A B : \Type} (e : Equiv {A} {B}) : A -> B => e
+
+-- Doesn't work when it's not stated implicitly
+\lemma not-isProp {A : \Type} : isProp (Not A) => prop-isProp
 
 \func exists! (A : \Type) (B : A -> \Type) : \Type => Contr (\Sigma (x : A) (B x))
 

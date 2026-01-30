@@ -1,0 +1,14 @@
+\import BSn
+\import Commutative
+\import Paths.Meta
+\import SPnAxioms
+
+\truncated \data SetSP2 (A : \Set) : \Set
+  | inSP2 A A
+  | symSP2 (a a' : A) : inSP2 a a' = inSP2 a' a
+
+\func setSP2Inj {A : \Set} : commf 2 A (SetSP2 A) =>
+  \lam B x => setRecBS2 B (\lam b => inSP2 (x b) (x (notBS2 b)))
+      (\lam b => rewrite (notNotBS2 b) (\lam i => symSP2 (x b) (x (notBS2 b)) i))
+
+\func isSPSetSP {A : \Set} : SPnAxiom {2} A (SetSP2 A) => {?}
