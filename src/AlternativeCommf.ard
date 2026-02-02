@@ -1,0 +1,50 @@
+\import BSn
+\import Commutative
+\import Logic
+\import Logic.Unique
+\import Meta
+\import Paths.Meta
+\import Paths
+\import SPnAxioms
+\import Utilities
+
+\func commfunc (n : Nat) (A : \Type) (B : \Type) : \Type =>
+  \Sigma (f : (Fin n -> A) -> B) (TruncP (\Sigma (str : commf n A B) (commf.f str = f))) \where {
+  \func from-commf (f : commf n A B) : commfunc n A B =>
+    (f (BSnbase n), inP (f, idp))
+  \func from-commf-beta (f : commf n A B) : commf.f f = (from-commf f).1 =>
+    idp
+}
+
+-- In SPnAxioms: \func SPnAxiom {n : Nat} (A : \Type) (SPnA : \Type) : \Type =>
+--   \Sigma (inj : commf n A SPnA) (\Pi (T : \oo-Type) (g : commf n A T) ->
+--       exists! (SPnA -> T) (\lam h => \Pi (x : Fin n -> A) ->
+--           h (commf.f inj x) = commf.f g x
+--       )
+--   )
+
+\func SPnAxiomAlt {n : Nat} (A : \Type) (SPnA : \Type) : \Type =>
+  \Sigma (inj : commfunc n A SPnA) (\Pi (T : \oo-Type) (g : commfunc n A T) ->
+        exists! (SPnA -> T) (\lam h => \Pi (x : Fin n -> A) ->
+            h (inj.1 x) = g.1 x
+        )
+  )
+
+\func AltToReg {n : Nat} {A : \Type} {SPnA : \Type}
+  (ax : SPnAxiomAlt {n} A SPnA) : TruncP (SPnAxiom {n} A SPnA) =>
+  TruncP.map ax.1.2 (\lam cf => (cf.1, \lam T g => run {
+    rewrite (commfunc.from-commf-beta g),
+    rewrite cf.2,
+    ax.2 T (commfunc.from-commf g)
+  }))
+
+\func RegToAlt {n : Nat} {A : \Type} {SPnA : \Type}
+  (ax : SPnAxiom {n} A SPnA) : SPnAxiomAlt {n} A SPnA => (commfunc.from-commf ax.1,
+    \lam T g => TruncP.rec (Contr.levelProp _) g.2 (\lam gcoh => run {
+      transport (\lam P => Contr (\Sigma (x : SPnA -> T) (\Pi (x1 : Fin n -> A) -> x (P x1) = g.1 x1)))
+          (commfunc.from-commf-beta ax.1), -- rewrite fails with "cannot find subexpression", why?
+      rewriteI gcoh.2,
+      ax.2 T gcoh.1
+    }
+    )
+  )
