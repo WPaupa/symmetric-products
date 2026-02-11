@@ -2,6 +2,7 @@
 \import Function
 \import Logic
 \import Logic.Unique
+\import Meta
 \import Paths
 \import Data.Fin
 \import Paths.Meta
@@ -9,6 +10,7 @@
 \import Data.Sigma
 \import Equiv.Sigma
 \import Equiv.Univalence
+\import Homotopy.Pushout
 
 -- These are functions that I'd like to have in the standard library
 
@@ -62,3 +64,12 @@
   (\lam _ => pr.center)
   pr.contraction
   (\lam _ => idp)
+
+\func Pushoutelim {A B C : \Type} {f : A -> B} {g : A -> C} {Z : PushoutData f g -> \Type}
+                  (lm : \Pi (b : B) -> Z (pinl b))
+                  (rm : \Pi (c : C) -> Z (pinr c))
+                  (gm : \Pi (a : A) -> Path (\lam i => Z (pglue a i)) (lm (f a)) (rm (g a)))
+                  (x : PushoutData f g) : Z x \elim x
+  | pinl b => lm b
+  | pinr c => rm c
+  | pglue a => gm a

@@ -1,7 +1,10 @@
 \import Function
 \import Homotopy.Connected
+\import Homotopy.Pushout
+\import Homotopy.Pointed
 \import Logic
 \import Logic.Unique
+\import Meta
 \import Paths
 \import Paths.Meta
 \import Utilities
@@ -58,3 +61,53 @@
 \func SPnUnit=BSn {n : Nat} : SPn n (\Sigma) = BSn n =>
   rewrite (Equiv-to-= (sigma-right {BSn n} (\lam A => =-to-Equiv (funcToUnit {A.1}))))
       (QEquiv-to-= (contr-right {BSn n} (\lam _ => unit-isContr)))
+
+\func base-cofib {n : Nat} {A : Pointed} (X : BSn n) : SPn n A =>
+  (X, \lam _ => A.base)
+
+\func SPnCone (n : Nat) (A : Pointed) : \Type =>
+  PushoutData {BSn n} {\Sigma} {SPn n A} (\lam _ => ()) base-cofib
+
+\func SPn1=1 {n : Nat} : Contr (SPnCone n UnitPointed) \cowith
+  | center => pinl ()
+  | contraction => ctr \where {
+  \func feq (x : BSn n) (f : x.1 -> \Sigma) : (\lam _ => ()) = f =>
+    isContr=>isProp (transport Contr (inv funcToUnit) unit-isContr) (\lam _ => ()) f
+  \func feq-contr (x : BSn n) (f : x.1 -> \Sigma) : feq x f = idp =>
+    isProp.=>isSet
+        (isContr=>isProp (transport Contr (inv funcToUnit) unit-isContr))
+        (\lam _ => ())
+        f
+        (feq x f)
+        idp
+  \func pth (x : BSn n) (f : x.1 -> \Sigma) :
+    pinl () = {SPnCone n UnitPointed} pinr (x, f) => run {
+      rewriteI feq,
+      rewriteI (inv (path (pglue x))),
+      idp
+    }
+
+  \func mainLemma (a : BSn n)
+    : coe (\lam i => pinl () = pglue a i) (path (\lam _ => pinl ())) right =
+    pth (base-cofib {n} {UnitPointed} a).1 (base-cofib a).2 => run {
+    unfold (base-cofib, pth),
+    rewrite (transport_path-left (inv (path (pglue a)))),
+    rewrite inv_inv,
+    *> (coe_path {SPnCone n UnitPointed} {pinl ()} {pinl ()} {pinl ()} {pinr (a, \lam (_ : a.1) => ())}
+        (\lam _ => pinl ())
+        (path (\lam _ => pinl ()))
+        (path (pglue {_} {_} {_} {\lam _ => ()} {base-cofib {n} {UnitPointed}} a))
+        ),
+    rewrite idp_*>,
+    rewrite idp_*>,
+    rewrite (feq-contr a (\lam _ => base)),
+    idp
+  }
+  \func ctr (a : SPnCone n UnitPointed) : pinl () = a =>
+    Pushoutelim (\case __ \with {() => idp}) (\lam (f, x) => pth f x)
+        (\lam a => run {
+          rewriteI {2} (mainLemma a),
+          idpOver (\lam i => pinl () = pglue a i) (path (\lam _ => pinl ()))
+        })
+        a
+}
