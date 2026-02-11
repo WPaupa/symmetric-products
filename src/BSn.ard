@@ -95,6 +95,12 @@
   \func notFin2Inv (x : Fin 2) : notFin2 (notFin2 x) = x
     | 0 => idp
     | 1 => idp
+  \func notFin2Beta {A : \Type} (a a' : A) (x : Fin 2) :
+    (\case notFin2 x \with {0 => a | 1 => a'}) =
+    (\case x \with {0 => a' | 1 => a}) \elim x
+    -- this can't be used in SetSP when the order of the cases is changed
+    | 0 => idp
+    | 1 => idp
 
   \func notFin2Eq : Equiv {Fin 2} {Fin 2} \cowith
     | f => notFin2

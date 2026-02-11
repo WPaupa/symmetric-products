@@ -15,3 +15,7 @@
     \func constant (b : B) : commf n A B =>
       \lam _ _ => b
   }
+
+  \func commf2-comm {A : \Type} {B : \Type}
+    (f : commf 2 A B) (x : Fin 2 -> A) :
+    commf.f f x = commf.f f (\lam b => x (notBS2.notFin2 b)) => {?}

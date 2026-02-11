@@ -1,7 +1,10 @@
 \import BSn
 \import Commutative
+\import Meta
 \import Paths.Meta
 \import SPnAxioms
+\import Utilities
+\import Logic.Unique
 
 \truncated \data SetSP2 (A : \Set) : \Set
   | inSP2 A A
@@ -11,4 +14,32 @@
   \lam B x => setRecBS2 B (\lam b => inSP2 (x b) (x (notBS2 b)))
       (\lam b => rewrite (notNotBS2 b) (\lam i => symSP2 (x b) (x (notBS2 b)) i))
 
-\func isSPSetSP {A : \Set} : SPnAxiom {2} A (SetSP2 A) => {?}
+\func recSP2 {A : \Set} {T : \Set} (f : A -> A -> T)
+  (pr : \Pi (a b : A) -> f a b = f b a) (x : SetSP2 A) : T \elim x
+  | inSP2 a a' => f a a'
+  | symSP2 a a' i => pr a a' i
+
+\func liftSetSP2 {A : \Set} {T : \Set}
+                 (f : commf 2 A T) : SetSP2 A -> T => recSP2
+  (\lam a a' => commf.f f (\case __ \with {| 0 => a | 1 => a'}))
+  (\lam a a' => run {
+    rewrite (commf2-comm f (\case __ \with {| 0 => a | 1 => a'})),
+    rewrite (ext (notBS2.notFin2Beta a a') :
+    (\case notBS2.notFin2 __ \with {| 0 => a | 1 => a'}) =
+    (\case __ \with {| 0 => a' | 1 => a})),
+    idp
+  })
+
+
+\func SPnAxiomSet {n : Nat} (A : \Type) (SPnA : \Type) : \Type =>
+  \Sigma (inj : commf n A SPnA) (\Pi (T : \Set) (g : commf n A T) ->
+      exists! (SPnA -> T) (\lam h => \Pi (x : Fin n -> A) ->
+          h (commf.f inj x) = commf.f g x
+      )
+  )
+
+\func isSPSetSP {A : \Set} : SPnAxiomSet {2} A (SetSP2 A) => (setSP2Inj, \lam T g =>
+    Contr.make
+        (liftSetSP2 {A} {T} g, {?})
+        {?}
+  )
