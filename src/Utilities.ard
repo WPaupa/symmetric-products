@@ -1,3 +1,4 @@
+\import BSn
 \import Equiv
 \import Function
 \import Logic
@@ -8,6 +9,7 @@
 \import Paths.Meta
 \import Set
 \import Data.Sigma
+\import Data.Or
 \import Equiv.Sigma
 \import Equiv.Univalence
 \import Homotopy.Pushout
@@ -26,6 +28,13 @@
 \func TruncPrec2 {A B C : \Type} (t1 : TruncP A) (t2 : TruncP B) (f : A -> B -> TruncP C)
   : TruncP C \elim t1, t2
   | inP a1, inP a2 => f a1 a2
+
+\lemma TruncPelim {A : \Type} {P : TruncP A -> \Type}
+                 (pr : \Pi (y : TruncP A) -> isProp (P y)) (f : \Pi (a : A) -> P (inP a)) (x : TruncP A) : P x =>
+  TruncP.remove (pr x) (rec f x) \where {
+  \lemma rec (f : \Pi (a : A) -> P (inP a)) (y : TruncP A) : TruncP (P y) \elim y
+    | inP a => inP (f a)
+}
 
 -- This is basically flip, but using just flip doesn't work
 \func funExt- {A : \Type} {B : A -> \Type} {f g : \Pi (a : A) -> B a}
@@ -73,3 +82,44 @@
   | pinl b => lm b
   | pinr c => rm c
   | pglue a => gm a
+
+\func notI (i : I) : I => inv (\lam j => j) i \where {
+  \func notILeft : notI left = right => idp
+  \func notIRight : notI right = left => idp
+}
+
+\func fin2Equiv : Equiv {Fin 2} {Fin 2} = Fin 2 => iso f g sec ret \where {
+  \func f (eq : Equiv {Fin 2} {Fin 2}) : Fin 2 => eq 0
+  \func g (_ : Fin 2) : Equiv {Fin 2} {Fin 2}
+    | 0 => idEquiv
+    | 1 => notBS2.notFin2Eq
+  \func fin2Inv (a : Fin 2) : Or (a = 0) (a = 1)
+    | 0 => inl idp
+    | 1 => inr idp
+  \func fNot (eq : Equiv {Fin 2} {Fin 2}) : f eq = notBS2.notFin2 (eq 1) =>
+    \case fin2Inv (f eq), fin2Inv (eq 1) \with {
+      | inl a, inl a1 => \case Equiv.isInj (a1 *> inv a) \with {}
+      | inl a, inr b => rewrite a (rewrite b idp)
+      | inr b, inl a => rewrite b (rewrite a idp)
+      | inr b, inr b1 => \case Equiv.isInj (b1 *> inv b) \with {}
+    }
+
+  \func seca (eq : Equiv {Fin 2} {Fin 2}) (a : Fin 2) : g (f eq) a = eq a \elim a
+    | 0 => \case fin2Inv (eq 0) \with {
+      | inl a => rewrite a idp
+      | inr b => rewrite b idp
+    }
+    | 1 => \case fin2Inv (eq 1) \with {
+      | inl a => rewrite fNot (rewrite a idp)
+      | inr b => rewrite fNot (rewrite b idp)
+    }
+
+  \func sec (eq : Equiv {Fin 2} {Fin 2}) : g (f eq) = eq => run {
+    Equiv.equals,
+    ext,
+    seca eq
+  }
+  \func ret (x : Fin 2) : f (g x) = x
+    | 0 => idp
+    | 1 => idp
+}
