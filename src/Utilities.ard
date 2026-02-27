@@ -123,3 +123,26 @@
     | 0 => idp
     | 1 => idp
 }
+
+-- ΣPathP : Σ[ p ∈ PathP A (fst x) (fst y) ] PathP (λ i → B i (p i)) (snd x) (snd y)
+--          → PathP (λ i → Σ (A i) (B i)) x y
+--   ΣPathP eq i = fst eq i , snd eq i
+\func SigmaPath (A : \Type) (B : A -> \Type) {x : \Sigma (a : A) (B a)}
+                {y : \Sigma (a : A) (B a)} (p : x.1 = y.1) (q : transport B p x.2 = y.2)
+  : x = y => exts (p, q)
+
+
+\func symEquiv (eq : Equiv) : Equiv \cowith
+  | A => eq.B
+  | B => eq.A
+  | f => eq.ret
+  | ret => eq.f
+  | ret_f => eq.f_ret
+  | sec => eq.f
+  | f_sec => eq.ret_f
+
+\func symSymEquiv {A B : \Type} (eq : Equiv {A} {B}) : symEquiv (symEquiv eq) = eq =>
+  Equiv.equals {_} {_} {symEquiv (symEquiv eq)} {eq} idp
+
+\func transId {A B : \Type} (eq : Equiv {A} {B}) : transEquiv eq idEquiv = eq =>
+  Equiv.equals {_} {_} {transEquiv eq idEquiv} {eq} idp

@@ -1,6 +1,7 @@
 \import Algebra.Meta
 \import Data.Fin
 \import Data.Or
+\import Function
 \import Function.Meta
 \import Meta
 \import Paths.Meta
@@ -66,15 +67,42 @@
 \func contrTotalBSn {n : Nat} : Contr totalBSn \cowith
   | center => (BSnbase n, idEquiv)
   | contraction (X, eq) =>
-    \let a => transportInv (\lam x => \Sigma (e : Equiv {x.1} {Fin n}) ((BSnbase n, idEquiv) = {totalBSn} (x, e)))
-        (BSnPath X (BSnbase n) eq) (idEquiv, idp) \in
-      a.2 *> totalBsnChar X a.1 eq
+    \let a => transport (\lam x => \Sigma (e : Equiv {x.1} {Fin n}) ((x, e) = {totalBSn} (X, eq)))
+        (BSnPath X (BSnbase n) eq) (eq, idp) \in totalBSnChar a.1 *> a.2
   \where {
-    \func totalBsnChar (X : BSn n) (eq1 eq2 : Equiv {X.1} {Fin n}) :
-      (X, eq1) = {totalBSn} (X, eq2) => {?}
+    \func transportLemma {X Y : \Set} (f : Equiv {X} {Y}) (p : X = {\Set} Y) :
+      transport {\Set} (\lam (X : \Set) => Equiv {X} {Y}) p f = {Equiv {Y} {Y}} transEquiv (symEquiv (=-to-Equiv p)) f
+      -- here I had transEquiv in the wrong order and it still worked, unintuitive
+      | _, idp => Equiv.equals idp
+    \func doubleInv {A B : \Set} {eq : Equiv {A} {B}} :
+      transEquiv (symEquiv (=-to-Equiv (Equiv-to-= (symEquiv eq)))) idEquiv = eq => run {
+      rewrite (univalence.f_sec (symEquiv eq)),
+      transId (symEquiv (symEquiv eq)) *> symSymEquiv eq
+    }
+
+    \func totalBSnChar (eq : Equiv {Fin n} {Fin n}) :
+      (BSnbase n, idEquiv) = {totalBSn} (BSnbase n, eq) => \let
+        | pathl : (BSnbase n, idEquiv) = {totalBSn} ((Fin n, inP eq), eq) => path \lam i =>
+      (((totalBSnSimpleChar eq i).1, inP (totalBSnSimpleChar eq i).2), (totalBSnSimpleChar eq i).2)
+        | pathr : ((Fin n, inP eq), eq) = {totalBSn} (BSnbase n, eq) =>
+          rewrite (TruncP.levelProp (inP eq) (inP (idEquiv {Fin n}))) idp \in
+                                                    pathl *> pathr
+
+    \func totalBSnSimpleChar (eq : Equiv {Fin n} {Fin n}) :
+      (Fin n, idEquiv) = {\Sigma (X : \Set) (Equiv {X} {Fin n})} (Fin n, eq) =>
+      SigmaPath \Set (\lam X => Equiv {X} {Fin n}) (Equiv-to-= (symEquiv eq))
+          (transportLemma idEquiv (Equiv-to-= (symEquiv eq)) *> doubleInv)
   }
 
-\func contrTotalBS2 : Contr (\Sigma (X : BSn 2) X.1) => {?} \where {
+\func contrTotalBS2 : Contr (\Sigma (X : BSn 2) X.1) \cowith
+  | center => (BSnbase 2, fzero)
+  | contraction => isPropTotalBS2 (BSnbase 2, fzero)
+    \where {
+  \func isPropTotalBS2 : isProp (\Sigma (X : BSn 2) X.1) => transport
+      (\lam f => \Pi (a a' : \Sigma (X : BSn 2) (f X)) -> a = a')
+      eltEqEquivF
+      (isContr=>isProp (contrTotalBSn {2}))
+  \func eltEqEquivF : (\lam (X : BSn 2) => Equiv {X.1} {Fin 2}) = (\lam (X : BSn 2) => X.1) => ext eltEqEquiv
   \func eltEqEquiv (X : BSn 2) : Equiv {X.1} {Fin 2} = X.1 => iso f g sec ret \where {
     \func f (eq : Equiv {X.1} {Fin 2}) : X.1 => eq.ret 0
     \lemma fin2char (x a a' : Fin 2) (n : x /= a) (n1 : x /= a') : a = a' \elim x, a, a'
