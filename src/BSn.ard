@@ -56,8 +56,12 @@
 \func BSnPathChar {n : Nat} (a b : BSn n) : (a.1 = b.1) = (a = b) => iso
     (\lam eq => BSnPath a b (=-to-Equiv eq))
     (pmap __.1)
-    {?}
-    (\lam y => {?})
+    (\lam eq => (univalence {a.1} {b.1}).ret_f eq)
+    (\lam y => \let main => (univalence {a.1} {b.1}).ret_f (pmap __.1 y)
+                  | defs => pmap (SigmaPropPath {\Set} {\lam x => TruncP (Equiv {x} {Fin n})}
+                    (\lam a x y i => truncP {Equiv {a} {Fin n}} x y i) {a} {b} __) main
+                  | final => rewrite (SigmaPropPathBeta (\lam a x y i => truncP {Equiv {a} {Fin n}} x y i) y) defs \in final)
+      -- somehow doesn't work without that last let-statement, weird
 
 \lemma isSetBSnElt {n : Nat} (a : BSn n) : isSet a.1 => recPropBSn
     (\lam X => isSet.levelProp {X.1}) (\lam x y p q => set-pi {Fin n} {x} {y} {p} {q}) a
@@ -90,7 +94,7 @@
 
     \func totalBSnSimpleChar (eq : Equiv {Fin n} {Fin n}) :
       (Fin n, idEquiv) = {\Sigma (X : \Set) (Equiv {X} {Fin n})} (Fin n, eq) =>
-      SigmaPath \Set (\lam X => Equiv {X} {Fin n}) (Equiv-to-= (symEquiv eq))
+      SigmaPath {\Set} {\lam X => Equiv {X} {Fin n}} (Equiv-to-= (symEquiv eq))
           (transportLemma idEquiv (Equiv-to-= (symEquiv eq)) *> doubleInv)
   }
 
@@ -105,13 +109,6 @@
   \func eltEqEquivF : (\lam (X : BSn 2) => Equiv {X.1} {Fin 2}) = (\lam (X : BSn 2) => X.1) => ext eltEqEquiv
   \func eltEqEquiv (X : BSn 2) : Equiv {X.1} {Fin 2} = X.1 => iso f g sec ret \where {
     \func f (eq : Equiv {X.1} {Fin 2}) : X.1 => eq.ret 0
-    \lemma fin2char (x a a' : Fin 2) (n : x /= a) (n1 : x /= a') : a = a' \elim x, a, a'
-      | 0, 0, _ => absurd (n idp)
-      | 1, 1, _ => absurd (n idp)
-      | 0, 1, 0 => absurd (n1 idp)
-      | 0, 1, 1 => idp
-      | 1, 0, 0 => idp
-      | 1, 0, 1 => absurd (n1 idp)
 
     \lemma bs2char (X : BSn 2) : \Pi (x a a' : X.1) (n : x /= a) (n1 : x /= a') -> a = a' =>
       TruncP.rec isProp-prover X.2 (\lam eq =>
@@ -214,12 +211,15 @@
     (contrTotalBS2.contraction (X, x))
     pr
 
-\func BS1Contr : Contr (BSn 1) => transport {\Type} Contr (iso {\Sigma (x : BSn 1) x.1} {BSn 1}
+\func BS1Contr : Contr (BSn 1) => transport {\Type} Contr (iso {\Sigma (x : BSn 1) (Equiv {x.1} {Fin 1})} {BSn 1}
     (\lam t => t.1)
-    (\lam (b : BSn 1) => (b, (element b).center))
-    (\lam _ => SigmaPropPath (\lam a => isContr=>isProp (element a)) idp)
+    (\lam (b : BSn 1) => (b, TruncP.remove (isPropX2 b) b.2))
+    (\lam _ => SigmaPropPath isPropX2 idp)
     (\lam _ => idp)
-) {?} \where {
+) contrTotalBSn \where {
+  \func isPropX2 (X : BSn 1) : isProp (Equiv {X.1} {Fin 1}) => \lam f g => Equiv.equals $ ext \lam a => fin1Prop (f a) (g a)
+  \func fin1Prop (a b : Fin 1) : a = b
+    | 0, 0 => idp
 
   \func element (X : BSn 1) : Contr X.1 =>
     recPropBSn {1} {\lam x => Contr x.1} (\lam x => Contr.levelProp x.1) contrFin1 X
@@ -274,8 +274,13 @@
 
   \lemma equiv : \Sigma (e : Equiv {X.1} {X.1}) (Not (e = idEquiv)) =>
     recPropBSn (\lam X => levelProp {X}) contrEqvFin2.center X \where {
-    \func fin2Dichotomy (e : Equiv {Fin 2} {Fin 2}) (g : Not (e = idEquiv)) : e = notFin2Eq =>
-      {?}
+    \func fin2Dichotomy : \Pi (e : Equiv {Fin 2} {Fin 2}) (g : e /= idEquiv {Fin 2}) -> e = notFin2Eq =>
+      transport (\lam x => \Pi (x0 x1 : x) (xneq : x0 /= x1) (e : x) (g : e /= x0) -> e = x1)
+          (inv (contrTotalBS2.eltEqEquiv (BSnbase 2)))
+          (\lam x0 x1 neq01 e neqe0 => fin2char x0 e x1 (/=-sym neqe0) neq01)
+          idEquiv
+          notFin2Eq
+          (\lam eq => \case pmap (\lam f => eqvFun f fzero) eq \with {})
 
     \func contrEqvFin2 : Contr (\Sigma (e : Equiv {Fin 2} {Fin 2}) (Not (e = idEquiv))) \cowith
       | center => (notFin2Eq, \lam p => fsuc/=0 {_} {0}

@@ -15,11 +15,34 @@
 \import Homotopy.Pushout
 
 -- These are functions that I'd like to have in the standard library
+\func SigmaPath {A : \Type} {B : A -> \Type} {x : \Sigma (a : A) (B a)}
+                {y : \Sigma (a : A) (B a)} (p : x.1 = y.1) (q : transport B p x.2 = y.2)
+  : x = y => exts (p, q)
+
+\func SigmaPathBeta {A : \Type} {B : A -> \Type} {x y : \Sigma (a : A) (B a)}
+  (p p' : x.1 = y.1) (q : transport B p x.2 = y.2) (q' : transport B p' x.2 = y.2)
+  (c1 : p = p') (c2 : Path (\lam i => transport B (c1 i) x.2 = y.2) q q')
+  : SigmaPath p q = SigmaPath p' q' \elim c1
+  | idp => run {
+    pmap (SigmaPath p) c2
+  }
 
 \func SigmaPropPath {A : \Type} {B : A -> \Type} (isPropB : \Pi (a : A) -> isProp (B a))
                     {u v : \Sigma (a : A) (B a)} (q : u.1 = v.1) : u = v
   => exts (q, isPropB _ _ _)
 -- This is almost contr-left from Equiv.Sigma, but for prop instead of contr
+\func SigmaPropPathBeta {A : \Type} {B : A -> \Type} (isPropB : \Pi (a : A) -> isProp (B a))
+                    {u v : \Sigma (a : A) (B a)} (q : u = v) : SigmaPropPath isPropB (pmap __.1 q) = q \elim q
+  | idp => run {
+    rewrite pmap-idp,
+    SigmaPathBeta idp idp (isPropB u.1 _ _) (transport-idp {A} {B} {u.1} {u.2}) idp,
+    isProp.=>isSet (isPropB u.1) (transport {A} B {u.1} {u.1} idp u.2) u.2
+        (isPropB u.1 (transport {A} B {u.1} {u.1} idp u.2) u.2)
+        (transport-idp {A} {B} {u.1} {u.2})
+  } \where {
+  \func pmap-idp {A B : \Type} (f : A -> B) {a : A} : pmap f (idp {A} {a}) = idp {B} {f a} => idp
+  \func transport-idp {A : \Type} {B : A -> \Type} {a : A} {b : B a} : transport B idp b = b => idp
+}
 
 \func TruncPmap2 {A B C : \Type} (t1 : TruncP A) (t2 : TruncP B) (f : A -> B -> C) :
   TruncP C \elim t1, t2
@@ -88,6 +111,14 @@
   \func notIRight : notI right = left => idp
 }
 
+\lemma fin2char (x a a' : Fin 2) (n : x /= a) (n1 : x /= a') : a = a' \elim x, a, a'
+  | 0, 0, _ => absurd (n idp)
+  | 1, 1, _ => absurd (n idp)
+  | 0, 1, 0 => absurd (n1 idp)
+  | 0, 1, 1 => idp
+  | 1, 0, 0 => idp
+  | 1, 0, 1 => absurd (n1 idp)
+
 \func fin2Equiv : Equiv {Fin 2} {Fin 2} = Fin 2 => iso f g sec ret \where {
   \func f (eq : Equiv {Fin 2} {Fin 2}) : Fin 2 => eq 0
   \func g (_ : Fin 2) : Equiv {Fin 2} {Fin 2}
@@ -124,12 +155,6 @@
     | 1 => idp
 }
 
--- ΣPathP : Σ[ p ∈ PathP A (fst x) (fst y) ] PathP (λ i → B i (p i)) (snd x) (snd y)
---          → PathP (λ i → Σ (A i) (B i)) x y
---   ΣPathP eq i = fst eq i , snd eq i
-\func SigmaPath (A : \Type) (B : A -> \Type) {x : \Sigma (a : A) (B a)}
-                {y : \Sigma (a : A) (B a)} (p : x.1 = y.1) (q : transport B p x.2 = y.2)
-  : x = y => exts (p, q)
 
 
 \func symEquiv (eq : Equiv) : Equiv \cowith
