@@ -1,5 +1,9 @@
 \import BSn
 \import Data.Or
+\import Function.Meta
+\import Meta
+\import Paths
+\import Paths.Meta
 
 \func commf \plevels p1 <= p2 (n : Nat) (A : \Type p1) (B : \Type p2) : \Type =>
   \Pi (X : BSn n) -> (X.1 -> A) -> B
@@ -17,5 +21,35 @@
   }
 
   \func commf2-comm {A : \Type} {B : \Type}
-    (f : commf 2 A B) (x : Fin 2 -> A) :
-    commf.f f x = commf.f f (\lam b => x (notBS2.notFin2 b)) => {?}
+    (f : commf 2 A B) (a b : A) :
+    commf.f f (elimBS2.recFin2 b a) = commf.f f (elimBS2.recFin2 a b) =>
+    (pmap (f (BSnbase 2)) (inv (elimOn1Ext a b))) *> mainLemma \where {
+    \func elimOn1Ext {X : \Type} (a b : X) : elimBS2 {BSnbase 2} (\lam _ => X) 1 a b = elimBS2.recFin2 b a =>
+      ext (elimOn1 a b)
+    \func elimOn1 {X : \Type} (a b : X) (t : Fin 2) :
+      elimBS2 {BSnbase 2} (\lam _ => X) 1 a b t = elimBS2.recFin2 b a t \elim t
+      | 0 => (elimOn1Prod a b).2
+      | 1 => (elimOn1Prod a b).1
+
+    \func elimOn1Prod {X : \Type} (a b : X) :
+      \Sigma (elimBS2 {BSnbase 2} (\lam _ => X) 1 a b 1 = elimBS2.recFin2 {\lam _ => X} b a 1)
+             (elimBS2 {BSnbase 2} (\lam _ => X) 1 a b 0 = elimBS2.recFin2 {\lam _ => X} b a 0) =>
+      rewrite notFin2isNot in elimBS2.beta {BSnbase 2} {\lam _ => X} {1} {a} {b}
+
+    \func elimOn0Ext {X : \Type} (a b : X) : elimBS2 {BSnbase 2} (\lam _ => X) 0 a b = elimBS2.recFin2 a b =>
+      ext (elimOn0 a b)
+    \func elimOn0 {X : \Type} (a b : X) (t : Fin 2) :
+      elimBS2 {BSnbase 2} (\lam _ => X) 0 a b t = elimBS2.recFin2 a b t \elim t
+      | 0 => (elimOn0Prod a b).1
+      | 1 => (elimOn0Prod a b).2
+
+    \func elimOn0Prod {X : \Type} (a b : X) :
+      \Sigma (elimBS2 {BSnbase 2} (\lam _ => X) 0 a b 0 = elimBS2.recFin2 {\lam _ => X} a b 0)
+             (elimBS2 {BSnbase 2} (\lam _ => X) 0 a b 1 = elimBS2.recFin2 {\lam _ => X} a b 1) =>
+      rewrite notFin2isNot in elimBS2.beta {BSnbase 2} {\lam _ => X} {0} {a} {b}
+
+    \func mainLemma : f (BSnbase 2) (elimBS2 {BSnbase 2} _ 1 a b) = f (BSnbase 2) (elimBS2.recFin2 a b) =>
+      JBS2 (\lam B t => f B (elimBS2 {B} _ t a b) = f (BSnbase 2) (elimBS2.recFin2 a b))
+          (pmap (f (BSnbase 2)) (elimOn0Ext a b))
+          {BSnbase 2} {1}
+  }
