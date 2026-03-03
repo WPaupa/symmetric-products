@@ -58,10 +58,9 @@
     (pmap __.1)
     (\lam eq => (univalence {a.1} {b.1}).ret_f eq)
     (\lam y => \let main => (univalence {a.1} {b.1}).ret_f (pmap __.1 y)
-                  | defs => pmap (SigmaPropPath {\Set} {\lam x => TruncP (Equiv {x} {Fin n})}
+                    | defs => pmap (SigmaPropPath {\Set} {\lam x => TruncP (Equiv {x} {Fin n})}
                     (\lam a x y i => truncP {Equiv {a} {Fin n}} x y i) {a} {b} __) main
-                  | final => rewrite (SigmaPropPathBeta (\lam a x y i => truncP {Equiv {a} {Fin n}} x y i) y) defs \in final)
-      -- somehow doesn't work without that last let-statement, weird
+                    | final => rewrite (SigmaPropPathBeta (\lam a x y i => truncP {Equiv {a} {Fin n}} x y i) y) defs \in final)
 
 \lemma isSetBSnElt {n : Nat} (a : BSn n) : isSet a.1 => recPropBSn
     (\lam X => isSet.levelProp {X.1}) (\lam x y p q => set-pi {Fin n} {x} {y} {p} {q}) a
@@ -86,11 +85,11 @@
 
     \func totalBSnChar (eq : Equiv {Fin n} {Fin n}) :
       (BSnbase n, idEquiv) = {totalBSn} (BSnbase n, eq) => \let
-        | pathl : (BSnbase n, idEquiv) = {totalBSn} ((Fin n, inP eq), eq) => path \lam i =>
-      (((totalBSnSimpleChar eq i).1, inP (totalBSnSimpleChar eq i).2), (totalBSnSimpleChar eq i).2)
-        | pathr : ((Fin n, inP eq), eq) = {totalBSn} (BSnbase n, eq) =>
-          rewrite (TruncP.levelProp (inP eq) (inP (idEquiv {Fin n}))) idp \in
-                                                    pathl *> pathr
+      | pathl : (BSnbase n, idEquiv) = {totalBSn} ((Fin n, inP eq), eq) => path \lam i =>
+          (((totalBSnSimpleChar eq i).1, inP (totalBSnSimpleChar eq i).2), (totalBSnSimpleChar eq i).2)
+      | pathr : ((Fin n, inP eq), eq) = {totalBSn} (BSnbase n, eq) =>
+        rewrite (TruncP.levelProp (inP eq) (inP (idEquiv {Fin n}))) idp \in
+      pathl *> pathr
 
     \func totalBSnSimpleChar (eq : Equiv {Fin n} {Fin n}) :
       (Fin n, idEquiv) = {\Sigma (X : \Set) (Equiv {X} {Fin n})} (Fin n, eq) =>
@@ -203,6 +202,14 @@
   }
 }
 
+\func JBSn {n : Nat}
+           (A : \Pi (X : BSn n) (x : Equiv {X.1} {Fin n}) -> \Type)
+           (pr : A (BSnbase n) idEquiv)
+           {X : BSn n} {x : Equiv {X.1} {Fin n}} : A X x => transport {totalBSn {n}}
+    (\lam t => A t.1 t.2) {BSnbase n, idEquiv} {X, x}
+    (contrTotalBSn.contraction (X, x))
+    pr
+
 \func JBS2
   (A : \Pi (X : BSn 2) (x : X.1) -> \Type)
   (pr : A (BSnbase 2) (Fin.fromNat 0))
@@ -276,7 +283,7 @@
     recPropBSn (\lam X => levelProp {X}) contrEqvFin2.center X \where {
     \func fin2Dichotomy : \Pi (e : Equiv {Fin 2} {Fin 2}) (g : e /= idEquiv {Fin 2}) -> e = notFin2Eq =>
       transport (\lam x => \Pi (x0 x1 : x) (xneq : x0 /= x1) (e : x) (g : e /= x0) -> e = x1)
-          (inv (contrTotalBS2.eltEqEquiv (BSnbase 2)))
+          (inv fin2Equiv)
           (\lam x0 x1 neq01 e neqe0 => fin2char x0 e x1 (/=-sym neqe0) neq01)
           idEquiv
           notFin2Eq
@@ -295,11 +302,21 @@
   }
 }
 
-\func notNotBS2 {X : BSn 2} (x : X.1) : notBS2 (notBS2 x) = x => {?}
+\lemma notNotBS2 {X : BSn 2} : \Pi (x : X.1) -> notBS2 (notBS2 x) = x =>
+  recPropBSn {2} (\lam X => pi-isProp _ \lam x => isSetBSnElt {2} X (notBS2 (notBS2 x)) x) (run {
+    unfold notBS2,
+    rewrite notFin2isNot.equivEq,
+    notNotFin2
+  }) X \where {
+  \func notNotFin2 (x : Fin 2) : notBS2.notFin2Eq (notBS2.notFin2Eq x) = x
+    | 0 => idp
+    | 1 => idp
+}
 
-\func notFin2isNot {x : Fin 2} : notBS2 {BSnbase 2} x = notBS2.notFin2 x
-  | {0} => {?}
-  | {1} => {?}
+\func notFin2isNot (x : Fin 2) : notBS2 {BSnbase 2} x = notBS2.notFin2 x => pmap (eqvFun __ x) equivEq \where {
+  \func equivEq : (notBS2.equiv {BSnbase 2}).1 = notBS2.notFin2Eq =>
+    notBS2.equiv.fin2Dichotomy (notBS2.equiv {BSnbase 2}).1 (notBS2.equiv {BSnbase 2}).2
+}
 
 \func elimBS2 {X : BSn 2} (B : X.1 -> \Type)
               (x : X.1) (a : B x) (a' : B (notBS2 x)) (y : X.1) : B y =>
@@ -312,8 +329,8 @@
       (\lam x => JBS2
           (\lam X x => \Pi (A : X.1 -> \Type) -> isProp (beta_type {X} {A} {x}))
           (\lam _ => run {
-            unfold beta_type, -- doesn't work without the unfold, unintuitive
-            rewrite (notFin2isNot {0}),
+            unfold beta_type,
+            rewrite (notFin2isNot 0),
             isContr=>isProp elimBool*Contr
           })
           {Y} {x}
@@ -321,60 +338,45 @@
   \func recFin2 {A : Fin 2 -> \Type} (a : A 0) (b : A 1) (x : Fin 2) : A x \elim x
     | 0 => a
     | 1 => b
-  \func todo {A : Fin 2 -> \Type} {f : A 0 -> A 1 -> \Pi (y : Fin 2) -> A y}
-             (p : \Pi (a : A 0) (b : A 1) -> \Sigma (f a b 0 = a) (f a b 1 = b))
-             (a : A 0)
-             (b : A 1)
-             (i : I)
-             (y : Fin 2) : A y \elim y
-    | 0 => (p a b).1 (notI i)
-    | 1 => (p a b).2 (notI i)
-  \func todoLeft {A : Fin 2 -> \Type} {f : A 0 -> A 1 -> \Pi (y : Fin 2) -> A y}
-                 (p : \Pi (a : A 0) (b : A 1) -> \Sigma (f a b 0 = a) (f a b 1 = b))
-                 (a : A 0)
-                 (b : A 1)
-                 (y : Fin 2) : todo {A} {f} p a b left y = recFin2 a b y \elim y
+  \func recFin2Beta {A : Fin 2 -> \Type} {f : A 0 -> A 1 -> \Pi (y : Fin 2) -> A y} (a : A 0) (b : A 1) (y : Fin 2) :
+    recFin2 {A} (f a b 0) (f a b 1) y = f a b y \elim y
     | 0 => idp
     | 1 => idp
-  \func todoLeftExt {A : Fin 2 -> \Type} {f : A 0 -> A 1 -> \Pi (y : Fin 2) -> A y}
-                    (p : \Pi (a : A 0) (b : A 1) -> \Sigma (f a b 0 = a) (f a b 1 = b)) :
-    (\lam a b y => todo {A} {f} p a b left y) = recFin2 => ext (todoLeft {A} {f} p)
-  \func todoRight {A : Fin 2 -> \Type} {f : A 0 -> A 1 -> \Pi (y : Fin 2) -> A y}
-                  (p : \Pi (a : A 0) (b : A 1) -> \Sigma (f a b 0 = a) (f a b 1 = b))
-                  (a : A 0)
-                  (b : A 1)
-                  (y : Fin 2) : todo {A} {f} p a b right y = f a b y \elim y
-    | 0 => idp
-    | 1 => idp
-  \func todoRightExt {A : Fin 2 -> \Type} {f : A 0 -> A 1 -> \Pi (y : Fin 2) -> A y}
-                     (p : \Pi (a : A 0) (b : A 1) -> \Sigma (f a b 0 = a) (f a b 1 = b)) :
-    (\lam a b y => todo {A} {f} p a b right y) = f => ext (todoRight {A} {f} p)
+  \func recFin2BetaExt {A : Fin 2 -> \Type} {f : A 0 -> A 1 -> \Pi (y : Fin 2) -> A y} : 
+    (\lam (a : A 0) (b : A 1) => recFin2 {A} (f a b 0) (f a b 1)) = f => ext recFin2Beta
 
   \func elimBool*Contr {A : Fin 2 -> \Type} :
     Contr (\Sigma (f : A 0 -> A 1 -> \Pi (y : (BSnbase 2).1) -> A y)
                   (\Pi (a : A 0) -> \Pi (b : A 1) -> \Sigma (f a b 0 = a) (f a b 1 = b))) \cowith
     | center => (recFin2, \lam _ _ => (idp, idp))
-    | contraction p => run {
-
-    }
-  -- path (\lam i => (
-  --         \lam a b => todo {A} {f} p a b i,
-  --         \lam a b => (\lam j => (p a b).1 (I.squeezeR (notI i) j),
-  --                      \lam j => (p a b).2 (I.squeezeR (notI i) j))
-  --     ))
+    | contraction fp =>
+      \let | pth => \lam (p : \Pi (a : A 0) -> \Pi (b : A 1) -> \Sigma (fp.1 a b 0 = a) (fp.1 a b 1 = b)) =>
+          path {\lam _ => \Sigma (f : A 0 -> A 1 -> \Pi (y : Fin 2) -> A y)
+                                 (\Pi (a : A 0) (b : A 1) -> \Sigma (f a b 0 = a) (f a b 1 = b))} {_} {_} (\lam i => (
+            \lam a b => recFin2 ((p a b).1 i) ((p a b).2 i),
+            \lam a b => (path \lam j => (p a b).1 (I.squeezeR i j),
+                         path \lam j => (p a b).2 (I.squeezeR i j))
+          ))
+           | pth1 => transport (\lam (f : A 0 -> A 1 -> \Pi (y : Fin 2) -> A y) =>
+               \Pi (p : \Pi (a : A 0) -> \Pi (b : A 1) -> \Sigma (f a b 0 = a) (f a b 1 = b)) ->
+                   (f, \lam a b => (path ((@) (p a b).1), path ((@) (p a b).2))) =
+                   {\Sigma (f : A 0 -> A 1 -> \Pi (y : Fin 2) -> A y)
+                           (\Pi (a : A 0) -> \Pi (b : A 1) -> \Sigma (f a b 0 = {A 0} a) (f a b 1 = {A 1} b))}
+                   (recFin2, \lam _ _ => (idp, idp)))
+               (recFin2BetaExt {A} {fp.1}) pth \in inv (pth1 fp.2)
 
   \func fin2Elim (A : Fin 2 -> \Type) (y : Fin 2)
-                 (a : A y) (b : A (notBS2 {BSnbase 2} y)) (x : Fin 2) : A x \elim y, x
+                 (a : A y) (b : A (notBS2.notFin2 y)) (x : Fin 2) : A x \elim y, x
     | 0, 0 => a
-    | 0, 1 => rewriteI (notFin2isNot {0}) b
-    | 1, 0 => transport (\lam x => A x) (notFin2isNot {1}) b
+    | 0, 1 => b
+    | 1, 0 => b
     | 1, 1 => a
 
   \func fin2ElimBeta (A : Fin 2 -> \Type) (y : Fin 2)
-                     (a : A y) (b : A (notBS2 {BSnbase 2} y)) :
-    \Sigma (fin2Elim A y a b y = a) (fin2Elim A y a b (notBS2 y) = b) \elim y
-    | 0 => (idp, {?})
-    | 1 => (idp, {?})
+                     (a : A y) (b : A (notBS2.notFin2 y)) :
+    \Sigma (fin2Elim A y a b y = a) (fin2Elim A y a b (notBS2.notFin2 y) = b) \elim y
+    | 0 => (idp, idp)
+    | 1 => (idp, idp)
 
   \func elimBool*WithBeta (X : \Set) (eq : Equiv {X} {Fin 2}) : \Pi (A : X -> \Type)
   -> beta_type_fam {X, inP eq} {A} => run {
@@ -382,13 +384,16 @@
         \Sigma (f : A y -> A (notBS2 y) -> \Pi (y : B.1) -> A y)
                (\Pi (a : A y) -> \Pi (b : A (notBS2 y)) -> \Sigma (f a b y = a) (f a b (notBS2 y) = b)))
         (BSnPath (X, inP eq) (BSnbase 2) eq),
-    \lam A y => (fin2Elim A y, fin2ElimBeta A y)
+    \lam A y => rewrite notFin2isNot (fin2Elim A y, fin2ElimBeta A y)
   }
   \func elimWithBeta {Y : BSn 2} {A : Y.1 -> \Type} : beta_type_fam {Y} {A} =>
     TruncPelim (\lam x => pi-isProp {Y.1 -> \Type} _
         (\lam A => isProp_beta_type \levels (\suc \lp) \lh {Y.1, x} {A}))
         (elimBool*WithBeta \levels (\suc \lp) \lh Y.1) Y.2 A
   -- something is not right with the levels
+  \func beta : \Sigma (elimBS2 B x a a' x = {B x} a) (elimBS2 B x a a' (notBS2 \levels \lp \lh {X} x) = a')
+    => (elimWithBeta \levels \lp \lh {X} {B} x).2 a a'
+  -- typechecking this take suspiciously long
 }
 
 \func eltBSn {n : Nat} (X : BSn (suc n)) : TruncP X.1 => TruncP.map X.2

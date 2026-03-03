@@ -106,10 +106,6 @@
   | pinr c => rm c
   | pglue a => gm a
 
-\func notI (i : I) : I => inv (\lam j => j) i \where {
-  \func notILeft : notI left = right => idp
-  \func notIRight : notI right = left => idp
-}
 
 \lemma fin2char (x a a' : Fin 2) (n : x /= a) (n1 : x /= a') : a = a' \elim x, a, a'
   | 0, 0, _ => absurd (n idp)
