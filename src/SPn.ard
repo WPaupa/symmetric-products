@@ -56,7 +56,11 @@
 }
 
 \func SPnlifting {n : Nat} {A : \Type} {T : \Type}
-  (f : commf n A T) (x : SPn n A) : T => f x.1 x.2
+  (f : commf n A T) (x : SPn n A) : T => f x.1 x.2 \where {
+  \func coh(X : BSn n) (x : X.1 -> A) : SPnlifting f (X, x) = f X x => idp
+  \func uniq (h : SPn n A -> T) (pr : \Pi (X : BSn n) (x : X.1 -> A) -> f X x = h (X, x))
+    (y : SPn n A) : SPnlifting f y = h y => pr y.1 y.2
+}
 
 \func SPnUnit=BSn {n : Nat} : SPn n (\Sigma) = BSn n =>
   rewrite (Equiv-to-= (sigma-right {BSn n} (\lam A => =-to-Equiv (funcToUnit {A.1}))))

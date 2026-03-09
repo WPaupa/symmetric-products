@@ -10,10 +10,10 @@
   \where {
     \func f
             (t : commf n A B) : (Fin n -> A) -> B => t (BSnbase n)
-    \func compose {A : \Type} {B : \Type} {C : \Type}
+    \func compose \plevels p1 <= p2 {A : \Type p1} {B : \Type p2} {C : \Type p2}
             (t : commf n A B) (f : B -> C) : commf n A C =>
       \lam B x => f (t B x)
-    \func precompose {A : \Type} {B : \Type} {C : \Type}
+    \func precompose \plevels p1 <= p2 {A : \Type p1} {B : \Type p1} {C : \Type p2}
             (f : A -> B) (t : commf n B C) : commf n A C =>
       \lam B x => t B (\lam b => f (x b))
     \func constant (b : B) : commf n A B =>
@@ -22,8 +22,9 @@
 
   \func commf2-comm {A : \Type} {B : \Type}
     (f : commf 2 A B) (a b : A) :
-    commf.f f (elimBS2.recFin2 b a) = commf.f f (elimBS2.recFin2 a b) =>
-    (pmap (f (BSnbase 2)) (inv (elimOn1Ext a b))) *> mainLemma \where {
+    commf.f f (elimBS2.recFin2 b a) = commf.f f (elimBS2.recFin2 a b) => {?}
+  -- commented out for faster compiling
+    {- (pmap (f (BSnbase 2)) (inv (elimOn1Ext a b))) *> mainLemma \where {
     \func elimOn1Ext {X : \Type} (a b : X) : elimBS2 {BSnbase 2} (\lam _ => X) 1 a b = elimBS2.recFin2 b a =>
       ext (elimOn1 a b)
     \func elimOn1 {X : \Type} (a b : X) (t : Fin 2) :
@@ -53,3 +54,4 @@
           (pmap (f (BSnbase 2)) (elimOn0Ext a b))
           {BSnbase 2} {1}
   }
+  ---}

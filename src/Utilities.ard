@@ -40,7 +40,7 @@
         (isPropB u.1 (transport {A} B {u.1} {u.1} idp u.2) u.2)
         (transport-idp {A} {B} {u.1} {u.2})
   } \where {
-  \func pmap-idp {A B : \Type} (f : A -> B) {a : A} : pmap f (idp {A} {a}) = idp {B} {f a} => idp
+  \func pmap-idp {A B : \Type} (f : A -> B) {a : A} : pmap f (idp {A} {a}) = {f a = f a} idp {B} {f a} => idp
   \func transport-idp {A : \Type} {B : A -> \Type} {a : A} {b : B a} : transport B idp b = b => idp
 }
 
@@ -167,3 +167,24 @@
 
 \func transId {A B : \Type} (eq : Equiv {A} {B}) : transEquiv eq idEquiv = eq =>
   Equiv.equals {_} {_} {transEquiv eq idEquiv} {eq} idp
+
+\func psqueezeR {A : \Type} {a a' : A} (p : a = a') (i : I) : p @ i = a' => path (p @ I.squeezeR i __)
+
+\func pathdToCoe {A : \Type} {Z : A -> \Type} {a a' : A} {r : a = a'}
+                 {x : Z (r left)} {y : Z (r right)} (p : Path (\lam j => Z (r @ j)) x y) : coe (\lam j => Z (r @ j)) x right = y
+  \elim r
+    | idp => p
+
+\func invD {A : \Type} {Z : A -> \Type} {a a' : A} {r : a = a'}
+           {x : Z (r left)} {y : Z (r right)}
+           (p : Path (\lam j => Z (r @ j)) x y) : Path (\lam j => Z (inv r @ j)) y x \elim r
+  | idp => inv p
+
+\func concatD {A : \Type} {Z : A -> \Type} {a a' a'' : A} {p : a = a'} {q : a' = a''}
+  {x : Z (p left)} {y : Z (p right)} {z : Z (q right)}
+  (d1 : Path (\lam j => Z (p @ j)) x y) (d2 : Path (\lam j => Z (q @ j)) y z) : Path (\lam j => Z ((p *> q) @ j)) x z \elim p, q
+  | idp, idp => d1 *> d2
+
+\func path-at {A : \Type} {a a' : A} (p : a = a') : path (\lam i => p @ i) = p => idp
+
+\func pmap-pi : (\lam h => pmap h p) =

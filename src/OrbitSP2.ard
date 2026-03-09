@@ -1,0 +1,130 @@
+\import BSn
+\import Commutative
+\import Function.Meta
+\import Meta
+\import Paths.Meta
+\import SPn
+\import Logic.Unique
+\import Logic
+\import Homotopy.Pointed
+\import Homotopy.Pushout
+\import Paths
+\import Data.Or
+\import Utilities
+
+\data SP2 (A : \Type)
+  | sigma (f : SPn 2 A)
+  | delta A
+  | tau (a : A) (X : BSn 2) : delta a = sigma (X, \lam _ => a) \where {
+  \func elim {Z : SP2 A -> \Type}
+    (s : \Pi (x : SPn 2 A) -> Z (sigma x))
+    (d : \Pi (a : A) -> Z (delta a)) (eq : \Pi (a : A) (X : BSn 2) ->
+    Path (\lam i => Z (tau a X i)) (d a) (s (X, \lam _ => a))) (x : SP2 A) : Z x \elim x
+    | sigma f => s f
+    | delta a => d a
+    | tau a x i => eq a x i
+  \func rec {Z : \Type} (s : SPn 2 A -> Z) (eq : \Pi (a : A) (X : BSn 2) ->
+      s (BSnbase 2, \lam _ => a) = s (X, \lam _ => a)) : SP2 A -> Z =>
+    elim s (\lam a => s (BSnbase 2, \lam _ => a)) eq
+  \func cone-prop (a : A) (X Y : BSn 2) : sigma (X, \lam _ => a) = sigma (Y, \lam _ => a) =>
+    inv (path (tau a X)) *> path (tau a Y)
+}
+
+\func dcommf2 \plevels p1 <= p2 (A : \Type p1) (T : \Type p2) =>
+  \Sigma (f : commf 2 A T) (\Pi (a : A) (X : BSn 2) -> f (BSnbase 2) (\lam _ => a) = f X (\lam _ => a)) \where {
+  \func compose \plevels p1 <= p2 {A : \Type p1} {M T : \Type p2} (f : dcommf2 A T) (g : T -> M) : dcommf2 A M =>
+    (commf.compose \levels (p1, p2) \lh f.1 g, \lam a X => pmap g (f.2 a X))
+}
+
+\func injSP2 {A : \Type} : dcommf2 A (SP2 A) => (\lam T x => sigma (T, x),
+                                                 \lam a X => inv (path (tau a (BSnbase 2))) *> path (tau a X))
+
+\func SPnlifting {A : \Type} {T : \Type}
+                 (f : dcommf2 \levels \lp \lh A T) (x : SPn 2 A) : T => f.1 x.1 x.2
+
+\func liftSP2 {A T : \Type} (f : dcommf2 \levels \lp \lh A T) : SP2 A -> T =>
+  SP2.rec (SPnlifting f) f.2 \where {
+  \func coh (X : BSn 2) (x : X.1 -> A) : liftSP2 f (injSP2.1 X x) = f.1 X x => idp
+
+  \func liftCompose (h : SP2 A -> T) : liftSP2 (dcommf2.compose injSP2 h) = h =>
+    ext $ SP2.elim (\lam x => idp {_} {h (injSP2.1 x.1 x.2)}) (\lam a => pmap h (inv (path (tau a (BSnbase 2))))) (\lam a X => run {
+      pathOver,
+      *> (coe_path (\lam i => liftSP2 (dcommf2.compose injSP2 h) (tau a X i))
+            (pmap h (inv (path (tau a (BSnbase 2)))))
+            (\lam i => h (tau a X i))
+         ),
+      rewrite path-at,
+      rewriteI (pmap_inv-comm h),
+      rewrite *>_inv-comm,
+      rewrite inv_inv,
+      rewrite pmap_*>-comm,
+      rewrite *>-assoc,
+      rewriteI {2} *>-assoc,
+      rewriteI (pmap_*>-comm h (path (tau a (BSnbase 2))) (inv (path (tau a (BSnbase 2))))),
+      rewrite *>_inv,
+      rewrite SigmaPropPathBeta.pmap-idp,
+      rewrite idp_*>,
+      rewriteI (pmap_*>-comm h (inv (path (tau a X))) (path (tau a X))),
+      rewrite inv_*>,
+      SigmaPropPathBeta.pmap-idp h
+    })
+
+  \func liftComposeLemma (h : SP2 A -> T) (X : BSn 2) (a : A)
+                         (p : sigma (BSnbase 2, \lam _ => a) = sigma (X, \lam _ => a)) :
+                        pmap (liftSP2 (dcommf2.compose injSP2 h)) p = pmap h p => run {
+
+  }
+
+  \func mainLemma (h : SP2 A -> T) (hcoh : dcommf2.compose injSP2 h = f)
+                  (X : BSn 2) (a : A)
+                  (p : sigma (BSnbase 2, \lam _ => a) = sigma (X, \lam _ => a)) :
+  pmap h (inv p) *> pmap (__.1 (BSnbase 2) (\lam _ => a)) hcoh *> pmap (liftSP2 f) p = pmap (__.1 X (\lam _ => a)) hcoh \elim hcoh
+    | idp => run {
+      rewrite SigmaPropPathBeta.pmap-idp,
+      rewrite idp_*>,
+      rewrite SigmaPropPathBeta.pmap-idp,
+      rewrite (liftComposeLemma h X a p),
+      rewriteI (pmap_*>-comm h (inv p) p),
+      rewrite inv_*>,
+      SigmaPropPathBeta.pmap-idp h
+    }
+
+  \func uniq (h : SP2 A -> T)
+    (hcoh : dcommf2.compose injSP2 h = f) :
+             \Pi (x : SP2 A) -> h x = liftSP2 f x =>
+    SP2.elim (\lam (x : SPn 2 A) => pmap (__.1 x.1 x.2) hcoh)
+        (\lam a => pmap h (path (tau a (BSnbase 2))) *>
+          pmap (__.1 (BSnbase 2) (\lam _ => a)) hcoh *>
+          inv (pmap (liftSP2 f) (path (tau a (BSnbase 2)))))
+        (\lam a X => run {
+          pathOver,
+          *> (coe_path (\lam i => h (tau a X i))
+              (pmap h (path (tau a (BSnbase 2))) *>
+                pmap (__.1 (BSnbase 2) (\lam _ => a)) hcoh *>
+                inv (pmap (liftSP2 f) (path (tau a (BSnbase 2)))))
+              (\lam i => liftSP2 f (tau a X i))),
+
+        })
+}
+
+\func SP21Contr : SP2 (\Sigma) = SPnCone 2 UnitPointed => iso f g sec ret \where {
+  \func f (_ : SP2 (\Sigma)) : SPnCone 2 UnitPointed
+    | sigma f => pinr f
+    | delta () => pinl ()
+    | tau () X i => pglue X i
+
+  \func g (_ : SPnCone 2 UnitPointed) : SP2 (\Sigma)
+    | pinl () => delta ()
+    | pinr f => sigma f
+    | pglue X i => tau () X i
+
+  \func sec (x : SP2 (\Sigma)) : g (f x) = x
+    | sigma f => idp
+    | delta () => idp
+    | tau () X i => idp
+
+  \func ret (x : SPnCone 2 UnitPointed) : f (g x) = x
+    | pinl () => idp
+    | pinr f => idp
+    | pglue X i => idp
+}
