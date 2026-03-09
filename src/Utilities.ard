@@ -39,10 +39,7 @@
     isProp.=>isSet (isPropB u.1) (transport {A} B {u.1} {u.1} idp u.2) u.2
         (isPropB u.1 (transport {A} B {u.1} {u.1} idp u.2) u.2)
         (transport-idp {A} {B} {u.1} {u.2})
-  } \where {
-  \func pmap-idp {A B : \Type} (f : A -> B) {a : A} : pmap f (idp {A} {a}) = {f a = f a} idp {B} {f a} => idp
-  \func transport-idp {A : \Type} {B : A -> \Type} {a : A} {b : B a} : transport B idp b = b => idp
-}
+  }
 
 \func TruncPmap2 {A B C : \Type} (t1 : TruncP A) (t2 : TruncP B) (f : A -> B -> C) :
   TruncP C \elim t1, t2
@@ -187,4 +184,6 @@
 
 \func path-at {A : \Type} {a a' : A} (p : a = a') : path (\lam i => p @ i) = p => idp
 
-\func pmap-pi : (\lam h => pmap h p) =
+\func pmap-idp {A B : \Type} (f : A -> B) {a : A} : pmap f (idp {A} {a}) = {f a = f a} idp {B} {f a} => idp
+
+\func transport-idp {A : \Type} {B : A -> \Type} {a : A} {b : B a} : transport B idp b = b => idp
