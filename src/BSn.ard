@@ -232,31 +232,49 @@
     recPropBSn {1} {\lam x => Contr x.1} (\lam x => Contr.levelProp x.1) contrFin1 X
 }
 
-\func extendBSn {n : Nat} (m : Nat) (x : BSn n) : BSn (n Nat.+ m) \elim m
-  | 0 => x
-  | suc m => (Or (extendBSn m x).1 (\Sigma), TruncP.map (extendBSn m x).2 (
-    \lam eqv => transport (\lam t => Equiv {Or t (\Sigma)} {Fin (suc (n Nat.+ m))})
-        (inv (Equiv-to-= eqv)) (extendFin {n Nat.+ m})
+\func extendBSn {n : Nat} (m : Nat) (x : BSn n) : BSn (n Nat.+ m) =>
+  (Or x.1 (Fin m), TruncP.map x.2 (
+    \lam eqv => transport (\lam t => Equiv {Or t (Fin m)} {Fin (n Nat.+ m)})
+    (inv (Equiv-to-= eqv)) (extendFin {n} {m})
   )) \where {
-  \func extendFin {a : Nat} : Equiv {Or (Fin a) (\Sigma)} {Fin (suc a)} \cowith
-    | f => Or.rec fsuc (\lam _ => fzero)
-    | ret => \case \elim __ \with {
-      | 0 => inr ()
-      | suc x => inl x
+
+  \func extendFin {a b : Nat} : Equiv {Or (Fin a) (Fin b)} {Fin (a Nat.+ b)} \elim b
+    | 0 => \new Equiv {
+      | f => Or.rec (id : Fin a -> Fin a) (rewrite emptyFin0 absurd)
+      | ret => inl
+      | ret_f => \case \elim __ \with {
+        | inl a1 => idp
+        | inr b => absurd $ rewriteI emptyFin0 b
+      }
+      | sec => inl
+      | f_sec _ => idp
     }
-    | ret_f => \case \elim __ \with {
-      | inl x => idp
-      | inr () => idp
+    | suc b => run {
+      rewriteI singleExtendFin,
+      rewrite Or-assoc,
+      rewrite (Equiv-to-= extendFin),
+      rewrite singleExtendFin,
+      idEquiv
     }
-    | sec => \case \elim __ \with {
-      | 0 => inr ()
-      | suc x => inl x
-    }
-    | f_sec => \case \elim __ \with {
-      | 0 => idp
-      | suc x => idp
-    }
+  \func singleExtendFin {a : Nat} : Or (Fin a) (Fin 1) = Fin (suc a) => iso f g sec ret \where {
+    \func f (_ : Or (Fin a) (Fin 1)) : Fin (suc a)
+      | inl a => fsuc a
+      | inr fzero => fzero
+
+    \func g (_ : Fin (suc a)) : Or (Fin a) (Fin 1)
+      | fzero => inr fzero
+      | fsuc a => inl a
+
+    \func sec (x : Or (Fin a) (Fin 1)) : g (f x) = x
+      | inl a => idp
+      | inr fzero => idp
+
+    \func ret (x : Fin (suc a)) : f (g x) = x
+      | fzero => idp
+      | fsuc x => idp
+  }
 }
+
 
 \func notBS2 {X : BSn 2} : X.1 -> X.1 => equiv.1 \where {
   \func notFin2 (_ : Fin 2) : Fin 2
@@ -393,6 +411,7 @@
   -- something is not right with the levels
   \func beta : \Sigma (elimBS2 B x a a' x = {B x} a) (elimBS2 B x a a' (notBS2 \levels \lp \lh {X} x) = a')
     => (elimWithBeta \levels \lp \lh {X} {B} x).2 a a'
+   -- {?}
   -- typechecking this take suspiciously long
 }
 
