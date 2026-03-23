@@ -15,20 +15,20 @@
 \import Data.Sigma
 \import Equiv.Univalence
 
-\func SPn (n : Nat) (A : \Type) : \Type => \Sigma (X : BSn n) (X.1 -> A)
+\func borelXn (n : Nat) (A : \Type) : \Type => \Sigma (X : BSn n) (X.1 -> A)
 
-\func injSPn {n : Nat} {A : \Type} : commf n A (SPn n A) =>
+\func injBorelXn {n : Nat} {A : \Type} : commstr n A (borelXn n A) =>
   \lam X tup => (X, tup)
 
-\func SPnIsMerelyCartesian {n : Nat} {A : \Type} (x : SPn n A) :
+\func borelXnIsMerelyCartesian {n : Nat} {A : \Type} (x : borelXn n A) :
   TruncP (\Sigma (y : Fin n -> A) (x = (BSnbase n, y))) => TruncP.map x.1.2
     (\lam eqv => Jl (\lam B _ => \Sigma (t : B.1 -> A) (x = (B, t))) (x.2, idp)
       (BSnPath x.1 (BSnbase n) eqv))
 
-\instance connectedToSPnConnected {n : Nat} {A : Connected0} : Connected0 (SPn n A)
+\instance connectedToBorelXnConnected {n : Nat} {A : Connected0} : Connected0 (borelXn n A)
   | isInh => TruncP.map A.isInh (\lam a => (BSnbase n, \lam _ => a))
   | isConn0 p0 p1 => TruncPrec2
-      (SPnIsMerelyCartesian p0) (SPnIsMerelyCartesian p1)
+      (borelXnIsMerelyCartesian p0) (borelXnIsMerelyCartesian p1)
       (\lam pr1 pr2 => TruncP.map (product n pr1.1 pr2.1)
           (\lam prod => pr1.2 *> rewrite prod idp *> inv pr2.2)) \where {
   \func product (m : Nat) (p0 p1 : Fin m -> A) : TruncP (p0 = p1) \elim m
@@ -38,16 +38,16 @@
       | p1t (f : Fin m') : A => p1 (suc f)
       | ind : TruncP (p0t = p1t) => product m' p0t p1t
       | step : TruncP (p0 0 = p1 0) => A.isConn0 (p0 0) (p1 0)
-      \in TruncPmap2 ind step (\lam i s => ext (lemma (funExt- i) s))
-  \func lemma {m' : Nat} {p0 p1 : Fin (suc m') -> A}
-              (i : \Pi (f : Fin m') -> p0 (suc f) = p1 (suc f))
-              (s : p0 0 = p1 0) (f : Fin (suc m'))
+      \in TruncPmap2 ind step (\lam i s => ext (mainLemma (funExt- i) s))
+  \func mainLemma {m' : Nat} {p0 p1 : Fin (suc m') -> A}
+                  (i : \Pi (f : Fin m') -> p0 (suc f) = p1 (suc f))
+                  (s : p0 0 = p1 0) (f : Fin (suc m'))
     : p0 f = p1 f \elim f
     | 0 => s
     | suc f => i f
 }
 
-\func SP1X=X (X : \Type) : SPn 1 X = X =>
+\func borelX1=X (X : \Type) : borelXn 1 X = X =>
   rewrite (Equiv-to-= (sigma-right (\lam A => fromContr (BS1Contr.element A))))
   (QEquiv-to-= (contr-left BS1Contr))
 \where {
@@ -55,60 +55,60 @@
     rewrite (isContrEqUnit pr) (unit-func X)
 }
 
-\func SPnlifting {n : Nat} {A : \Type} {T : \Type}
-  (f : commf n A T) (x : SPn n A) : T => f x.1 x.2 \where {
-  \func coh(X : BSn n) (x : X.1 -> A) : SPnlifting f (X, x) = f X x => idp
-  \func uniq (h : SPn n A -> T) (pr : \Pi (X : BSn n) (x : X.1 -> A) -> f X x = h (X, x))
-    (y : SPn n A) : SPnlifting f y = h y => pr y.1 y.2
+\func liftBorelXn {n : Nat} {A : \Type} {T : \Type}
+                  (f : commstr n A T) (x : borelXn n A) : T => f x.1 x.2 \where {
+  \func coh(X : BSn n) (x : X.1 -> A) : liftBorelXn f (X, x) = f X x => idp
+  \func uniq (h : borelXn n A -> T) (pr : \Pi (X : BSn n) (x : X.1 -> A) -> f X x = h (X, x))
+             (y : borelXn n A) : liftBorelXn f y = h y => pr y.1 y.2
 }
 
-\func SPnUnit=BSn {n : Nat} : SPn n (\Sigma) = BSn n =>
+\func borelXnUnit=BSn {n : Nat} : borelXn n (\Sigma) = BSn n =>
   rewrite (Equiv-to-= (sigma-right {BSn n} (\lam A => =-to-Equiv (funcToUnit {A.1}))))
       (QEquiv-to-= (contr-right {BSn n} (\lam _ => unit-isContr)))
 
-\func base-cofib {n : Nat} {A : Pointed} (X : BSn n) : SPn n A =>
+\func borelBaseCofib {n : Nat} {A : Pointed} (X : BSn n) : borelXn n A =>
   (X, \lam _ => A.base)
 
-\func SPnCone (n : Nat) (A : Pointed) : \Type =>
-  PushoutData {BSn n} {\Sigma} {SPn n A} (\lam _ => ()) base-cofib
+\func pointedBorelXn (n : Nat) (A : Pointed) : \Type =>
+  PushoutData {BSn n} {\Sigma} {borelXn n A} (\lam _ => ()) borelBaseCofib
 
-\func SPn1=1 {n : Nat} : Contr (SPnCone n UnitPointed) \cowith
+\func pointedBorelXnUnit=Unit {n : Nat} : Contr (pointedBorelXn n UnitPointed) \cowith
   | center => pinl ()
-  | contraction => ctr \where {
-  \func feq (x : BSn n) (f : x.1 -> \Sigma) : (\lam _ => ()) = f =>
+  | contraction => contract \where {
+  \func fToUnitEq (x : BSn n) (f : x.1 -> \Sigma) : (\lam _ => ()) = f =>
     isContr=>isProp (transport Contr (inv funcToUnit) unit-isContr) (\lam _ => ()) f
-  \func feq-contr (x : BSn n) (f : x.1 -> \Sigma) : feq x f = idp =>
+  \func fToUnitEqContr (x : BSn n) (f : x.1 -> \Sigma) : fToUnitEq x f = idp =>
     isProp.=>isSet
         (isContr=>isProp (transport Contr (inv funcToUnit) unit-isContr))
         (\lam _ => ())
         f
-        (feq x f)
+        (fToUnitEq x f)
         idp
-  \func pth (x : BSn n) (f : x.1 -> \Sigma) :
-    pinl () = {SPnCone n UnitPointed} pinr (x, f) => run {
-      rewriteI feq,
+  \func conePath (x : BSn n) (f : x.1 -> \Sigma) :
+    pinl () = {pointedBorelXn n UnitPointed} pinr (x, f) => run {
+      rewriteI fToUnitEq,
       rewriteI (inv (path (pglue x))),
       idp
     }
 
   \func mainLemma (a : BSn n)
     : coe (\lam i => pinl () = pglue a i) (path (\lam _ => pinl ())) right =
-    pth (base-cofib {n} {UnitPointed} a).1 (base-cofib a).2 => run {
-    unfold (base-cofib, pth),
+  conePath (borelBaseCofib {n} {UnitPointed} a).1 (borelBaseCofib a).2 => run {
+    unfold (borelBaseCofib, conePath),
     rewrite (transport_path-left (inv (path (pglue a)))),
     rewrite inv_inv,
-    *> (coe_path {SPnCone n UnitPointed} {pinl ()} {pinl ()} {pinl ()} {pinr (a, \lam (_ : a.1) => ())}
+    *> (coe_path {pointedBorelXn n UnitPointed} {pinl ()} {pinl ()} {pinl ()} {pinr (a, \lam (_ : a.1) => ())}
         (\lam _ => pinl ())
         (path (\lam _ => pinl ()))
-        (path (pglue {_} {_} {_} {\lam _ => ()} {base-cofib {n} {UnitPointed}} a))
+        (path (pglue {_} {_} {_} {\lam _ => ()} {borelBaseCofib {n} {UnitPointed}} a))
         ),
     rewrite idp_*>,
     rewrite idp_*>,
-    rewrite (feq-contr a (\lam _ => base)),
+    rewrite (fToUnitEqContr a (\lam _ => base)),
     idp
   }
-  \func ctr (a : SPnCone n UnitPointed) : pinl () = a =>
-    Pushoutelim (\case __ \with {() => idp}) (\lam (f, x) => pth f x)
+  \func contract (a : pointedBorelXn n UnitPointed) : pinl () = a =>
+    Pushoutelim (\case __ \with {() => idp}) (\lam (f, x) => conePath f x)
         (\lam a => run {
           rewriteI {2} (mainLemma a),
           idpOver (\lam i => pinl () = pglue a i) (path (\lam _ => pinl ()))

@@ -13,12 +13,12 @@
 \import Paths.Meta
 \import Utilities
 \import Commutative
-\import SPn
+\import Borel
 
 \func SPnAxiom {n : Nat} (A : \Type) (SPnA : \Type) : \Type =>
-  \Sigma (inj : commf n A SPnA) (\Pi (T : \oo-Type) (g : commf n A T) ->
+  \Sigma (inj : commstr n A SPnA) (\Pi (T : \oo-Type) (g : commstr n A T) ->
       exists! (SPnA -> T) (\lam h => \Pi (x : Fin n -> A) ->
-          h (commf.f inj x) = commf.f g x
+          h (commstr.f inj x) = commstr.f g x
       )
   )
 
@@ -34,24 +34,24 @@
     X.isInh (\lam bp => (connectedLem (SPXBase {n} {X} {SPX} {pr} bp) (
     \lam x => achoice.lemFromChoice (TruncP (x = SPXBase {n} {X} {SPX} {pr} bp)))
       (\lam f x => \let
-          | map : commf n X Bool => commf.compose pr.1 f
+          | map : commstr n X Bool => commstr.compose pr.1 f
           | univmapStr => pr.2 Bool map
           | univmap : SPX -> Bool => univmapStr.center.1
-          | univmapCoh : \Pi (x : Fin n -> X) -> univmap (commf.f pr.1 x) = commf.f map x => univmapStr.center.2
+          | univmapCoh : \Pi (x : Fin n -> X) -> univmap (commstr.f pr.1 x) = commstr.f map x => univmapStr.center.2
           | univmapUniv
             (g : \Sigma (x : SPX -> Bool) (\Pi (x1 : Fin n -> X) ->
-                x (Commutative.commf.f pr.1 x1) = Commutative.commf.f map x1)) =>
+                x (Commutative.commstr.f pr.1 x1) = Commutative.commstr.f map x1)) =>
             pmap __.1 (univmapStr.contraction g)
           | univmapEqF : univmap = f => univmapUniv (f, \lam _ => idp)
-          | mapValue : Bool => commf.f map (\lam _ => bp)
+          | mapValue : Bool => commstr.f map (\lam _ => bp)
           | productConnected (x : Fin n -> X) : TruncP (x = \lam _ => bp) =>
-            connectedToSPnConnected.product n x (\lam _ => bp)
-          | mapMerelyConstant (y : Fin n -> X) : TruncP (mapValue = commf.f map y) =>
-            TruncP.map (productConnected y) (\lam path => pmap (\lam t => f (commf.f pr.1 t)) (inv path))
+            connectedToBorelXnConnected.product n x (\lam _ => bp)
+          | mapMerelyConstant (y : Fin n -> X) : TruncP (mapValue = commstr.f map y) =>
+            TruncP.map (productConnected y) (\lam path => pmap (\lam t => f (commstr.f pr.1 t)) (inv path))
           | trivialMap (_ : SPX) : Bool => mapValue
-          | trivialCoh : TruncP (\Pi (y : Fin n -> X) -> mapValue = commf.f map y) =>
+          | trivialCoh : TruncP (\Pi (y : Fin n -> X) -> mapValue = commstr.f map y) =>
             {?} -- Here we would need to apply the axiom of choice to something that isn't a set
-            -- achoice {Fin n -> X} (\lam y => mapValue = commf.f map y) mapMerelyConstant
+            -- achoice {Fin n -> X} (\lam y => mapValue = commstr.f map y) mapMerelyConstant
             -- I have no idea how to fix it
           | univmapMerelyTrivial : TruncP (univmap = trivialMap) =>
             TruncP.map trivialCoh (\lam pf => univmapUniv (trivialMap, pf))
@@ -60,7 +60,7 @@
               (\lam path => funExt- (inv univmapEqF) x *> funExt- path x) \in thesis
       )).isConn0)
 
-\func SPnUniqueness{n : Nat}
+\func SPnUniqueness {n : Nat}
   {X Y Z : \Type}
   (spY : SPnAxiom {n} X Y)
   (spZ : SPnAxiom {n} X Z) : Y = Z => \let
@@ -68,9 +68,9 @@
     | strG => spZ.2 Y spY.1
     | f : Y -> Z => strF.center.1
     | g : Z -> Y => strG.center.1
-    | fCoh (x : Fin n -> X) : f (commf.f spY.1 x) = commf.f spZ.1 x =>
+    | fCoh (x : Fin n -> X) : f (commstr.f spY.1 x) = commstr.f spZ.1 x =>
       strF.center.2 x
-    | gCoh (x : Fin n -> X) : g (commf.f spZ.1 x) = commf.f spY.1 x =>
+    | gCoh (x : Fin n -> X) : g (commstr.f spZ.1 x) = commstr.f spY.1 x =>
       strG.center.2 x
     | strIdY => spY.2 Y spY.1
     | strIdZ => spZ.2 Z spZ.1
@@ -91,7 +91,7 @@
 \func contrSPnContr {n : Nat} {X : \Type}
   (pr : SPnAxiom {n} (\Sigma) X) : X = (\Sigma) =>\let
     | f (_ : X) : \Sigma => ()
-    | g (_ : \Sigma) : X => commf.f pr.1 (\lam _ => ())
+    | g (_ : \Sigma) : X => commstr.f pr.1 (\lam _ => ())
     | sec (u : \Sigma) : f (g u) = u => idp
     | univUnit => pr.2 X pr.1
     | bpX : X => g ()
@@ -99,8 +99,8 @@
     | univmapUniv => \lam gf => pmap __.1 (univUnit.contraction gf)
     | univmapEqId : univmap = id => univmapUniv (id, \lam _ => idp)
     | isPropUnitn : isProp (Fin n -> \Sigma) => rewrite funcToUnit (isContr=>isProp unit-isContr)
-    | constSat (y : Fin n -> \Sigma) : bpX = commf.f pr.1 y =>
-      pmap (commf.f pr.1) (isPropUnitn (\lam _ => ()) y)
+    | constSat (y : Fin n -> \Sigma) : bpX = commstr.f pr.1 y =>
+      pmap (commstr.f pr.1) (isPropUnitn (\lam _ => ()) y)
     | univmapIsConst : univmap = (\lam _ => bpX) =>
       univmapUniv (\lam _ => bpX, constSat)
     | ret (x : X) : bpX = x => funExt- (inv univmapIsConst *> univmapEqId) x \in
@@ -109,7 +109,7 @@
 \func injSPnSPsucn {n : Nat} {A : \Type} {bp : A} {Sn : \Type} {Ssn : \Type}
                    (prn : SPnAxiom {n} A Sn) (prsn : SPnAxiom {suc n} A Ssn) : Sn -> Ssn =>
     (prn.2 Ssn injOnBase).center.1 \where {
-  \func injOnBase : commf n A Ssn =>
+  \func injOnBase : commstr n A Ssn =>
     \lam B x => prsn.1 (extendBSn {n} 1 B)
         (Or.rec x (\lam _ => bp))
 }
@@ -117,4 +117,4 @@
 \func functorialSPn {n : Nat} {A B : \Type} {SPA SPB : \Type}
                     {prA : SPnAxiom {n} A SPA} {prB : SPnAxiom {n} B SPB}
                     (f : A -> B) : SPA -> SPB =>
-    (prA.2 SPB (commf.precompose f prB.1)).center.1
+    (prA.2 SPB (commstr.precompose f prB.1)).center.1

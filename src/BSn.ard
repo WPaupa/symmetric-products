@@ -339,15 +339,15 @@
 \func elimBS2 {X : BSn 2} (B : X.1 -> \Type)
               (x : X.1) (a : B x) (a' : B (notBS2 x)) (y : X.1) : B y =>
   (elimWithBeta \levels \lp \lh {X} {B} x).1 a a' y \where { -- why is the level annotation needed
-  \func beta_type {Z : BSn 2} {A : Z.1 -> \Type} {z : Z.1} =>
+  \func elimBetaType {Z : BSn 2} {A : Z.1 -> \Type} {z : Z.1} =>
     \Sigma (f : \Pi (a : A z) (a' : A (notBS2 z)) (y : Z.1) -> A y)
            (\Pi (a : _) (b : _) -> \Sigma (f a b z = a) (f a b (notBS2 z) = b))
-  \func beta_type_fam {Y : BSn 2} {A : Y.1 -> \Type} => \Pi (y : Y.1) -> beta_type {Y} {A} {y}
-  \func isProp_beta_type {Y : BSn 2} {A : Y.1 -> \Type} : isProp (beta_type_fam {Y} {A}) => pi-isProp _
+  \func elimBetaTypeFam {Y : BSn 2} {A : Y.1 -> \Type} => \Pi (y : Y.1) -> elimBetaType {Y} {A} {y}
+  \func isPropElimBetaTypeFam {Y : BSn 2} {A : Y.1 -> \Type} : isProp (elimBetaTypeFam {Y} {A}) => pi-isProp _
       (\lam x => JBS2
-          (\lam X x => \Pi (A : X.1 -> \Type) -> isProp (beta_type {X} {A} {x}))
+          (\lam X x => \Pi (A : X.1 -> \Type) -> isProp (elimBetaType {X} {A} {x}))
           (\lam _ => run {
-            unfold beta_type,
+            unfold elimBetaType,
             rewrite (notFin2isNot 0),
             isContr=>isProp elimBool*Contr
           })
@@ -397,16 +397,16 @@
     | 1 => (idp, idp)
 
   \func elimBool*WithBeta (X : \Set) (eq : Equiv {X} {Fin 2}) : \Pi (A : X -> \Type)
-  -> beta_type_fam {X, inP eq} {A} => run {
+  -> elimBetaTypeFam {X, inP eq} {A} => run {
     transportInv (\lam B => \Pi (A : B.1 -> \Type) (y : B.1) ->
         \Sigma (f : A y -> A (notBS2 y) -> \Pi (y : B.1) -> A y)
                (\Pi (a : A y) -> \Pi (b : A (notBS2 y)) -> \Sigma (f a b y = a) (f a b (notBS2 y) = b)))
         (BSnPath (X, inP eq) (BSnbase 2) eq),
     \lam A y => rewrite notFin2isNot (fin2Elim A y, fin2ElimBeta A y)
   }
-  \sfunc elimWithBeta {Y : BSn 2} {A : Y.1 -> \Type} : beta_type_fam {Y} {A} =>
+  \sfunc elimWithBeta {Y : BSn 2} {A : Y.1 -> \Type} : elimBetaTypeFam {Y} {A} =>
     TruncPelim (\lam x => pi-isProp {Y.1 -> \Type} _
-        (\lam A => isProp_beta_type \levels (\suc \lp) \lh {Y.1, x} {A}))
+        (\lam A => isPropElimBetaTypeFam \levels (\suc \lp) \lh {Y.1, x} {A}))
         (elimBool*WithBeta \levels (\suc \lp) \lh Y.1) Y.2 A
   -- something is not right with the levels
   \sfunc beta : \Sigma (elimBS2 B x a a' x = {B x} a) (elimBS2 B x a a' (notBS2 \levels \lp \lh {X} x) = a')

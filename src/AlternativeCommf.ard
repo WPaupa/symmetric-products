@@ -9,10 +9,10 @@
 \import Utilities
 
 \func commfunc (n : Nat) (A : \Type) (B : \Type) : \Type =>
-  \Sigma (f : (Fin n -> A) -> B) (TruncP (\Sigma (str : commf n A B) (commf.f str = f))) \where {
-  \func from-commf (f : commf n A B) : commfunc n A B =>
+  \Sigma (f : (Fin n -> A) -> B) (TruncP (\Sigma (str : commstr n A B) (commstr.f str = f))) \where {
+  \func from-commstr (f : commstr n A B) : commfunc n A B =>
     (f (BSnbase n), inP (f, idp))
-  \func from-commf-beta (f : commf n A B) : commf.f f = (from-commf f).1 =>
+  \func from-commstr-beta (f : commstr n A B) : commstr.f f = (from-commstr f).1 =>
     idp
 }
 
@@ -33,16 +33,16 @@
 \func AltToReg {n : Nat} {A : \Type} {SPnA : \Type}
   (ax : SPnAxiomAlt {n} A SPnA) : TruncP (SPnAxiom {n} A SPnA) =>
   TruncP.map ax.1.2 (\lam cf => (cf.1, \lam T g => run {
-    rewrite (commfunc.from-commf-beta g),
+    rewrite (commfunc.from-commstr-beta g),
     rewrite cf.2,
-    ax.2 T (commfunc.from-commf g)
+    ax.2 T (commfunc.from-commstr g)
   }))
 
 \func RegToAlt {n : Nat} {A : \Type} {SPnA : \Type}
-  (ax : SPnAxiom {n} A SPnA) : SPnAxiomAlt {n} A SPnA => (commfunc.from-commf ax.1,
+  (ax : SPnAxiom {n} A SPnA) : SPnAxiomAlt {n} A SPnA => (commfunc.from-commstr ax.1,
     \lam T g => TruncP.rec (Contr.levelProp _) g.2 (\lam gcoh => run {
       transport (\lam P => Contr (\Sigma (x : SPnA -> T) (\Pi (x1 : Fin n -> A) -> x (P x1) = g.1 x1)))
-          (commfunc.from-commf-beta ax.1), -- rewrite fails with "cannot find subexpression", why?
+          (commfunc.from-commstr-beta ax.1), -- rewrite fails with "cannot find subexpression", why?
       rewriteI gcoh.2,
       ax.2 T gcoh.1
     }

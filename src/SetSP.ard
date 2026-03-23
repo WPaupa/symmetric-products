@@ -10,25 +10,25 @@
   | inSP2 A A
   | symSP2 (a a' : A) : inSP2 a a' = inSP2 a' a
 
-\func setSP2Inj {A : \Set} : commf 2 A (SetSP2 A) =>
+\func setSP2Inj {A : \Set} : commstr 2 A (SetSP2 A) =>
   \lam B x => setRecBS2 B (\lam b => inSP2 (x b) (x (notBS2 b)))
       (\lam b => rewrite (notNotBS2 b) (\lam i => symSP2 (x b) (x (notBS2 b)) i))
 
-\func recSP2 {A : \Set} {T : \Set} (f : A -> A -> T)
-  (pr : \Pi (a b : A) -> f a b = f b a) (x : SetSP2 A) : T \elim x
+\func recSetSP2 {A : \Set} {T : \Set} (f : A -> A -> T)
+                (pr : \Pi (a b : A) -> f a b = f b a) (x : SetSP2 A) : T \elim x
   | inSP2 a a' => f a a'
   | symSP2 a a' i => pr a a' i
 
 \func liftSetSP2 {A : \Set} {T : \Set}
-                 (f : commf 2 A T) : SetSP2 A -> T => recSP2
-  (\lam a a' => commf.f f (elimBS2.recFin2 a a'))
-  (\lam a a' => rewrite (commf2-comm f a a') idp)
+                 (f : commstr 2 A T) : SetSP2 A -> T => recSetSP2
+  (\lam a a' => commstr.f f (elimBS2.recFin2 a a'))
+  (\lam a a' => rewrite (commstr2IsComm f a a') idp)
 
 
 \func SPnAxiomSet {n : Nat} (A : \Type) (SPnA : \Type) : \Type =>
-  \Sigma (inj : commf n A SPnA) (\Pi (T : \Set) (g : commf n A T) ->
+  \Sigma (inj : commstr n A SPnA) (\Pi (T : \Set) (g : commstr n A T) ->
       exists! (SPnA -> T) (\lam h => \Pi (x : Fin n -> A) ->
-          h (commf.f inj x) = commf.f g x
+          h (commstr.f inj x) = commstr.f g x
       )
   )
 

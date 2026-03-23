@@ -172,6 +172,11 @@
   \elim r
     | idp => p
 
+\func pathdEqCoe {A : \Type} {Z : A -> \Type} {a a' : A} {r : a = a'}
+                {x : Z (r left)} {y : Z (r right)} : Path (\lam j => Z (r @ j)) x y = (coe (\lam j => Z (r @ j)) x right = y)
+  \elim r
+    | idp => idp
+
 \func invD {A : \Type} {Z : A -> \Type} {a a' : A} {r : a = a'}
            {x : Z (r left)} {y : Z (r right)}
            (p : Path (\lam j => Z (r @ j)) x y) : Path (\lam j => Z (inv r @ j)) y x \elim r
