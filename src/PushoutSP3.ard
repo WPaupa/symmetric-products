@@ -1,0 +1,33 @@
+\import BSn
+\import Borel
+\import Function.Meta
+\import Function
+\import Homotopy.Pushout
+\import Data.Or
+\import Data.Fin
+\import Logic
+\import Logic.Unique
+\import Meta
+\import Paths.Meta
+\import Utilities
+\import Equiv
+\import Paths
+
+\func orConst {A B C : \Type} (x : C) : (\lam _ => x) = Or.rec {A} {B} (\lam _ => x) (\lam _ => x) =>
+  ext orConstX \where
+  \func orConstX (y : Or A B) : x = Or.rec (\lam _ => x) (\lam _ => x) y
+    | inl a => idp
+    | inr b => idp
+
+\func SP3 (X : \Type) => PushoutData diag __.2 \where {
+  \func step : \Type => PushoutData fatdiag (\lam x => (x.2, x.3))
+  \func fatdiag (_ : \Sigma (b : BSn 2) (x y : X)) : borelXn 3 X
+    | (b, x, y) => (extendBSn 1 b , Or.rec (\lam _ => x) (\lam _ => y))
+  \func diag (x : \Sigma subspaceBS2 X) : step => Pushoutelim {_} {_} {_} {_} {_} {\lam _ => step}
+      (\lam t => pinl (t, \lam _ => x.2))
+      (\lam _ => pinr (x.2, x.2))
+      (\lam b => rewrite orConst $ path (pglue (b, x.2, x.2)))
+      x.1
+  \func subspaceBS2 : \Type => PushoutData {BSn 2} {BSn 3} {\Sigma} (extendBSn 1) (\lam _ => ())
+}
+
