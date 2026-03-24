@@ -35,6 +35,9 @@
 
 \func SP3ContrIsContr : Contr (SP3 (\Sigma)) =>
   pushoutEqv (\Sigma SP3.subspaceBS2 (\Sigma)) SP3.step equivDiag \where {
+  \func orConstUnit {A B : \Type} (x : \Sigma) : orConst {A} {B} x = idp
+    | () => idp
+
   \func pushoutId (X : \Type) : Contr (PushoutData {X} {X} {\Sigma} idEquiv (\lam _ => ())) \cowith
     | center => pinr ()
     | contraction => Pushoutelim
@@ -63,7 +66,11 @@
     | ret_f => \case \elim __ \with {
       | (pinl b, ()) => idp
       | (pinr (), ()) => idp
-      | (pglue a i, ()) => {?}
+      | (pglue a i, ()) => run {
+        unfold SP3.diag,
+        rewrite orConstUnit,
+        idp
+      }
     }
 
     | f_sec => \case \elim __ \with {
@@ -71,7 +78,8 @@
       | pinr ((), ()) => idp
       | pglue (a, (), ()) i => run {
         unfold SP3.diag,
-
+        rewrite orConstUnit,
+        idp
       }
     }
 }
