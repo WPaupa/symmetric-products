@@ -12,6 +12,8 @@
 \import Utilities
 \import Equiv
 \import Paths
+\import Equiv.Univalence
+\import Data.Sigma
 
 \func orConst {A B C : \Type} (x : C) : (\lam _ => x) = Or.rec {A} {B} (\lam _ => x) (\lam _ => x) =>
   ext orConstX \where
@@ -31,3 +33,45 @@
   \func subspaceBS2 : \Type => PushoutData {BSn 2} {BSn 3} {\Sigma} (extendBSn 1) (\lam _ => ())
 }
 
+\func SP3ContrIsContr : Contr (SP3 (\Sigma)) =>
+  pushoutEqv (\Sigma SP3.subspaceBS2 (\Sigma)) SP3.step equivDiag \where {
+  \func pushoutId (X : \Type) : Contr (PushoutData {X} {X} {\Sigma} idEquiv (\lam _ => ())) \cowith
+    | center => pinr ()
+    | contraction => Pushoutelim
+        (\lam x => inv (path (pglue x)))
+        (\lam _ => idp)
+        (\lam x => run {
+          pathOver,
+          *> (coe_path idp (inv (path (pglue x))) (path (pglue x))),
+          rewrite idp_*>,
+          inv_*> (path (pglue x))
+        })
+
+  \func pushoutPath (X Y : \Type) (p : X = Y) :
+    Contr (PushoutData {X} {Y} {\Sigma} (=-to-Equiv p) (\lam _ => ())) \elim p
+    | idp => pushoutId X
+
+  \func pushoutEqv (X Y : \Type) (f : Equiv {X} {Y}) : Contr (PushoutData {X} {Y} {\Sigma} f (\lam _ => ()))
+    => rewriteI (univalence.f_ret f) $ pushoutPath X Y (Equiv-to-= f)
+
+  \func equivDiag : QEquiv (SP3.diag {\Sigma}) \cowith
+    | ret => \case \elim __ \with {
+      | pinl (b, bs) => (pinl b, ())
+      | pinr ((), ()) => (pinr (), ())
+      | pglue (a, (), ()) i => (pglue a i, ())
+    }
+    | ret_f => \case \elim __ \with {
+      | (pinl b, ()) => idp
+      | (pinr (), ()) => idp
+      | (pglue a i, ()) => {?}
+    }
+
+    | f_sec => \case \elim __ \with {
+      | pinl (b, bs) => idp
+      | pinr ((), ()) => idp
+      | pglue (a, (), ()) i => run {
+        unfold SP3.diag,
+
+      }
+    }
+}
