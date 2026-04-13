@@ -33,7 +33,19 @@
                   (pb : B (BSnbase n))
                   (x : BSn n) : B x =>
   TruncP.rec (p x) ((connBSn n).isConn0 (BSnbase n) x)
-      (\lam X=Base => transport {BSn n} B X=Base pb)
+      (\lam X=Base => transport {BSn n} B X=Base pb) \where {
+  \func beta : recPropBSn {n} {B} p pb (BSnbase n) = pb =>
+    p (BSnbase n) (recPropBSn {n} {B} p pb (BSnbase n)) pb
+}
+
+\lemma recPropBSn' {n : Nat} {B : BSn n -> \Type}
+                   (p : isProp (B (BSnbase n)))
+                   (pb : B (BSnbase n))
+                   (x : BSn n) : B x =>
+  recPropBSn {n} {B} (recPropBSn {n} {\lam x => isProp (B x)} (\lam x => isProp.levelProp (B x)) p) pb x \where {
+  \func beta : recPropBSn' {n} {B} p pb (BSnbase n) = pb =>
+    p (recPropBSn' {n} {B} p pb (BSnbase n)) pb
+}
 
 \lemma decBSn {n : Nat} (X : BSn n) : \Pi (a b : X.1) -> Dec (a = b) =>
   TruncP.rec isProp-prover

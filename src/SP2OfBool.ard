@@ -1,0 +1,229 @@
+\import BSn
+\import Borel
+\import Data.Or
+\import Data.Fin
+\import Function.Meta
+\import Meta
+\import OrbitSP2
+\import Paths
+\import Paths.Meta
+\import Logic
+\import Logic.Unique
+\import Utilities
+\import Equiv
+
+\func BoolFactOr (X A B : \Type) (f : X -> Or A B) : \Sigma (g : X -> Fin 2) (h : Or A B -> Fin 2) (g = \lam x => h (f x)) =>
+  (\lam x => \case f x \with {
+    | inl a => 0
+    | inr b => 1
+  }, \case __ \with {
+    | inl a => 0
+    | inr b => 1
+  }, idp)
+
+\lemma BS2ToBool (X : BSn 2) : \Pi (f : X.1 -> Fin 2) ->
+    Or (Or (\Pi (x : X.1) -> f x = fzero) (\Pi (x : X.1) -> f x = fsuc fzero))
+        (\Sigma (x : X.1) (y : X.1) (f x = fzero) (f y = fsuc fzero)) =>
+  recPropBSn' {2} {_} (pi-isProp _ isPropOrT) boolToBool X \where {
+  \func orT (X : BSn 2) (f : X.1 -> Fin 2) : \Type => Or (Or (\Pi (x : X.1) -> f x = fzero) (\Pi (x : X.1) -> f x = fsuc fzero))
+      (\Sigma (x : X.1) (y : X.1) (f x = fzero) (f y = fsuc fzero))
+  \func fin2uniq (f : Fin 2 -> Fin 2) (x : Fin 2) (p0 : f fzero = x) (p1 : f (fsuc fzero) = x)
+                 (y : Fin 2) (p : y /= x) (a : Fin 2) : f a /= y \elim x, y, a
+    | 0, 0, _ => absurd (p idp)
+    | 1, 1, _ => absurd (p idp)
+    | 0, 1, 0 => \lam p => fsuc/=0 (inv p *> p0)
+    | 1, 0, 0 => \lam p => fsuc/=0 (inv p0 *> p)
+    | 0, 1, 1 => \lam p => fsuc/=0 (inv p *> p1)
+    | 1, 0, 1 => \lam p => fsuc/=0 (inv p1 *> p)
+  \func isSetOrT (X : BSn 2) (f : X.1 -> Fin 2) : isSet (orT X f) =>
+    \lam a b p q => set-pi {orT X f} {a} {b} {p} {q}
+
+  \func isPropOrT (f : Fin 2 -> Fin 2) : isProp (orT (BSnbase 2) f) =>
+    OrlevelProp
+        (OrlevelProp isProp-prover isProp-prover
+            (\lam (fz : \Pi (x : Fin 2) -> f x = fzero) (fo : \Pi (x : Fin 2) -> f x = fsuc fzero) =>
+                fsuc/=0 $ inv (fo fzero) *> fz fzero)) -- why does this need explicit typing?
+        (\lam s1 s2 => exts (\case s1.1 \as s1x, s2.1 \as s2x, idp : s1.1 = s1x, idp : s2.1 = s2x \with {
+          | 0, 0, p, p1 => p *> inv p1
+          | 0, 1, p, p1 => absurd (fin2uniq f 0 (rewrite p in s1.3) (rewrite p1 in s2.3) 1 fsuc/=0 s1.2 s1.4)
+          | 1, 0, p, p1 => absurd (fin2uniq f 0 (rewrite p1 in s2.3) (rewrite p in s1.3) 1 fsuc/=0 s1.2 s1.4)
+          | 1, 1, p, p1 => p *> inv p1
+        }, \case s1.2 \as s1y, s2.2 \as s2y, idp : s1.2 = s1y, idp : s2.2  = s2y \with {
+          | 0, 0, p, p1 => p *> inv p1
+          | 0, 1, p, p1 => absurd (fin2uniq f 1 (rewrite p in s1.4) (rewrite p1 in s2.4) 0 (/=-sym fsuc/=0) s1.1 s1.3)
+          | 1, 0, p, p1 => absurd (fin2uniq f 1 (rewrite p1 in s2.4) (rewrite p in s1.4) 0 (/=-sym fsuc/=0) s1.1 s1.3)
+          | 1, 1, p, p1 => p *> inv p1
+        } ))
+        (\case __, __ \with {
+          | inl a, s => fsuc/=0 (inv s.4 *> a s.2)
+          | inr b, s => fsuc/=0 (inv (b s.1) *> s.3)
+        })
+  \func boolToBool (f : Fin 2 -> Fin 2) : Or (Or (\Pi (x : Fin 2) -> f x = fzero) (\Pi (x : Fin 2) -> f x = fsuc fzero))
+    (\Sigma (x : Fin 2) (y : Fin 2) (f x = fzero) (f y = fsuc fzero)) =>
+    \case f fzero \as fz, f (fsuc fzero) \as fo, idp : f fzero = fz, idp : f (fsuc fzero) = fo \with {
+      | 0, 0, p, p1 => inl (inl (\case \elim __ \with {
+        | 0 => p
+        | 1 => p1
+      }))
+      | 0, 1, p, p1 => inr (fzero, fsuc fzero, p, p1)
+      | 1, 0, p, p1 => inr (fsuc fzero, fzero, p1, p)
+      | 1, 1, p, p1 => inl (inr (\case \elim __ \with {
+        | 0 => p
+        | 1 => p1
+      }))
+    }
+  \lemma betaBase : BS2ToBool (BSnbase 2) = boolToBool =>
+    recPropBSn'.beta {2} {\lam X => \Pi (f : X.1 -> Fin 2) -> orT X f} {pi-isProp _ isPropOrT} {boolToBool}
+  \lemma beta0 (X : BSn 2) : BS2ToBool X (\lam _ => 0) = inl (inl (\lam _ => idp)) =>
+    recPropBSn (\lam X => isSetOrT X (\lam _ => 0) (BS2ToBool X (\lam _ => 0)) (inl (inl (\lam _ => idp)))) (run {
+          rewrite betaBase,
+          unfold boolToBool,
+          rewrite trivialCaseF2.extC,
+          idp
+        })
+        X
+  \lemma beta1 (X : BSn 2) : BS2ToBool X (\lam _ => 1) = inl (inr (\lam _ => idp)) =>
+    recPropBSn (\lam X => isSetOrT X (\lam _ => 1) (BS2ToBool X (\lam _ => 1)) (inl (inr (\lam _ => idp)))) (run {
+          rewrite betaBase,
+          unfold boolToBool,
+          rewrite trivialCaseF2.extC,
+          idp
+        })
+        X
+}
+
+\func borel2 : borelXn 2 (Fin 2) = Or (Or (BSn 2) (BSn 2)) (\Sigma) => iso f g sec ret \where {
+  \func f (x : borelXn 2 (Fin 2)) : Or (Or (BSn 2) (BSn 2)) (\Sigma) =>
+    \case BS2ToBool x.1 x.2 \with {
+      | inl (inl fz) => inl (inl x.1)
+      | inl (inr fo) => inl (inr x.1)
+      | inr b => inr ()
+    }
+
+  \func g (_ : Or (Or (BSn 2) (BSn 2)) (\Sigma)) : borelXn 2 (Fin 2)
+    | inl (inl a) => (a, \lam _ => 0)
+    | inl (inr a') => (a', \lam _ => 1)
+    | inr b => (BSnbase 2, \lam x => x)
+
+  \func sec (x : borelXn 2 (Fin 2)) : g (f x) = x =>
+    \case BS2ToBool x.1 x.2 \as bx, idp : BS2ToBool x.1 x.2 = bx \with {
+      | inl (inl fz), p => run {
+        unfold f,
+        rewrite p,
+        exts (idp, \lam _ => rewrite fz idp)
+      }
+      | inl (inr fo), p => run {
+        unfold f,
+        rewrite p,
+        exts (idp, \lam _ => rewrite fo idp)
+      }
+      | inr b, p => run {
+        unfold f,
+        rewrite p,
+        {?}
+      }
+    }
+
+  \func ret (x : Or (Or (BSn 2) (BSn 2)) (\Sigma)) : f (g x) = x
+    | inl (inl a) => run {
+      unfold f,
+      rewrite BS2ToBool.beta0,
+      idp
+    }
+    | inl (inr a') => run {
+      unfold f,
+      rewrite BS2ToBool.beta1,
+      idp
+    }
+    | inr () => run {
+      unfold f,
+      rewrite BS2ToBool.betaBase,
+      idp
+    }
+}
+
+\func sp22=3 : SP2 (Fin 2) = Or (Or (\Sigma) (\Sigma)) (\Sigma) => iso f g sec ret \where {
+  \func f (x : SP2 (Fin 2)) : Or (Or (\Sigma) (\Sigma)) (\Sigma) =>
+    SP2.rec
+        (\lam x => \case borel2.f x \with {
+          | inl (inl a) => inl (inl ())
+          | inl (inr a') => inl (inr ())
+          | inr b => inr ()
+        })
+        (\case \elim __, __ \with {
+          | 0, X => run {
+            unfold borel2.f,
+            rewrite BS2ToBool.beta0,
+            rewrite BS2ToBool.betaBase,
+            idp
+          }
+          | 1, X => run {
+            unfold borel2.f,
+            rewrite BS2ToBool.beta1,
+            rewrite BS2ToBool.betaBase,
+            idp
+          }
+        })
+        x
+
+  \func g (_ : Or (Or (\Sigma) (\Sigma)) (\Sigma)) : SP2 (Fin 2)
+    | inl (inl ()) => sigma (borel2.g (inl (inl (BSnbase 2))))
+    | inl (inr ()) => sigma (borel2.g (inl (inr (BSnbase 2))))
+    | inr () => sigma (borel2.g (inr ()))
+
+  \func sec (x : SP2 (Fin 2)) : g (f x) = x
+    | sigma x => \case BS2ToBool x.1 x.2 \as bx, idp : BS2ToBool x.1 x.2 = bx \with {
+      | inl (inl fz), p => run {
+        unfold f,
+        unfold SP2.rec,
+        unfold borel2.f,
+        rewrite p,
+        inv (path (tau fzero (BSnbase 2))) *>,
+        path (tau fzero x.1) *>,
+        pmap sigma,
+        exts (idp, \lam _ => rewrite fz idp)
+      }
+      | inl (inr fo), p => run {
+        unfold f,
+        unfold SP2.rec,
+        unfold borel2.f,
+        rewrite p,
+        inv (path (tau (fsuc fzero) (BSnbase 2))) *>,
+        path (tau (fsuc fzero) x.1) *>,
+        pmap sigma,
+        exts (idp, \lam _ => rewrite fo idp)
+      }
+      | inr b, p => run {
+        unfold f,
+        unfold SP2.rec,
+        unfold borel2.f,
+        rewrite p,
+
+      }
+    }
+    | delta a => {?}
+    | tau a X i => {?}
+
+  \func ret (x : Or (Or (\Sigma) (\Sigma)) (\Sigma)) : f (g x) = x
+    | inl (inl ()) => run {
+      unfold f,
+      unfold SP2.rec,
+      unfold borel2.f,
+      rewrite BS2ToBool.betaBase,
+      idp
+    }
+    | inl (inr ()) => run {
+      unfold f,
+      unfold SP2.rec,
+      unfold borel2.f,
+      rewrite BS2ToBool.betaBase,
+      idp
+    }
+    | inr () => run {
+      unfold f,
+      unfold SP2.rec,
+      unfold borel2.f,
+      rewrite BS2ToBool.betaBase,
+      idp
+    }
+}

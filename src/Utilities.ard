@@ -153,6 +153,13 @@
     | 1 => idp
 }
 
+\func trivialCaseF2 {A : \Type} {a : A} (p : Fin 2) : (\case p \with {| 0 => a | 1 => a}) = a
+  | 0 => idp
+  | 1 => idp \where {
+  \func extC {A : \Type} {a : A} : (\case __ : Fin 2 \with {| 0 => a | 1 => a}) = \lam _ => a =>
+    ext trivialCaseF2
+} -- this should be a meta
+
 
 
 \func symEquiv (eq : Equiv) : Equiv \cowith
@@ -259,3 +266,9 @@
         k'
       }
     }
+
+\func OrlevelProp {A B : \Type} (p : isProp A) (q : isProp B) (e : A -> B -> Empty) (x y : Or A B) : x = y \elim x, y
+  | inl a, inl a' => pmap inl (p a a')
+  | inl a, inr b => absurd (e a b)
+  | inr b, inl a => absurd (e a b)
+  | inr b, inr b' => pmap inr (q b b')
