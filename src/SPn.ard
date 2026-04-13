@@ -1,0 +1,134 @@
+\import BSn
+\import Borel
+\import Data.List
+\import Data.Fin
+\import Data.Or
+\import Function.Meta
+\import Homotopy.Pushout
+\import Function
+\import Paths.Meta
+\import Utilities
+\import Logic
+\import Logic.Unique
+\import Arith.Nat
+\import Set
+\import Order.StrictOrder
+
+\data partitionInto (n : Nat) (k : Nat) : \Set \elim k
+  | 1 => idPart
+  | suc k' => compPart (r1 r2 : Nat) (n = r1 Nat.+ r2) (partitionInto r2 k')
+
+\func partitions (n : Nat) : \Set => \Sigma (k : Nat) (partitionInto n k)
+
+\func partitionCount {n k : Nat} (lambda : partitionInto n k) (m : Nat) : Nat \elim k, lambda
+  | 1, idPart => \case NatSemiring.decideEq n m \with {
+    | yes _ => 1
+    | no _ => 0
+  }
+  | suc k, compPart r1 _ _ lambda => \case NatSemiring.decideEq r1 m \with {
+    | yes _ => suc (partitionCount lambda m)
+    | no _ => partitionCount lambda m
+  }
+
+\func powerPartition {n k : Nat} (X : \Type) (lambda : partitionInto n k) : \Type =>
+  \Sigma (ct : classType lambda) (\Pi (m : Nat) -> (ct m).1 -> \Sigma (BSn m) X) \where {
+  \func classType (lambda : partitionInto n k) : \Type => \Pi (m : Nat) -> BSn (partitionCount lambda m)
+  \func space (X : \Type) (lambda : partitionInto n k) => \Sigma (ct : classType lambda) (\Pi (m : Nat) -> (ct m).1 -> X)
+  \func extend (p : powerPartition X lambda) : borelXn n X => {?}
+}
+
+\instance wfPartitions (n : Nat) : WellFoundedPoset (partitions n)
+  | < => {?} -- make it a Prop
+  | <-irreflexive => {?}
+  | <-transitive => {?}
+  | potential => {?}
+  | potentialMonotone => {?}
+
+\func partExtensionsType {n : Nat} {X : \Type} (lambda1 lambda2 : wfPartitions n) (ieq : lambda2 < lambda1)
+                         (ct : powerPartition.classType lambda1.2) : \Type => {?}
+\func partExtension {n : Nat} {X : \Type} (lambda1 lambda2 : wfPartitions n) (ieq : lambda2 < lambda1)
+                    (x : powerPartition X lambda1.2)
+                    (index : partExtensionsType {n} {X} lambda1 lambda2 ieq x.1)
+  : powerPartition X lambda2.2 => {?}
+\func classTypeExtension {n : Nat} {X : \Type} (lambda1 lambda2 : wfPartitions n) (ieq : lambda2 < lambda1)
+  (ct : powerPartition.classType lambda1.2) (index : partExtensionsType {n} {X} lambda1 lambda2 ieq ct)
+  : powerPartition.classType lambda2.2 => {?}
+
+\func allExtensions {n : Nat} {X : \Type} (lambda1 : wfPartitions n) (ct : powerPartition.classType lambda1.2) : \Type =>
+  \Sigma (lambda2 : wfPartitions n) (ieq : lambda2 < lambda1) (index : partExtensionsType {n} {X} lambda1 lambda2 ieq ct)
+
+\data nonDisjointUnion (base : \Type) (indices : \Type) (spaces : indices -> \Type)
+                       (glues : \Pi (i : indices) -> base -> spaces i) : \oo-Type
+  | baseElt base
+  | spaceElt (i : indices) (spaces i)
+  | spaceGlue (i : indices) (b : base) : baseElt b = spaceElt i (glues i b) \where {
+  \func elim
+    {Z : nonDisjointUnion base indices spaces glues -> \Type}
+    (prBase : \Pi (b : base) -> Z (baseElt b))
+    (prSpace : \Pi (i : indices) (s : spaces i) -> Z (spaceElt i s))
+    (prGlue : \Pi (i : indices) (b : base) -> Path (\lam j => Z (spaceGlue i b j)) (prBase b) (prSpace i (glues i b)))
+    (x : nonDisjointUnion base indices spaces glues) : Z x \elim x
+    | baseElt b => prBase b
+    | spaceElt i s => prSpace i s
+    | spaceGlue i b j => prGlue i b j
+  \func rec {Z : \Type} (pBase : \Pi (b : base) -> Z) (pSpace : \Pi (i : indices) (s : spaces i) -> Z)
+    (pGlue : \Pi (i : indices) (b : base) -> pBase b = pSpace i (glues i b))
+    (x : nonDisjointUnion base indices spaces glues) : Z => elim pBase pSpace pGlue x
+}
+
+\func iOnExtension {n : Nat} {X : \Type} (lambda1 : wfPartitions n) (ct : powerPartition.classType lambda1.2)
+                   (ext : allExtensions {n} {X} lambda1 ct) (x : powerPartition X lambda1.2) : powerPartition X ext.1.2
+  => {?}
+
+\func contrSpace {n : Nat} {X : \Type} (lambda : wfPartitions n) (ct : powerPartition.classType lambda.2) : \Type =>
+  \let
+    | constr (lambda : wfPartitions n)
+             (t : \Sigma (indices : \Type) (spaces : indices -> \Type) (glues : \Pi (i : indices) -> powerPartition X lambda.2 -> spaces i))
+    : \Type => nonDisjointUnion (powerPartition X lambda.2) t.1 t.2 t.3
+    | components => WellFoundedPoset.elim {wfPartitions n}
+      {\lam lam => \Pi (ct : powerPartition.classType lam.2) ->
+           \Sigma (indices : \Type) (spaces : indices -> \Type) (glues : \Pi (i : indices) -> powerPartition X lam.2 -> spaces i)}
+      (\lam _ _ _ => (Empty, absurd, \lam i => absurd i))
+      (\lam lambda1 recs ct => (allExtensions {n} {X} lambda1 ct,
+                                \lam extn => constr extn.1 (recs extn.1 extn.2
+                                    (classTypeExtension {n} {X} lambda1 extn.1 extn.2 ct extn.3)),
+                                \lam extn x => baseElt (iOnExtension lambda1 ct extn x)))
+      lambda
+      ct
+  \in constr lambda components
+
+\func SP-step (n d : Nat) (X : \Type) : \oo-Type (\suc \lp) \elim d
+  | 0 => borelXn n X
+  | suc d => PushoutData
+      {\Sigma (part : partitionInto n (n -' suc d)) (ct : powerPartition.classType part) (c : contrSpace {n} {X} (n -' suc d, part) ct)}
+      {SP-step n d X}
+      {\Sigma (part : partitionInto n (n -' suc d)) (powerPartition.space X part)}
+      (\lam t => contrF t.1 t.2 t.3)
+      (\lam t => contrG t.1 t.2 t.3)
+
+\func contrF {n d : Nat} {X : \Type} (lambda : partitionInto n (n -' suc d))
+             (ct : powerPartition.classType lambda) (c : contrSpace {n} {X} (n -' suc d, lambda) ct)
+  : SP-step n d X => nonDisjointUnion.rec
+    (\lam s => pointInclusion n d (powerPartition.extend s))
+    (\lam i s => {?})
+    ({?})
+    c
+
+\func contrG {n d : Nat} {X : \Type}
+             (part : partitionInto n (n -' suc d)) (ct : powerPartition.classType part)
+             (c : contrSpace {n} {X} (n -' suc d, part) ct) :
+  \Sigma (part : partitionInto n (n -' suc d)) (powerPartition.space X part) =>
+  (part, (ct, \lam m M => {?}))
+
+\func pointInclusion (n d : Nat) {X : \Type} (x : borelXn n X) : SP-step n d X \elim d
+  | 0 => x
+  | suc d => pinl (pointInclusion n d x)
+
+\func contrInclusion {n : Nat} {X : \Type} (lambda : wfPartitions n) (d : Nat)
+                    (ct : powerPartition.classType lambda.2) (c : contrSpace {n} {X} lambda ct)
+  : SP-step n (d Nat.+ (n -' suc lambda.1)) X \elim d
+  | 0 => (\lam (t : \Sigma (lambda : partitionInto n (n -' suc (n -' suc lambda.1)))
+      (ct : powerPartition.classType lambda) (c : contrSpace {n} {X} (_, lambda) ct)) =>
+    contrF {n} {n -' suc lambda.1} t.1 t.2 t.3) $ rewrite (double- n lambda.1 {?}) (lambda.2, ct, c)
+  | suc d => pinl (contrInclusion {n} {X} lambda d ct c)
+

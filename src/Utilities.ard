@@ -1,6 +1,8 @@
+\import Algebra.Meta
 \import BSn
 \import Equiv
 \import Function
+\import Function.Meta
 \import Logic
 \import Logic.Unique
 \import Meta
@@ -13,6 +15,9 @@
 \import Equiv.Sigma
 \import Equiv.Univalence
 \import Homotopy.Pushout
+\import Order.StrictOrder
+\import Order.PartialOrder
+\import Arith.Nat
 
 -- These are functions that I'd like to have in the standard library
 \func SigmaPath {A : \Type} {B : A -> \Type} {x : \Sigma (a : A) (B a)}
@@ -214,3 +219,43 @@
     | inl (inr _) => idp
     | inr _ => idp
 }
+
+\class WellFoundedPoset \extends StrictPoset {
+  | potential (x : E) : Nat
+  | potentialMonotone (x y : E) (x < y) : potential x NatSemiring.< potential y
+
+  \func rec {T : \Type}
+            (base : \Pi (x : E) -> potential x = 0 -> T)
+            (step : \Pi (x : E) -> (\Pi (y : E) -> y < x -> T) -> T)
+            (x : E) : T => elim {_} {\lam _ => T} base step x
+
+  \func elim {T : E -> \Type}
+             (base : \Pi (x : E) -> potential x = 0 -> T x)
+             (step : \Pi (x : E) -> (\Pi (y : E) -> y < x -> T y) -> T x)
+             (x : E) : T x => elimPotential x (potential x) <=-refl \where
+    \func elimPotential (z : E) (d : Nat) (_ : potential z NatSemiring.<= d) : T z \elim d
+      | 0 => base z $ linarith
+      | suc d => step z (\lam y y<z => elimPotential y d $
+        \let | h => suc_<_<= (potentialMonotone y z y<z) \in linarith)
+}
+
+\func suc- (n d : Nat) (p : d <= n) : suc n -' d = suc (n -' d) \elim n, d
+  | 0, 0 => idp
+  | 0, suc d => linarith
+  | suc n, 0 => idp
+  | suc n, suc d => suc- n d (suc<=suc.conv p)
+
+\func double- (n d : Nat) (p : d < n) : n -' suc (n -' suc d) = d \elim n, d
+  | 0, 0 => idp
+  | 0, suc d => linarith
+  | suc n, 0 => rewrite -'0 $ -'id
+  | suc n, suc d =>
+    \let k => double- n d (NatOrder.unsuc< p) \in \case n \as n', idp : n = n' \with {
+      | 0, p1 => linarith
+      | suc n', p1 => \let k' => rewrite p1 k \in run {
+        rewrite p1,
+        rewrite (suc- n' (n' -' d) -'<=id),
+        pmap suc,
+        k'
+      }
+    }
