@@ -348,6 +348,13 @@
     notBS2.equiv.fin2Dichotomy (notBS2.equiv {BSnbase 2}).1 (notBS2.equiv {BSnbase 2}).2
 }
 
+\func notEqToNotBS2 (X : BSn 2) (b1 b2 : X.1) (pr : b1 /= b2) : notBS2 b1 = b2 =>
+  JBS2 (\lam X x => \Pi (y : X.1) (pr : x /= y) -> notBS2 x = y) notEqToNotFin2 {X} {b1} b2 pr \where {
+  \func notEqToNotFin2 (y : Fin 2) (_ : fzero /= y) : notBS2 {BSnbase 2} 0 = y
+    | 0, pr => absurd (pr idp)
+    | 1, pr => notFin2isNot 0
+}
+
 \func elimBS2 {X : BSn 2} (B : X.1 -> \Type)
               (x : X.1) (a : B x) (a' : B (notBS2 x)) (y : X.1) : B y =>
   (elimWithBeta \levels \lp \lh {X} {B} x).1 a a' y \where { -- why is the level annotation needed

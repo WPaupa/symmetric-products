@@ -9,6 +9,7 @@
 \import Paths.Meta
 \import Logic
 \import Logic.Unique
+\import Set
 \import Utilities
 \import Equiv
 
@@ -92,6 +93,32 @@
         X
 }
 
+\func offDiagonalFree (x : borelXn 2 (Fin 2))
+                      (b : \Sigma (x1 : x.1.1) (y : x.1.1) (x.2 x1 = fzero) (x.2 y = fsuc fzero)) :
+  x = (BSnbase 2, \lam x => x) =>
+  \let k => transport {\Sigma (X : BSn 2) X.1} -- JBS2 written out explicity, because the levels don't work otherwise
+      (\lam t => (t.1, elimBS2 (\lam _ => Fin 2) t.2 fzero (fsuc fzero)) = {borelXn 2 (Fin 2)} (BSnbase 2, \lam x => x))
+      {BSnbase 2, fzero}
+      {x.1, b.1}
+      (contrTotalBS2.contraction (x.1, b.1))
+      (SigmaPath idp $ ext $ \case \elim __ \with {
+        | fzero => (elimBS2.beta {BSnbase 2} {\lam _ => Fin 2} {fzero} {fzero} {fsuc fzero}).1
+        | fsuc fzero =>
+          rewrite (notFin2isNot fzero) in (elimBS2.beta {BSnbase 2} {\lam _ => Fin 2} {fzero} {fzero} {fsuc fzero}).2
+      })
+    | k' : \Pi (z : x.1.1) -> x.2 z = elimBS2 (\lam _ => Fin 2) b.1 fzero (fsuc fzero) z =>
+       elimBS2 {x.1} (\lam z => x.2 z = elimBS2 (\lam _ => Fin 2) b.1 fzero (fsuc fzero) z) b.1
+           (rewrite b.3 $ inv (elimBS2.beta {x.1} {\lam _ => Fin 2} {b.1} {fzero} {fsuc fzero}).1)
+           (run {
+             rewrite (elimBS2.beta {x.1} {\lam _ => Fin 2} {b.1} {fzero} {fsuc fzero}).2,
+             rewriteI b.4,
+             pmap x.2,
+             notEqToNotBS2 x.1 b.1 b.2,
+             \lam p => fsuc/=0 $ inv b.4 *> inv (pmap x.2 p) *> b.3
+           })
+    | k'ext : x = (x.1, elimBS2 (\lam _ => Fin 2) b.1 fzero (fsuc fzero)) => SigmaPath idp $ ext k'
+  \in k'ext *> k
+
 \func borel2 : borelXn 2 (Fin 2) = Or (Or (BSn 2) (BSn 2)) (\Sigma) => iso f g sec ret \where {
   \func f (x : borelXn 2 (Fin 2)) : Or (Or (BSn 2) (BSn 2)) (\Sigma) =>
     \case BS2ToBool x.1 x.2 \with {
@@ -120,7 +147,7 @@
       | inr b, p => run {
         unfold f,
         rewrite p,
-        {?}
+        inv (offDiagonalFree x b)
       }
     }
 
@@ -172,7 +199,13 @@
     | inr () => sigma (borel2.g (inr ()))
 
   \func sec (x : SP2 (Fin 2)) : g (f x) = x
-    | sigma x => \case BS2ToBool x.1 x.2 \as bx, idp : BS2ToBool x.1 x.2 = bx \with {
+    | sigma x => fs x
+    | delta 0 => fd0
+    | delta 1 => fd1
+    | tau 0 X i => ft0 X i
+    | tau 1 X i => ft1 X i \where {
+    \func fs (x : borelXn 2 (Fin 2)) : g (f (sigma x)) = sigma x =>
+      \case BS2ToBool x.1 x.2 \as bx, idp : BS2ToBool x.1 x.2 = bx \with {
       | inl (inl fz), p => run {
         unfold f,
         unfold SP2.rec,
@@ -198,11 +231,31 @@
         unfold SP2.rec,
         unfold borel2.f,
         rewrite p,
-
+        pmap sigma,
+        inv (offDiagonalFree x b)
       }
     }
-    | delta a => {?}
-    | tau a X i => {?}
+    \func fd0 : g (f (delta 0)) = delta 0 => run {
+      unfold f,
+      unfold SP2.rec,
+      unfold borel2.f,
+      rewrite BS2ToBool.betaBase,
+      inv (path (tau fzero (BSnbase 2)))
+    }
+    \func fd1 : g (f (delta 1)) = delta 1 => run {
+      unfold f,
+      unfold SP2.rec,
+      unfold borel2.f,
+      rewrite BS2ToBool.betaBase,
+      inv (path (tau (fsuc fzero) (BSnbase 2)))
+    }
+    \func ft0 (X : BSn 2) : Path (\lam i => g (f (tau 0 X i)) = tau 0 X i) fd0 (fs (X, \lam _ => 0)) => run {
+      pathOver,
+      *> (coe_path (\lam i => g (f (tau 0 X i))) fd0 (\lam i => tau fzero X i)),
+
+    }
+    \func ft1 (X : BSn 2) : Path (\lam i => g (f (tau 1 X i)) = tau 1 X i) fd1 (fs (X, \lam _ => 1)) => {?}
+  }
 
   \func ret (x : Or (Or (\Sigma) (\Sigma)) (\Sigma)) : f (g x) = x
     | inl (inl ()) => run {
