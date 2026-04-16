@@ -22,6 +22,15 @@
 \func BSnPath {n : Nat} (a b : BSn n) (eq : Equiv {a.1} {b.1}) : a = b =>
   SigmaPropPath (\lam _ x y i => truncP x y i) {a} {b} (Equiv-to-= eq)
 
+\func BSnPathBeta {n : Nat} (a : BSn n) : BSnPath a a (idEquiv {a.1}) = idp => run {
+  unfold BSnPath,
+  unfold SigmaPropPath,
+  rewrite idToId,
+  unfold transport,
+  rewrite (isProp.=>isSet TruncP.levelProp a.2 a.2 (path (truncP a.2 a.2)) idp),
+  idp
+}
+
 \instance connBSn (n : Nat) : Connected0 (BSn n)
   | isInh => inP (BSnbase n)
   | isConn0 b1 b2 => TruncP.map
@@ -379,7 +388,7 @@
     recFin2 {A} (f a b 0) (f a b 1) y = f a b y \elim y
     | 0 => idp
     | 1 => idp
-  \func recFin2BetaExt {A : Fin 2 -> \Type} {f : A 0 -> A 1 -> \Pi (y : Fin 2) -> A y} : 
+  \func recFin2BetaExt {A : Fin 2 -> \Type} {f : A 0 -> A 1 -> \Pi (y : Fin 2) -> A y} :
     (\lam (a : A 0) (b : A 1) => recFin2 {A} (f a b 0) (f a b 1)) = f => ext recFin2Beta
 
   \func elimBool*Contr {A : Fin 2 -> \Type} :

@@ -13,14 +13,16 @@
 \import Utilities
 \import Equiv
 
-\func BoolFactOr (X A B : \Type) (f : X -> Or A B) : \Sigma (g : X -> Fin 2) (h : Or A B -> Fin 2) (g = \lam x => h (f x)) =>
+\func BoolFactOr (X A B : \Type) (f : X -> Or A B) : \Sigma (g : X -> Fin 2) (g = \lam x => h (f x)) =>
   (\lam x => \case f x \with {
     | inl a => 0
     | inr b => 1
-  }, \case __ \with {
+  }, idp) \where {
+  \func h : Or A B -> Fin 2 => \case __ \with {
     | inl a => 0
     | inr b => 1
-  }, idp)
+  }
+}
 
 \lemma BS2ToBool (X : BSn 2) : \Pi (f : X.1 -> Fin 2) ->
     Or (Or (\Pi (x : X.1) -> f x = fzero) (\Pi (x : X.1) -> f x = fsuc fzero))
@@ -59,8 +61,7 @@
           | inl a, s => fsuc/=0 (inv s.4 *> a s.2)
           | inr b, s => fsuc/=0 (inv (b s.1) *> s.3)
         })
-  \func boolToBool (f : Fin 2 -> Fin 2) : Or (Or (\Pi (x : Fin 2) -> f x = fzero) (\Pi (x : Fin 2) -> f x = fsuc fzero))
-    (\Sigma (x : Fin 2) (y : Fin 2) (f x = fzero) (f y = fsuc fzero)) =>
+  \func boolToBool (f : Fin 2 -> Fin 2) : orT (BSnbase 2) f =>
     \case f fzero \as fz, f (fsuc fzero) \as fo, idp : f fzero = fz, idp : f (fsuc fzero) = fo \with {
       | 0, 0, p, p1 => inl (inl (\case \elim __ \with {
         | 0 => p
@@ -77,19 +78,19 @@
     recPropBSn'.beta {2} {\lam X => \Pi (f : X.1 -> Fin 2) -> orT X f} {pi-isProp _ isPropOrT} {boolToBool}
   \lemma beta0 (X : BSn 2) : BS2ToBool X (\lam _ => 0) = inl (inl (\lam _ => idp)) =>
     recPropBSn (\lam X => isSetOrT X (\lam _ => 0) (BS2ToBool X (\lam _ => 0)) (inl (inl (\lam _ => idp)))) (run {
-          rewrite betaBase,
-          unfold boolToBool,
-          rewrite trivialCaseF2.extC,
-          idp
-        })
+      rewrite betaBase,
+      unfold boolToBool,
+      rewrite trivialCaseF2.extC,
+      idp
+    })
         X
   \lemma beta1 (X : BSn 2) : BS2ToBool X (\lam _ => 1) = inl (inr (\lam _ => idp)) =>
     recPropBSn (\lam X => isSetOrT X (\lam _ => 1) (BS2ToBool X (\lam _ => 1)) (inl (inr (\lam _ => idp)))) (run {
-          rewrite betaBase,
-          unfold boolToBool,
-          rewrite trivialCaseF2.extC,
-          idp
-        })
+      rewrite betaBase,
+      unfold boolToBool,
+      rewrite trivialCaseF2.extC,
+      idp
+    })
         X
 }
 
@@ -106,17 +107,17 @@
         | fsuc fzero =>
           rewrite (notFin2isNot fzero) in (elimBS2.beta {BSnbase 2} {\lam _ => Fin 2} {fzero} {fzero} {fsuc fzero}).2
       })
-    | k' : \Pi (z : x.1.1) -> x.2 z = elimBS2 (\lam _ => Fin 2) b.1 fzero (fsuc fzero) z =>
-       elimBS2 {x.1} (\lam z => x.2 z = elimBS2 (\lam _ => Fin 2) b.1 fzero (fsuc fzero) z) b.1
-           (rewrite b.3 $ inv (elimBS2.beta {x.1} {\lam _ => Fin 2} {b.1} {fzero} {fsuc fzero}).1)
-           (run {
-             rewrite (elimBS2.beta {x.1} {\lam _ => Fin 2} {b.1} {fzero} {fsuc fzero}).2,
-             rewriteI b.4,
-             pmap x.2,
-             notEqToNotBS2 x.1 b.1 b.2,
-             \lam p => fsuc/=0 $ inv b.4 *> inv (pmap x.2 p) *> b.3
-           })
-    | k'ext : x = (x.1, elimBS2 (\lam _ => Fin 2) b.1 fzero (fsuc fzero)) => SigmaPath idp $ ext k'
+       | k' : \Pi (z : x.1.1) -> x.2 z = elimBS2 (\lam _ => Fin 2) b.1 fzero (fsuc fzero) z =>
+         elimBS2 {x.1} (\lam z => x.2 z = elimBS2 (\lam _ => Fin 2) b.1 fzero (fsuc fzero) z) b.1
+             (rewrite b.3 $ inv (elimBS2.beta {x.1} {\lam _ => Fin 2} {b.1} {fzero} {fsuc fzero}).1)
+             (run {
+               rewrite (elimBS2.beta {x.1} {\lam _ => Fin 2} {b.1} {fzero} {fsuc fzero}).2,
+               rewriteI b.4,
+               pmap x.2,
+               notEqToNotBS2 x.1 b.1 b.2,
+               \lam p => fsuc/=0 $ inv b.4 *> inv (pmap x.2 p) *> b.3
+             })
+       | k'ext : x = (x.1, elimBS2 (\lam _ => Fin 2) b.1 fzero (fsuc fzero)) => SigmaPath idp $ ext k'
   \in k'ext *> k
 
 \func borel2 : borelXn 2 (Fin 2) = Or (Or (BSn 2) (BSn 2)) (\Sigma) => iso f g sec ret \where {
@@ -137,12 +138,12 @@
       | inl (inl fz), p => run {
         unfold f,
         rewrite p,
-        exts (idp, \lam _ => rewrite fz idp)
+        SigmaPath idp (inv (ext fz))
       }
       | inl (inr fo), p => run {
         unfold f,
         rewrite p,
-        exts (idp, \lam _ => rewrite fo idp)
+        SigmaPath idp (inv (ext fo))
       }
       | inr b, p => run {
         unfold f,
@@ -169,112 +170,213 @@
     }
 }
 
-\func sp22=3 : SP2 (Fin 2) = Or (Or (\Sigma) (\Sigma)) (\Sigma) => iso f g sec ret \where {
-  \func f (x : SP2 (Fin 2)) : Or (Or (\Sigma) (\Sigma)) (\Sigma) =>
-    SP2.rec
-        (\lam x => \case borel2.f x \with {
-          | inl (inl a) => inl (inl ())
-          | inl (inr a') => inl (inr ())
-          | inr b => inr ()
-        })
-        (\case \elim __, __ \with {
-          | 0, X => run {
-            unfold borel2.f,
-            rewrite BS2ToBool.beta0,
-            rewrite BS2ToBool.betaBase,
-            idp
-          }
-          | 1, X => run {
-            unfold borel2.f,
-            rewrite BS2ToBool.beta1,
-            rewrite BS2ToBool.betaBase,
-            idp
-          }
-        })
-        x
 
-  \func g (_ : Or (Or (\Sigma) (\Sigma)) (\Sigma)) : SP2 (Fin 2)
-    | inl (inl ()) => sigma (borel2.g (inl (inl (BSnbase 2))))
-    | inl (inr ()) => sigma (borel2.g (inl (inr (BSnbase 2))))
+\data coneBS2
+  | vertex
+  | base (b : BSn 2)
+  | contr (b : BSn 2) : vertex = base b
+
+\func sp22TypeIs3 : Or (Or coneBS2 coneBS2) (\Sigma) = Fin 3 => iso f g sec ret \where {
+  \func f (_ : Or (Or coneBS2 coneBS2) (\Sigma)) : Fin 3
+    | inl (inl _) => 0
+    | inl (inr _) => 1
+    | inr () => 2
+
+  \func g (_ : Fin 3) : Or (Or coneBS2 coneBS2) (\Sigma)
+    | 0 => inl (inl vertex)
+    | 1 => inl (inr vertex)
+    | 2 => inr ()
+
+  \func sec (x : Or (Or coneBS2 coneBS2) (\Sigma)) : g (f x) = x
+    | inl (inl vertex) => idp
+    | inl (inl (base b)) => pmap inl $ pmap inl $ contr b
+    | inl (inl (contr b i)) => pmap inl $ pmap inl $ psqueeze (contr b) i
+    | inl (inr vertex) => idp
+    | inl (inr (base b)) => pmap inl $ pmap inr $ contr b
+    | inl (inr (contr b i)) => pmap inl $ pmap inr $ psqueeze (contr b) i
+    | inr () => idp
+
+  \func ret (x : Fin 3) : f (g x) = x
+    | 0 => idp
+    | 1 => idp
+    | 2 => idp
+
+  \func set : isSet (Or (Or coneBS2 coneBS2) (\Sigma)) =>
+    transportInv isSet sp22TypeIs3 (\lam a b p q => set-pi {Fin 3} {a} {b} {p} {q})
+}
+
+\func sp22Type : SP2 (Fin 2) = Fin 3 => iso f g sec ret *> sp22TypeIs3 \where {
+  \func fs (x : borelXn 2 (Fin 2)) : Or (Or coneBS2 coneBS2) (\Sigma) =>
+    \case borel2.f x \with {
+      | inl (inl a) => inl (inl (base a))
+      | inl (inr a') => inl (inr (base a'))
+      | inr b => inr ()
+    }
+  \func pf0 (X : BSn 2) : inl (inl vertex) = fs (X, \lam _ => 0) => run {
+    unfold fs,
+    unfold borel2.f,
+    rewrite BS2ToBool.beta0,
+    pmap inl, pmap inl,
+    contr X
+  }
+  \func pf1 (X : BSn 2) : inl (inr vertex) = fs (X, \lam _ => 1) => run {
+    unfold fs,
+    unfold borel2.f,
+    rewrite BS2ToBool.beta1,
+    pmap inl, pmap inr,
+    contr X
+  }
+  \func f (_ : SP2 (Fin 2)) : Or (Or coneBS2 coneBS2) (\Sigma)
+    | sigma x => fs x
+    | delta 0 => inl (inl vertex)
+    | delta 1 => inl (inr vertex)
+    | tau 0 X i => pf0 X i
+    | tau 1 X i => pf1 X i
+
+
+  \func g (_ : Or (Or coneBS2 coneBS2) (\Sigma)) : SP2 (Fin 2)
+    | inl (inl vertex) => delta 0
+    | inl (inl (base b)) => sigma (borel2.g (inl (inl b)))
+    | inl (inl (contr b i)) => tau 0 b i
+    | inl (inr vertex) => delta 1
+    | inl (inr (base b)) => sigma (borel2.g (inl (inr b)))
+    | inl (inr (contr b i)) => tau 1 b i
     | inr () => sigma (borel2.g (inr ()))
 
-  \func sec (x : SP2 (Fin 2)) : g (f x) = x
-    | sigma x => fs x
-    | delta 0 => fd0
-    | delta 1 => fd1
-    | tau 0 X i => ft0 X i
-    | tau 1 X i => ft1 X i \where {
-    \func fs (x : borelXn 2 (Fin 2)) : g (f (sigma x)) = sigma x =>
-      \case BS2ToBool x.1 x.2 \as bx, idp : BS2ToBool x.1 x.2 = bx \with {
-      | inl (inl fz), p => run {
-        unfold f,
-        unfold SP2.rec,
-        unfold borel2.f,
-        rewrite p,
-        inv (path (tau fzero (BSnbase 2))) *>,
-        path (tau fzero x.1) *>,
-        pmap sigma,
-        exts (idp, \lam _ => rewrite fz idp)
-      }
-      | inl (inr fo), p => run {
-        unfold f,
-        unfold SP2.rec,
-        unfold borel2.f,
-        rewrite p,
-        inv (path (tau (fsuc fzero) (BSnbase 2))) *>,
-        path (tau (fsuc fzero) x.1) *>,
-        pmap sigma,
-        exts (idp, \lam _ => rewrite fo idp)
-      }
-      | inr b, p => run {
-        unfold f,
-        unfold SP2.rec,
-        unfold borel2.f,
-        rewrite p,
-        pmap sigma,
-        inv (offDiagonalFree x b)
-      }
-    }
-    \func fd0 : g (f (delta 0)) = delta 0 => run {
-      unfold f,
-      unfold SP2.rec,
-      unfold borel2.f,
-      rewrite BS2ToBool.betaBase,
-      inv (path (tau fzero (BSnbase 2)))
-    }
-    \func fd1 : g (f (delta 1)) = delta 1 => run {
-      unfold f,
-      unfold SP2.rec,
-      unfold borel2.f,
-      rewrite BS2ToBool.betaBase,
-      inv (path (tau (fsuc fzero) (BSnbase 2)))
-    }
-    \func ft0 (X : BSn 2) : Path (\lam i => g (f (tau 0 X i)) = tau 0 X i) fd0 (fs (X, \lam _ => 0)) => run {
-      pathOver,
-      *> (coe_path (\lam i => g (f (tau 0 X i))) fd0 (\lam i => tau fzero X i)),
+  \func sfd (x : borelXn 2 (Fin 2)) (t : BS2ToBool.orT x.1 x.2) : g (f (sigma x)) = sigma x \elim t
+    | inl (inl a) => unfold borel2.f $ rewrite (ext a : x.2 = \lam _ => 0) $ rewrite BS2ToBool.beta0 $
+                                                           pmap sigma $ SigmaPath idp $ inv (ext a)
+    | inl (inr a) => unfold borel2.f $ rewrite (ext a : x.2 = \lam _ => 1) $ rewrite BS2ToBool.beta1 $
+                                                           pmap sigma $ SigmaPath idp $ inv (ext a)
+    | inr b => unfold borel2.f $ rewrite (offDiagonalFree x b) $ rewrite BS2ToBool.betaBase $ idp
+  \func sf (x : borelXn 2 (Fin 2)) : g (f (sigma x)) = sigma x => unfold borel2.f $
+    sfd x (BS2ToBool x.1 x.2)
+  \func techLemma
+    {A B C D : \Type}
+    (f1 : A -> B)
+    (f2 : B -> C)
+    (g : C -> D)
+    {a a' : A}
+    (cx : a = a')
+    {c : C}
+    (px : f2 (f1 a') = c) :
+    inv (path (\lam i => g ((pmap f2 (pmap f1 cx) *> px) @ i))) = pmap g (inv px) *> pmap g (pmap f2 (pmap f1 (inv cx)))
+    | f1, f2, g, idp, idp => idp
 
+  \func mainLemma0
+    (X : BSn 2)
+    (g : Or (Or coneBS2 coneBS2) (\Sigma) -> SP2 (Fin 2))
+    (H : BS2ToBool.orT X (\lam _ => 0) -> Or (Or coneBS2 coneBS2) (\Sigma))
+    (a b : BS2ToBool.orT X (\lam _ => 0))
+    (p : a = b)
+    (pr : inl (inl (base X)) = H b)
+    (pr2 : g (inl (inl vertex)) = delta fzero) :
+    inv (path (\lam i => g (transportInv (\lam x => inl (inl vertex) = H x) p (pmap inl (pmap inl (path (contr X))) *> pr) @ i))) *> pr2 *> path (tau fzero X)
+      =
+    transportInv (\lam x => g (H x) = sigma (X, \lam _ => 0)) p ((pmap g (inv pr) *> pmap g (pmap inl (pmap inl (inv (path (contr X)))))) *> pr2 *> path (tau fzero X)) \elim p
+    | idp => pmap (__ *> (pr2 *> path (tau fzero X))) $ techLemma inl inl g (path (contr X)) pr
+
+  \func mainLemma1
+    (X : BSn 2)
+    (g : Or (Or coneBS2 coneBS2) (\Sigma) -> SP2 (Fin 2))
+    (H : BS2ToBool.orT X (\lam _ => 1) -> Or (Or coneBS2 coneBS2) (\Sigma))
+    (a b : BS2ToBool.orT X (\lam _ => 1))
+    (p : a = b)
+    (pr : inl (inr (base X)) = H b)
+    (pr2 : g (inl (inr vertex)) = delta (fsuc fzero)) :
+    inv (path (\lam i => g (transportInv (\lam x => inl (inr vertex) = H x) p (pmap inl (pmap inr (path (contr X))) *> pr) @ i))) *> pr2 *> path (tau (fsuc fzero) X)
+    =
+    transportInv (\lam x => g (H x) = sigma (X, \lam _ => 1)) p ((pmap g (inv pr) *> pmap g (pmap inl (pmap inr (inv (path (contr X)))))) *> pr2 *> path (tau (fsuc fzero) X)) \elim p
+    | idp => pmap (__ *> (pr2 *> path (tau (fsuc fzero) X))) $ techLemma inr inl g (path (contr X)) pr
+
+  \func st0 (X : BSn 2) : Path (\lam i => g (f (tau 0 X i)) = tau 0 X i) idp (sf (X, \lam _ => 0)) =>
+    \let H (x : BS2ToBool.orT X (\lam _ => 0)) : Or (Or coneBS2 coneBS2) (\Sigma) => \case \case x \with {
+      | inl (inl fz) => inl (inl X)
+      | inl (inr fo) => inl (inr X)
+      | inr b => inr ()
+    } : Or (Or (BSn 2) (BSn 2)) (\Sigma) \with {
+      | inl (inl a) => inl (inl (base a))
+      | inl (inr a') => inl (inr (base a'))
+      | inr b => inr ()
+    } \in run {
+      unfold sf,
+      transportInv (\lam b => Path (\lam i => g (f (tau 0 X i)) = tau 0 X i) idp (sfd (X, \lam _ => 0) b))
+          (BS2ToBool.beta0 X),
+      pathOver,
+      *> (coe_path (path (\lam i => g (f (tau 0 X i)))) idp (path (tau fzero X))),
+      rewrite idp_*>,
+      rewrite SigmaPath-idp,
+      rewrite pmap-idp,
+      *> (rewrite idp_*> in mainLemma0 X g H (BS2ToBool X \lam _ => 0) (inl (inl (\lam _ => idp))) (BS2ToBool.beta0 X) idp idp),
+      pmap (transportInv (\lam x => g (H x) = sigma (X, \lam _ => 0)) (BS2ToBool.beta0 X) __),
+      unfold pmap,
+      rewrite idp_*>,
+      rewrite (pmap_inv-comm (\lam x => g (inl (inl x))) (path (contr X))),
+      unfold pmap,
+      inv_*> _
     }
-    \func ft1 (X : BSn 2) : Path (\lam i => g (f (tau 1 X i)) = tau 1 X i) fd1 (fs (X, \lam _ => 1)) => {?}
+  \func st1 (X : BSn 2) : Path (\lam i => g (f (tau 1 X i)) = tau 1 X i) idp (sf (X, \lam _ => 1)) =>
+    \let H (x : BS2ToBool.orT X (\lam _ => 1)) : Or (Or coneBS2 coneBS2) (\Sigma) => \case \case x \with {
+      | inl (inl fz) => inl (inl X)
+      | inl (inr fo) => inl (inr X)
+      | inr b => inr ()
+    } : Or (Or (BSn 2) (BSn 2)) (\Sigma) \with {
+      | inl (inl a) => inl (inl (base a))
+      | inl (inr a') => inl (inr (base a'))
+      | inr b => inr ()
+    } \in run {
+      unfold sf,
+      transportInv (\lam b => Path (\lam i => g (f (tau 1 X i)) = tau 1 X i) idp (sfd (X, \lam _ => 1) b))
+          (BS2ToBool.beta1 X),
+      pathOver,
+      *> (coe_path (path (\lam i => g (f (tau 1 X i)))) idp (path (tau (fsuc fzero) X))),
+      rewrite idp_*>,
+      rewrite SigmaPath-idp,
+      rewrite pmap-idp,
+      *> (rewrite idp_*> in mainLemma1 X g H (BS2ToBool X \lam _ => fsuc fzero) (inl (inr (\lam _ => idp))) (BS2ToBool.beta1 X) idp idp),
+      pmap (transportInv (\lam x => g (H x) = sigma (X, \lam _ => 1)) (BS2ToBool.beta1 X) __),
+      unfold pmap,
+      rewrite idp_*>,
+      rewrite (pmap_inv-comm (\lam x => g (inl (inr x))) (path (contr X))),
+      unfold pmap,
+      inv_*> _
+    }
+  \func sec (x : SP2 (Fin 2)) : g (f x) = x
+    | sigma x => sf x
+    | delta 0 => idp
+    | delta 1 => idp
+    | tau 0 X i => st0 X i
+    | tau 1 X i => st1 X i
+
+  \func bright (b : BSn 2) : f (g (inl (inl (base b)))) = inl (inl (base b)) => run {
+    unfold borel2.f,
+    rewrite BS2ToBool.beta0,
+    idp
+  }
+  \func tright (b : BSn 2) :
+    Path (\lam i => f (g (inl (inl (contr b i)))) = inl (inl (contr b i))) idp (bright b) => run {
+    pathOver,
+    sp22TypeIs3.set _ _ _ _
+  }
+  \func bleft (b : BSn 2) : f (g (inl (inr (base b)))) = inl (inr (base b)) => run {
+    unfold borel2.f,
+    rewrite BS2ToBool.beta1,
+    idp
+  }
+  \func tleft (b : BSn 2) :
+    Path (\lam i => f (g (inl (inr (contr b i)))) = inl (inr (contr b i))) idp (bleft b) => run {
+    pathOver,
+    sp22TypeIs3.set _ _ _ _
   }
 
-  \func ret (x : Or (Or (\Sigma) (\Sigma)) (\Sigma)) : f (g x) = x
-    | inl (inl ()) => run {
-      unfold f,
-      unfold SP2.rec,
-      unfold borel2.f,
-      rewrite BS2ToBool.betaBase,
-      idp
-    }
-    | inl (inr ()) => run {
-      unfold f,
-      unfold SP2.rec,
-      unfold borel2.f,
-      rewrite BS2ToBool.betaBase,
-      idp
-    }
-    | inr () => run {
-      unfold f,
-      unfold SP2.rec,
+  \func ret (x : Or (Or coneBS2 coneBS2) (\Sigma)) : f (g x) = x
+    | inl (inl vertex) => idp
+    | inl (inl (base b)) => bright b
+    | inl (inl (contr b i)) => tright b i
+    | inl (inr vertex) => idp
+    | inl (inr (base b)) => bleft b
+    | inl (inr (contr b i)) => tleft b i
+    | inr b => run {
       unfold borel2.f,
       rewrite BS2ToBool.betaBase,
       idp

@@ -23,6 +23,8 @@
 \func SigmaPath {A : \Type} {B : A -> \Type} {x : \Sigma (a : A) (B a)}
                 {y : \Sigma (a : A) (B a)} (p : x.1 = y.1) (q : transport B p x.2 = y.2)
   : x = y => exts (p, q)
+\func SigmaPath-idp {A : \Type} {B : A -> \Type} {x : \Sigma (a : A) (B a)} :
+  SigmaPath idp idp = idp {\Sigma (a : A) (B a)} {x} => idp
 
 \func SigmaPathBeta {A : \Type} {B : A -> \Type} {x y : \Sigma (a : A) (B a)}
   (p p' : x.1 = y.1) (q : transport B p x.2 = y.2) (q' : transport B p' x.2 = y.2)
@@ -205,6 +207,16 @@
 
 \func transport-idp {A : \Type} {B : A -> \Type} {a : A} {b : B a} : transport B idp b = b => idp
 
+\func transport-inv {A : \Type} (B : A -> \Type) {a a' : A} (p : a = a') {b : B a'} : transportInv B p b = transport B (inv p) b \elim p
+  | idp => idp
+
+\func transport-feq {X Y : \Type} (f : X -> Y) (d : Y) {a a' : X} (p : a = a') {b : f a = d} :
+  transport (\lam x => f x = d) p b = pmap f (inv p) *> b \elim p
+  | idp => inv (idp_*> b)
+
+\func *>-cancel {A : \Type} {a a' a'' : A} (p p' : a = a') (q : a' = a'') (_ : p *> q = p' *> q) : p = p'
+  | idp, q, idp, pr => pr
+
 \func Or-assoc {A B C : \Type} : Or A (Or B C) = Or (Or A B) C => iso f g sec ret \where {
   \func f (_ : Or A (Or B C)) : Or (Or A B) C
     | inl a => inl (inl a)
@@ -272,3 +284,7 @@
   | inl a, inr b => absurd (e a b)
   | inr b, inl a => absurd (e a b)
   | inr b, inr b' => pmap inr (q b b')
+
+\func idToIde {A : \Type} : =-to-Equiv (idp {\Type} {A}) = idEquiv => idp
+\func idToId {A : \Type} : Equiv-to-= (idEquiv {A}) = idp {\Type} {A} =>
+  rewriteI idToIde (univalence.ret_f idp)
