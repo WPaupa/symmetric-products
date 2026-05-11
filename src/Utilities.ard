@@ -30,13 +30,15 @@
   (p p' : x.1 = y.1) (q : transport B p x.2 = y.2) (q' : transport B p' x.2 = y.2)
   (c1 : p = p') (c2 : Path (\lam i => transport B (c1 i) x.2 = y.2) q q')
   : SigmaPath p q = SigmaPath p' q' \elim c1
-  | idp => run {
-    pmap (SigmaPath p) c2
-  }
+  | idp => pmap (SigmaPath p) c2
+
+\func SigmaPathChar {A : \Type} {B : A -> \Type} (x y : \Sigma (a : A) (B a)) (p : x = y) :
+  \Sigma (q : x.1 = y.1) (transport B q x.2 = y.2) \elim p
+  | idp => (idp, idp)
 
 \func SigmaPropPath {A : \Type} {B : A -> \Type} (isPropB : \Pi (a : A) -> isProp (B a))
                     {u v : \Sigma (a : A) (B a)} (q : u.1 = v.1) : u = v
-  => exts (q, isPropB _ _ _)
+  => SigmaPath q (isPropB _ _ _)
 -- This is almost contr-left from Equiv.Sigma, but for prop instead of contr
 \func SigmaPropPathBeta {A : \Type} {B : A -> \Type} (isPropB : \Pi (a : A) -> isProp (B a))
                     {u v : \Sigma (a : A) (B a)} (q : u = v) : SigmaPropPath isPropB (pmap __.1 q) = q \elim q
@@ -47,6 +49,9 @@
         (isPropB u.1 (transport {A} B {u.1} {u.1} idp u.2) u.2)
         (transport-idp {A} {B} {u.1} {u.2})
   }
+\func SigmaPropPathBeta2 {A : \Type} {B : A -> \Type} (isPropB : \Pi (a : A) -> isProp (B a))
+                         {u1 v1 : A} (q : u1 = v1) {u2 : B u1} {v2 : B v1} : pmap __.1 (SigmaPropPath isPropB {u1, u2} {v1, v2} q) = q \elim q
+  | idp => idp
 
 \func TruncPmap2 {A B C : \Type} (t1 : TruncP A) (t2 : TruncP B) (f : A -> B -> C) :
   TruncP C \elim t1, t2
@@ -67,6 +72,8 @@
 \func funExt- {A : \Type} {B : A -> \Type} {f g : \Pi (a : A) -> B a}
               (p : f = g) (a : A) : f a = g a =>
   \lam i => p i a
+\func funExt {A : \Type} {B : A -> \Type} {f g : \Pi (a : A) -> B a}
+             (p : \Pi (a : A) -> f a = g a) : f = g => \lam i a => p a i
 
 \func eqvFun {A B : \Type} (e : Equiv {A} {B}) : A -> B => e
 
@@ -93,7 +100,9 @@
   (\lam _ => ())
   (\lam _ _ => ())
   (\lam _ => ext)
-  (\lam _ => idp)
+  (\lam _ => idp) \where {
+  \func eq : \Pi (f g : A -> \Sigma) -> f = g => rewrite funcToUnit $ \lam _ _ => idp
+}
 
 \func isContrEqUnit {X : \Type} (pr : Contr X) : X = (\Sigma) => iso
   (\lam _ => ())
@@ -217,6 +226,9 @@
 \func *>-cancel {A : \Type} {a a' a'' : A} (p p' : a = a') (q : a' = a'') (_ : p *> q = p' *> q) : p = p'
   | idp, q, idp, pr => pr
 
+\func pmap-/= {A B : \Type} (f : A -> B) {a a' : A} (p : f a /= f a') : a /= a' =>
+  \lam pr => p (pmap f pr)
+
 \func Or-assoc {A B C : \Type} : Or A (Or B C) = Or (Or A B) C => iso f g sec ret \where {
   \func f (_ : Or A (Or B C)) : Or (Or A B) C
     | inl a => inl (inl a)
@@ -279,6 +291,48 @@
       }
     }
 
+\lemma propPiIdp {A : \Prop} (a : A) : prop-pi {A} {a} {a} = idp => set-pi {A} {a} {a}
+
+\func pushout-colim {A : \Type} {B C D : A -> \Type} (f : \Pi (a : A) -> B a -> C a) (g : \Pi (a : A) -> B a -> D a) :
+   sumPushout = pushoutSum => iso to fro sec ret \where {
+  \func pushoutSum => PushoutData {\Sigma (a : A) (B a)} {\Sigma (a : A) (C a)} {\Sigma (a : A) (D a)}
+      (\lam b => (b.1, f b.1 b.2))
+      (\lam c => (c.1, g c.1 c.2))
+  \func sumPushout => \Sigma (a : A) (PushoutData {B a} {C a} {D a} (f a) (g a))
+  \func to (x : sumPushout) : pushoutSum => \case x.2 \with {
+    | pinl c => pinl (x.1, c)
+    | pinr d => pinr (x.1, d)
+    | pglue b i => pglue (x.1, b) i
+  }
+  \func fro (_ : pushoutSum) : sumPushout
+    | pinl b => (b.1, pinl b.2)
+    | pinr c => (c.1, pinr c.2)
+    | pglue a i => (a.1, pglue a.2 i)
+
+  \func sec (x : sumPushout) : fro (to x) = x => \case x.2 \as x2, idp : x.2 = x2 \with {
+    | pinl b, p => unfold to $ rewrite p $ rewriteI p idp
+    | pinr c, p => unfold to $ rewrite p $ rewriteI p idp
+    | pglue a i, p => unfold to $ rewrite p $ rewriteI p idp
+  }
+
+  \func ret (x : pushoutSum) : to (fro x) = x
+    | pinl b => idp
+    | pinr c => idp
+    | pglue a i => idp
+}
+
+\func pushout-contr {A B C : \Type} (pr : Contr B) : \Pi (f : A -> B) (g : A -> C) ->
+  PushoutData f g = PushoutData {A} {\Sigma} {C} (\lam _ => ()) g => run {
+  rewrite (isContrEqUnit pr),
+  \lam f _,
+  rewrite (funcToUnit.eq f (\lam _ => ())),
+  idp
+}
+
+\func contrIdentity {A : \Type} {a : A} : Contr (\Sigma (a' : A) (a = a')) \cowith
+  | center => (a, idp)
+  | contraction a => ext (a.2, transport_path-right a.2 idp *> idp_*> a.2)
+
 \func OrlevelProp {A B : \Type} (p : isProp A) (q : isProp B) (e : A -> B -> Empty) (x y : Or A B) : x = y \elim x, y
   | inl a, inl a' => pmap inl (p a a')
   | inl a, inr b => absurd (e a b)
@@ -288,3 +342,15 @@
 \func idToIde {A : \Type} : =-to-Equiv (idp {\Type} {A}) = idEquiv => idp
 \func idToId {A : \Type} : Equiv-to-= (idEquiv {A}) = idp {\Type} {A} =>
   rewriteI idToIde (univalence.ret_f idp)
+
+\func invI (i : I) : I => inv (path \lam i => i) i \where {
+  \func beta {A : \Type} {a a' : A} (p : a = a') (i : I) : p (invI i) = inv p i
+    | idp, i => idp
+  \func invInv : invI (invI i) = i => run {
+    rewrite (beta (path invI) i),
+    rewrite inv_inv,
+    idp
+  }
+  \func betaP {A : \Type} {a a' : A} (p : a = a') : path (\lam i => p (invI i)) = inv p
+    | idp => idp
+}

@@ -1,0 +1,67 @@
+\import Homotopy.Pushout
+\import Logic.Unique
+\import Paths
+\import Meta
+\import Paths.Meta
+\import Utilities
+
+
+\func Join (A : \Type) (B : \Type) => PushoutData {\Sigma A B} __.1 __.2
+
+\func joinContrRight {A B : \Type} (pb : Contr B) : Contr (Join A B) \cowith
+  | center => pinr pb.center
+  | contraction => \case \elim __ \with {
+    | pinl a => inv (path (pglue (a, pb.center)))
+    | pinr c => pmap pinr (pb.contraction c)
+    | pglue a i => glueEq a i
+  } \where {
+  \func glueEq (a : \Sigma A B) : Path
+      (\lam i => pinr pb.center = {Join A B} pglue a i)
+      (inv (path (pglue (a.1, pb.center)))) (pmap pinr (pb.contraction a.2)) => run {
+    pathOver,
+    *> (coe_path idp (inv (path (pglue (a.1, pb.center)))) (path (pglue a))),
+    rewrite idp_*>,
+    glueGen a.1 pb.center a.2 (pb.contraction a.2)
+  }
+  \func glueGen (a : A) (b1 b2 : B) (p : b1 = b2) :
+    inv (path (pglue (a, b1))) *> path (pglue (a, b2)) = {pinr b1 = {Join A B} pinr b2} pmap pinr p \elim p
+    | idp => inv_*> _
+}
+
+\func joinSymm {A B : \Type} : Join A B = Join B A => iso f g sec ret \where {
+  \func f (_ : Join A B) : Join B A
+    | pinl a => pinr a
+    | pinr b => pinl b
+    | pglue ab i => pglue (ab.2, ab.1) (invI i)
+
+  \func g (_ : Join B A) : Join A B
+    | pinl a => pinr a
+    | pinr b => pinl b
+    | pglue ab i => pglue (ab.2, ab.1) (invI i)
+
+  \func glueEq {A B : \Type} (ab : \Sigma A B) :
+    Path (\lam i => pglue (ab.1, ab.2) (invI (inv (path (\lam i => i)) @ i)) = {Join A B} pglue ab i) idp idp => run {
+    pathOver,
+    *> (coe_path (\lam i => pglue (ab.1, ab.2) (invI (inv (path (\lam i => i)) @ i))) idp (\lam i => pglue ab i)),
+    rewrite idp_*>,
+    rewrite (invI.betaP {Join A B} (\lam i => pglue (ab.1, ab.2) (invI i))),
+    rewrite (invI.betaP {Join A B} (\lam i => pglue (ab.1, ab.2) i)),
+    rewrite inv_inv,
+    inv_*> _
+  }
+
+  \func sec (x : Join A B) : g (f x) = x
+    | pinl a => idp
+    | pinr b => idp
+    | pglue ab i => glueEq ab i
+
+  \func ret (x : Join B A) : f (g x) = x
+    | pinl a => idp
+    | pinr b => idp
+    | pglue ab i => glueEq ab i
+}
+
+\func joinContrLeft {A B : \Type} (pa : Contr A) : Contr (Join A B) => run {
+  rewrite joinSymm,
+  joinContrRight pa
+}

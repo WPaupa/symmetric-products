@@ -1,0 +1,202 @@
+\import BSn
+\import Borel
+\import Data.Or
+\import Data.Fin
+\import Function.Meta
+\import Meta
+\import OrbitSP2
+\import Paths
+\import Paths.Meta
+\import Logic
+\import Logic.Unique
+\import Set
+\import Utilities
+\import Join
+\import Equiv
+\import Equiv.Univalence
+\import Homotopy.Pushout
+
+\func base2PathChar (A : BSnbase 2 = BSnbase 2 -> \Type)
+                    (pi : A idp) (pn : A (BSnPath _ _ notBS2.notFin2Eq))
+                    (eq : BSnbase 2 = BSnbase 2) : A eq =>
+  general A idp (BSnPath _ _ notBS2.notFin2Eq)
+      (run {
+        pmap-/= (pmap __.1),
+        unfold BSnPath,
+        rewrite (SigmaPropPathBeta2 (\lam A x y => path (truncP {Equiv {A} {Fin 2}} x y)) (Equiv-to-= notBS2.notFin2Eq)),
+        pmap-/= =-to-Equiv,
+        unfold pmap,
+        rewrite (univalence.f_ret notBS2.notFin2Eq : =-to-Equiv (Equiv-to-= notBS2.notFin2Eq) = notBS2.notFin2Eq),
+        unfold =-to-Equiv,
+        unfold transport,
+        \lam e,
+        \case pmap (\lam f => eqvFun f fzero) e \with {}
+      })
+      pi pn eq
+  \where {
+  \func general : \Pi (A : BSnbase 2 = BSnbase 2 -> \Type)
+                      (p q : BSnbase 2 = BSnbase 2) (pr : p /= q)
+                      (pi : A p) (pn : A q)
+                      (eq : BSnbase 2 = BSnbase 2) -> A eq =>
+    \let | k => inv (BSnPathChar (BSnbase 2) (BSnbase 2))
+         | k' => k *> QEquiv-to-= (univalence {Fin 2} {Fin 2}) *> fin2Equiv
+    \in rewrite k' (\lam _ p q ne ap aq e => \case decBSn.decFin p e \with {
+      | yes e1 => rewriteI e1 ap
+      | no n => rewriteI (fin2char p q e ne n) aq
+    })
+}
+
+\func transportConst {A B C : \Type} (p : B = C) (a : A) : transport (\lam X => X -> A) p (\lam _ => a) = \lam _ => a \elim p
+  | idp => idp
+
+\func borelEq {A : \Type} (x y z : A)
+              (diag : (BSnbase 2, \lam _ => x) = {borelXn 2 A} (BSnbase 2, elimBS2.recFin2 y z)) : y = z
+  => \let diagp => SigmaPathChar _ _ diag
+        | pc => base2PathChar
+            (\lam q => transport (\lam a => a -> A) (pmap __.1 q) (\lam _ => x) = elimBS2.recFin2 y z -> y = z)
+            (\lam lp => inv (pmap (__ fzero) lp) *> pmap (__ (fsuc fzero)) lp)
+            (run {
+              unfold BSnPath,
+              rewrite (SigmaPropPathBeta2 (\lam A x y => path (truncP {Equiv {A} {Fin 2}} x y)) (Equiv-to-= notBS2.notFin2Eq)),
+              rewrite transportConst,
+              \lam p,
+              inv (pmap (__ fzero) p) *> pmap (__ (fsuc fzero)) p
+            })
+          \in pc diagp.1 diagp.2
+\func borelEq2 {A : \Type} (x y : A)
+               (diag : (BSnbase 2, \lam _ => x) = {borelXn 2 A} (BSnbase 2, \lam _ => y)) : x = y
+  => \let diagp => SigmaPathChar _ _ diag
+        | pc => base2PathChar
+            (\lam q => transport (\lam a => a -> A) (pmap __.1 q) (\lam _ => x) = (\lam _ => y) -> x = y)
+            (\lam lp => pmap (__ fzero) lp)
+            (run {
+              unfold BSnPath,
+              rewrite (SigmaPropPathBeta2 (\lam A x y => path (truncP {Equiv {A} {Fin 2}} x y)) (Equiv-to-= notBS2.notFin2Eq)),
+              rewrite transportConst,
+              \lam p,
+              pmap (__ fzero) p
+            })
+     \in pc diagp.1 diagp.2
+
+\func condCtrToProp {A : \Type} (ctr : \Pi (a : A) -> Contr A) (a a' : A) : a = a' =>
+  inv ((ctr a).contraction a) *> (ctr a).contraction a'
+
+
+\func propExtEx {A B : \Type} (aP : isProp A) (bP : isProp B) (f : A -> B) (g : B -> A) : A = B =>
+  iso f g (\lam _ => aP _ _) (\lam _ => bP _ _)
+
+\func loopSpaceContr (A : \Set1) (x0 x1 : A) => {?} \where {
+  \func BS2 : \Type2 => \Sigma (X : \Set1) (TruncP (Equiv {X} {Fin 2}))
+  \func hUP : \Type2 => borelXn 2 A
+  \func gUP : \Type2 => PushoutData {\Sigma A BS2} {A} {hUP} __.1 (\lam p => (p.2, \lam _ => p.1))
+  \func w0 : hUP => (BSnbase 2, elimBS2.recFin2 {\lam _ => A} x0 x1)
+  \func z0 : gUP => pinr w0
+  \func P : \Prop => x0 = x1
+
+  \func joinT (Kv : hUP) : \Type2 =>
+      Join (w0 = Kv) (\Sigma P (Kv.2 = \lam _ => x0))
+
+  \func condIsPropCst (x : A) (K : BS2) (a : joinT (K, \lam _ => x)) : \Sigma P ((\lam _ => x) = {K.1 -> A} (\lam _ => x0)) \elim a
+    | pinl b => \let | bK : BSnbase 2 = K => pmap __.1 b
+                     | bW : w0 = (BSnbase 2, \lam _ => x) => rewrite bK b
+                     | x01 : P => borelEq x x0 x1 (inv bW)
+                     | bW1 : (BSnbase 2, \lam _ => x0) = {borelXn 2 A} (BSnbase 2, \lam _ => x) => run {
+                       rewriteI (elimBS2.recFin2Eta x0),
+                       rewrite {2} x01,
+                       bW
+                     }
+                     | x0x => borelEq2 x0 x bW1 \in (x01, inv (pmap (\lam y _ => y) x0x))
+    | pinr c => c
+
+  \func condCtrJoinCst (x : A) (K : BS2) (a : joinT (K, \lam _ => x)) : Contr (joinT (K, \lam _ => x))
+    => joinContrRight (isProp=>isContr prop-isProp (condIsPropCst x K a))
+
+  \func Qeq (x : A) (K : BS2) : joinT (K, \lam _ => x) = (\Sigma P (x = x0)) =>
+    propExtEx (condCtrToProp (condCtrJoinCst x K)) prop-isProp
+        (\lam pd =>
+          \let k => condIsPropCst x K pd \in (k.1, run {
+            TruncP.rec prop-isProp (eltBSn K),
+            \lam kel,
+            pmap (__ kel) in k.2
+          })
+        )
+        (\lam pe => pinr (pe.1, rewrite pe.2 idp))
+
+  \func Q (_ : gUP) : \oo-Type2
+    | pinr Kv => joinT Kv
+    | pinl x => \Sigma P (x = x0)
+    | pglue (x, K) i => inv (Qeq x K) i
+
+  \func D : \oo-Type2 => \Sigma (z : gUP) (Q z)
+  \func R : \oo-Type2 => \Sigma (w : hUP) (joinT w)
+  \func R' : \oo-Type2 => PushoutData {P} {\Sigma} {\Sigma BS2 P} (\lam _ => ()) (\lam p => (BSnbase 2, p))
+
+  \func Rchar : R = R' => pushout-colim _ _ *> ReqCtr *> {?} \where {
+    \func Rsum => PushoutData {\Sigma (w : hUP) (\Sigma (w0 = w) (\Sigma P (w.2 = \lam _ => x0)))}
+        {\Sigma (w : hUP) (w0 = w)} {\Sigma (w : hUP) (\Sigma P (w.2 = \lam _ => x0))}
+        (\lam b => (b.1, b.2.1))
+        (\lam c => (c.1, c.2.2))
+    \func Rctr => PushoutData {\Sigma (w : hUP) (\Sigma (w0 = w) (\Sigma P (w.2 = \lam _ => x0)))}
+        {\Sigma} {\Sigma (w : hUP) (\Sigma P (w.2 = \lam _ => x0))}
+        (\lam _ => ())
+        (\lam c => (c.1, c.2.2))
+    \func ReqCtr : Rsum = Rctr => pushout-contr contrIdentity _ _
+  }
+
+  \func Dflat : \oo-Type2 => PushoutData {\Sigma (x : \Sigma A BS2) (\Sigma P (x.1 = x0))}
+      {\Sigma (y : A) (\Sigma P (y = x0))}
+      {R}
+      (\lam p => (p.1.1, p.2))
+      (\lam p => ((p.1.2, \lam _ => p.1.1), transport Q (PushoutData.ppglue p.1) p.2))
+  \func Dflat=D : Dflat = D
+    => PushoutData.flattening Q
+  \func D' =>
+    PushoutData {\Sigma BS2 P} {P} {R'} (\lam bp => bp.2) pinr
+  \func D=D' : D = D' => {?}
+
+  \func h (_ : R') : BS2
+    | pinl b => BSnbase 2
+    | pinr c => c.1
+    | pglue a i => BSnbase 2
+
+  \func RgluePath (p : P) : Path (\lam i => pinr (pglue p i) = {D'} pinr (pinl ())) idp
+    (inv (path (pglue (BSnbase 2, p))) *> path (pglue (BSnbase 2, p)) *> pmap pinr (inv (path (pglue p))))
+     => run {
+      pathOver,
+      *> (coe_path (\lam i => pinr (pglue p i)) idp idp),
+      rewriteI *>-assoc,
+      rewrite inv_*>,
+      rewrite idp_*>,
+      inv,
+      pmap_inv-comm pinr (path (pglue p))
+    }
+  \func DgluePath (b : BS2) (p : P) : Path (\lam i => pglue (b, p) i = {D'} pinr (pinl ()))
+      (path (pglue (BSnbase 2, p)) *> inv (pmap pinr (path (pglue p))))
+      (inv (path (pglue (b, p))) *> path (pglue (BSnbase 2, p)) *> pmap pinr (inv (path (pglue p)))) => run {
+    pathOver,
+    *> (coe_path (\lam i => pglue (b, p) i) _ idp),
+    pmap (inv (path (pglue (b, p))) *>),
+    pmap (path (pglue (BSnbase 2, p)) *>),
+    inv,
+    pmap_inv-comm pinr (path (pglue p))
+  }
+
+  \func contractionD (d : D') : d = pinr (pinl ())
+    | pinl p => path (pglue (BSnbase 2, p)) *> inv (pmap pinr (path (pglue p)))
+    | pinr (pinl ()) => idp
+    | pinr (pinr (b, p)) => inv (path (pglue (b, p))) *> path (pglue (BSnbase 2, p)) *> pmap pinr (inv (path (pglue p)))
+    | pinr (pglue p i) => RgluePath p i
+    | pglue (b, p) i => DgluePath b p i
+
+  \func contrD' : Contr D' \cowith
+    | center => pinr (pinl ())
+    | contraction a => inv (contractionD a)
+
+  \func contrQz0 : Contr (Q z0) \cowith
+    | center => pinl idp
+    | contraction => \case \elim __ \with {
+      | pinl b => {?}
+      | pinr c => path (pglue (idp {_} {w0}, c))
+      | pglue a i => {?}
+    }
+}

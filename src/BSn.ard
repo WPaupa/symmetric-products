@@ -121,107 +121,107 @@
 \func contrTotalBS2 : Contr (\Sigma (X : BSn 2) X.1) \cowith
   | center => (BSnbase 2, fzero)
   | contraction => isPropTotalBS2 (BSnbase 2, fzero)
-    \where {
-  \func isPropTotalBS2 : isProp (\Sigma (X : BSn 2) X.1) => transport
-      (\lam f => \Pi (a a' : \Sigma (X : BSn 2) (f X)) -> a = a')
-      eltEqEquivF
-      (isContr=>isProp (contrTotalBSn {2}))
-  \func eltEqEquivF : (\lam (X : BSn 2) => Equiv {X.1} {Fin 2}) = (\lam (X : BSn 2) => X.1) => ext eltEqEquiv
-  \func eltEqEquiv (X : BSn 2) : Equiv {X.1} {Fin 2} = X.1 => iso f g sec ret \where {
-    \func f (eq : Equiv {X.1} {Fin 2}) : X.1 => eq.ret 0
+  \where {
+    \func isPropTotalBS2 : isProp (\Sigma (X : BSn 2) X.1) => transport
+        (\lam f => \Pi (a a' : \Sigma (X : BSn 2) (f X)) -> a = a')
+        eltEqEquivF
+        (isContr=>isProp (contrTotalBSn {2}))
+    \func eltEqEquivF : (\lam (X : BSn 2) => Equiv {X.1} {Fin 2}) = (\lam (X : BSn 2) => X.1) => ext eltEqEquiv
+    \func eltEqEquiv (X : BSn 2) : Equiv {X.1} {Fin 2} = X.1 => iso f g sec ret \where {
+      \func f (eq : Equiv {X.1} {Fin 2}) : X.1 => eq.ret 0
 
-    \lemma bs2char (X : BSn 2) : \Pi (x a a' : X.1) (n : x /= a) (n1 : x /= a') -> a = a' =>
-      TruncP.rec isProp-prover X.2 (\lam eq =>
-        transport
-        (\lam t => \Pi (x a a' : t) -> x /= a -> x /= a' -> a = a')
-        (inv (Equiv-to-= eq))
-        fin2char
-      )
-    \func g (x : X.1) : Equiv {X.1} {Fin 2} => Equiv.fromInjSurj (
-      \case decBSn X x __ \with {
-        | yes e => fzero
-        | no n => 1
-      }
-    ) (\lam {a} {a'} p => \case decBSn X x a, decBSn X x a' \with {
-      | yes e, yes e1 => inv e *> e1
-      | yes e, no n =>
-        \case run {
-          rewrite decBSn.beta,
-          rewrite e,
-          rewrite (decBSn.beta' X x a' n),
-          p
-        } \with {}
-      | no n, yes e => \case run {
+      \lemma bs2char (X : BSn 2) : \Pi (x a a' : X.1) (n : x /= a) (n1 : x /= a') -> a = a' =>
+        TruncP.rec isProp-prover X.2 (\lam eq =>
+            transport
+                (\lam t => \Pi (x a a' : t) -> x /= a -> x /= a' -> a = a')
+                (inv (Equiv-to-= eq))
+                fin2char
+        )
+      \func g (x : X.1) : Equiv {X.1} {Fin 2} => Equiv.fromInjSurj (
+                                                                     \case decBSn X x __ \with {
+                                                                       | yes e => fzero
+                                                                       | no n => 1
+                                                                     }
+                                                                   ) (\lam {a} {a'} p => \case decBSn X x a, decBSn X x a' \with {
+        | yes e, yes e1 => inv e *> e1
+        | yes e, no n =>
+          \case run {
+            rewrite decBSn.beta,
+            rewrite e,
+            rewrite (decBSn.beta' X x a' n),
+            p
+          } \with {}
+        | no n, yes e => \case run {
           rewrite decBSn.beta,
           rewrite e,
           rewrite (decBSn.beta' X x a n),
           p
         } \with {}
-      | no n, no n1 => bs2char X x a a' n n1
-    }) (\lam y => TruncP.map X.2 (\lam eq =>
-      transportInv
-          (\lam t => \Pi (x : t.1) -> \Sigma (x1 : t.1) ((\case decBSn {2} t x x1 \with {
-            | yes e => fzero
-            | no n => 1
-          }) = {Fin 2} y))
-      (BSnPath X (BSnbase 2) eq)
-      (\lam x => \case fin2Equiv.fin2Inv x, fin2Equiv.fin2Inv y \with {
-        | inl p, inl q => (y, run {
-          rewrite (p, q),
-          rewrite (decBSn.beta (BSnbase 2)),
-          idp
-        })
-        | inl p, inr q => (y, run {
-          rewrite (p, q),
-          rewrite (decBSn.beta' (BSnbase 2) 0 1 (/=-sym fsuc/=0)),
-          idp
-        })
-        | inr p, inl q => (notBS2.notFin2 y, run {
-          rewrite (p, q),
-          rewrite (decBSn.beta (BSnbase 2)),
-          idp
-        })
-        | inr p, inr q => (notBS2.notFin2 y, run {
-          rewrite (p, q),
-          rewrite (decBSn.beta' (BSnbase 2) 1 0 fsuc/=0),
-          idp
-        })
-      })
-      x
-    ))
+        | no n, no n1 => bs2char X x a a' n n1
+      }) (\lam y => TruncP.map X.2 (\lam eq =>
+          transportInv
+              (\lam t => \Pi (x : t.1) -> \Sigma (x1 : t.1) ((\case decBSn {2} t x x1 \with {
+                | yes e => fzero
+                | no n => 1
+              }) = {Fin 2} y))
+              (BSnPath X (BSnbase 2) eq)
+              (\lam x => \case fin2Equiv.fin2Inv x, fin2Equiv.fin2Inv y \with {
+                | inl p, inl q => (y, run {
+                  rewrite (p, q),
+                  rewrite (decBSn.beta (BSnbase 2)),
+                  idp
+                })
+                | inl p, inr q => (y, run {
+                  rewrite (p, q),
+                  rewrite (decBSn.beta' (BSnbase 2) 0 1 (/=-sym fsuc/=0)),
+                  idp
+                })
+                | inr p, inl q => (notBS2.notFin2 y, run {
+                  rewrite (p, q),
+                  rewrite (decBSn.beta (BSnbase 2)),
+                  idp
+                })
+                | inr p, inr q => (notBS2.notFin2 y, run {
+                  rewrite (p, q),
+                  rewrite (decBSn.beta' (BSnbase 2) 1 0 fsuc/=0),
+                  idp
+                })
+              })
+              x
+      ))
 
-    \func sec (eq : Equiv {X.1} {Fin 2}) : g (f eq) = eq => Equiv.equals $ ext \lam x => \case decBSn X (f eq) x \with {
-      | yes e => run {
-        rewrite (e, ret_pos),
-        rewriteI e,
-        rewrite eq.f_ret,
-        idp
-      }
-      | no n => run {
-        rewrite (ret_neg (f eq) x n),
-        \case fin2Equiv.fin2Inv (eq x) \with {
-          | inl a => absurd $ n $ run {
-            unfold f,
-            rewriteI a,
-            eq.ret_f x
+      \func sec (eq : Equiv {X.1} {Fin 2}) : g (f eq) = eq => Equiv.equals $ ext \lam x => \case decBSn X (f eq) x \with {
+        | yes e => run {
+          rewrite (e, ret_pos),
+          rewriteI e,
+          rewrite eq.f_ret,
+          idp
+        }
+        | no n => run {
+          rewrite (ret_neg (f eq) x n),
+          \case fin2Equiv.fin2Inv (eq x) \with {
+            | inl a => absurd $ n $ run {
+                                          unfold f,
+                                          rewriteI a,
+                                          eq.ret_f x
+                                        }
+            | inr b => inv b
           }
-          | inr b => inv b
         }
       }
+
+      \func ret_pos (x : X.1) : (\case decBSn X x x \with {
+        | yes e => fzero
+        | no n => 1
+      }) = 0 => rewrite (decBSn.beta X x) idp
+      \func ret_neg (x y : X.1) (n : Not (x = y)) : (\case decBSn X x y \with {
+        | yes e => fzero
+        | no n => 1
+      }) = 1 => rewrite (decBSn.beta' X x y n) idp
+
+      \func ret (x : X.1) : f (g x) = x => inv $ Equiv.adjoint (ret_pos x)
     }
-
-    \func ret_pos (x : X.1) : (\case decBSn X x x \with {
-      | yes e => fzero
-      | no n => 1
-    }) = 0 => rewrite (decBSn.beta X x) idp
-    \func ret_neg (x y : X.1) (n : Not (x = y)) : (\case decBSn X x y \with {
-      | yes e => fzero
-      | no n => 1
-    }) = 1 => rewrite (decBSn.beta' X x y n) idp
-
-    \func ret (x : X.1) : f (g x) = x => inv $ Equiv.adjoint (ret_pos x)
   }
-}
 
 \func JBSn {n : Nat}
            (A : \Pi (X : BSn n) (x : Equiv {X.1} {Fin n}) -> \Type)
@@ -256,7 +256,7 @@
 \func extendBSn {n : Nat} (m : Nat) (x : BSn n) : BSn (n Nat.+ m) =>
   (Or x.1 (Fin m), TruncP.map x.2 (
     \lam eqv => transport (\lam t => Equiv {Or t (Fin m)} {Fin (n Nat.+ m)})
-    (inv (Equiv-to-= eqv)) (extendFin {n} {m})
+        (inv (Equiv-to-= eqv)) (extendFin {n} {m})
   )) \where {
 
   \func extendFin {a b : Nat} : Equiv {Or (Fin a) (Fin b)} {Fin (a Nat.+ b)} \elim b
@@ -390,6 +390,8 @@
     | 1 => idp
   \func recFin2BetaExt {A : Fin 2 -> \Type} {f : A 0 -> A 1 -> \Pi (y : Fin 2) -> A y} :
     (\lam (a : A 0) (b : A 1) => recFin2 {A} (f a b 0) (f a b 1)) = f => ext recFin2Beta
+  \func recFin2Eta {A : \Type} (a : A) : recFin2 a a = \lam _ => a =>
+    pmap (__ a a) $ recFin2BetaExt {\lam _ => A} {\lam _ _ _ => a}
 
   \func elimBool*Contr {A : Fin 2 -> \Type} :
     Contr (\Sigma (f : A 0 -> A 1 -> \Pi (y : (BSnbase 2).1) -> A y)
