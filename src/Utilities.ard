@@ -34,7 +34,10 @@
 
 \func SigmaPathChar {A : \Type} {B : A -> \Type} (x y : \Sigma (a : A) (B a)) (p : x = y) :
   \Sigma (q : x.1 = y.1) (transport B q x.2 = y.2) \elim p
-  | idp => (idp, idp)
+  | idp => (idp, idp) \where {
+  \func eq (p : x = y) : p = SigmaPath (SigmaPathChar _ _ p).1 (SigmaPathChar _ _ p).2
+    | idp => SigmaPath-idp
+}
 
 \func SigmaPropPath {A : \Type} {B : A -> \Type} (isPropB : \Pi (a : A) -> isProp (B a))
                     {u v : \Sigma (a : A) (B a)} (q : u.1 = v.1) : u = v
@@ -321,17 +324,139 @@
     | pglue a i => idp
 }
 
-\func pushout-contr {A B C : \Type} (pr : Contr B) : \Pi (f : A -> B) (g : A -> C) ->
-  PushoutData f g = PushoutData {A} {\Sigma} {C} (\lam _ => ()) g => run {
-  rewrite (isContrEqUnit pr),
-  \lam f _,
-  rewrite (funcToUnit.eq f (\lam _ => ())),
-  idp
+\func path-fun {A B : \Type} (p : A = B) : A -> B => transport (\lam x => x) p \where {
+  \func eta (p : A = B) : path-fun p = {A -> B} =-to-Equiv p
+    | idp => idp
+  \func beta (f : A -> B) (g : B -> A) (sec : \Pi (x : A) -> g (f x) = x) (ret : \Pi (x : B) -> f (g x) = x) :
+    path-fun (iso f g sec ret) = f => idp
+  \func equals (p q : A = B) (_ : path-fun p = path-fun q) : p = q
+    | p, idp, pr =>
+      \let k => rewrite path-fun.eta pr
+         | k' : =-to-Equiv p = {Equiv {A} {A}} idEquiv => Equiv.equals k \in run {
+        rewriteI (univalence.ret_f p),
+        rewrite k',
+        idToId
+      }
+  \func inv-p (p : A = B) : path-fun (inv p) = (=-to-Equiv p).ret
+    | idp => idp
+  \func equiv-eq (f : A -> B) (g : B -> A) (sec : \Pi (x : A) -> g (f x) = x) (ret : \Pi (x : B) -> f (g x) = x) :
+    =-to-Equiv (iso f g sec ret) = \new Equiv {
+                                     | A => A
+                                     | B => B
+                                     | f => f
+                                     | ret => g
+                                     | ret_f => sec
+                                     | sec => g
+                                     | f_sec => ret
+                                   } => run {
+    Equiv.equals,
+    rewriteI (eta (path (iso f g sec ret))),
+    beta f g sec ret
+  }
+
+  \func inv-iso (f : A -> B) (g : B -> A) (sec : \Pi (x : A) -> g (f x) = x) (ret : \Pi (x : B) -> f (g x) = x) :
+    inv (iso f g sec ret) = iso g f ret sec => run {
+    equals {B} {A} _ _,
+    beta-inv _ _ _ _
+  }
+  \func beta-inv (f : A -> B) (g : B -> A) (sec : \Pi (x : A) -> g (f x) = x) (ret : \Pi (x : B) -> f (g x) = x) :
+    path-fun (inv (iso f g sec ret)) = g => run {
+    rewrite inv-p,
+    rewrite equiv-eq,
+    idp
+  }
+
+  \func transport-fun {A X Y : \Type} (f : X -> A) (p : X = Y) : transport (\lam a => a -> A) p f = \lam x => f (path-fun (inv p) x)
+    | f, idp => idp
+
+  \func beta-*> {A B C : \Type} (p : A = B) (q : B = C) : path-fun (p *> q) = \lam x => path-fun q (path-fun p x)
+    | idp, idp => idp
 }
 
-\func contrIdentity {A : \Type} {a : A} : Contr (\Sigma (a' : A) (a = a')) \cowith
-  | center => (a, idp)
-  | contraction a => ext (a.2, transport_path-right a.2 idp *> idp_*> a.2)
+\func pushout-equiv {A A' B B' C C' : \Type}
+                    (eqA : A = A') (eqB : B = B') (eqC : C = C')
+                    (f : A -> B) (g : A -> C) :
+  PushoutData f g =
+      PushoutData {A'} {B'} {C'} (\lam a' => path-fun eqB (f (path-fun (inv eqA) a')))
+          (\lam a' => path-fun eqC (g (path-fun (inv eqA) a')))
+  | idp, idp, idp, f, g => idp \where {
+  \func beta-pinr {A A' B B' C C' : \Type}
+                  (eqA : A = A') (eqB : B = B') (eqC : C = C')
+                  (f : A -> B) (g : A -> C) (c : C) :
+    path-fun (pushout-equiv eqA eqB eqC f g) (pinr c) = pinr (path-fun eqC c) \elim eqA, eqB, eqC
+    | idp, idp, idp => idp
+  \func beta-pinl {A A' B B' C C' : \Type}
+                  (eqA : A = A') (eqB : B = B') (eqC : C = C')
+                  (f : A -> B) (g : A -> C) (b : B) :
+    path-fun (pushout-equiv eqA eqB eqC f g) (pinl b) = pinl (path-fun eqB b) \elim eqA, eqB, eqC
+    | idp, idp, idp => idp
+  \func beta-pglue {A A' B B' C C' : \Type}
+                   (eqA : A = A') (eqB : B = B') (eqC : C = C')
+                   (f : A -> B) (g : A -> C) (a : A) (i : I) :
+    path-fun (pushout-equiv eqA eqB eqC f g) (pglue a i) = pglue (path-fun eqA a) i \elim eqA, eqB, eqC
+    | idp, idp, idp => idp
+}
+
+\func pushout-eqv-fun {A B C : \Type} (f f' : A -> B) (g g' : A -> C)
+                      (p : f = f') (q : g = g')
+  : PushoutData f g = PushoutData f' g' \elim p, q
+  | idp, idp => idp \where {
+  \func beta-pinr {A B C : \Type} (f f' : A -> B) (g g' : A -> C)
+                  (p : f = f') (q : g = g') (c : C) : path-fun (pushout-eqv-fun f f' g g' p q) (pinr c) = pinr c \elim p, q
+    | idp, idp => idp
+  \func beta-pinl {A B C : \Type} (f f' : A -> B) (g g' : A -> C)
+                  (p : f = f') (q : g = g') (b : B) : path-fun (pushout-eqv-fun f f' g g' p q) (pinl b) = pinl b \elim p, q
+    | idp, idp => idp
+  \func beta-pglue {A B C : \Type} (f f' : A -> B) (g g' : A -> C)
+                   (p : f = f') (q : g = g') (a : A) (i : I) : path-fun (pushout-eqv-fun f f' g g' p q) (pglue a i) = pglue a i \elim p, q
+    | idp, idp => idp
+}
+
+\func pushout-contr {A B C : \Type} (pr : Contr B) (f : A -> B) (g : A -> C) :
+  PushoutData f g = PushoutData {A} {\Sigma} {C} (\lam _ => ()) g => iso to fro sec ret \where {
+  \func to (_ : PushoutData f g) : PushoutData {A} {\Sigma} {C} (\lam _ => ()) g
+    | pinl b => pinl ()
+    | pinr c => pinr c
+    | pglue a i => pglue a i
+  \func fro (_ : PushoutData {A} {\Sigma} {C} (\lam _ => ()) g) : PushoutData f g
+    | pinl b => pinl pr.center
+    | pinr c => pinr c
+    | pglue a i => (pmap pinl (pr.contraction (f a)) *> path (pglue a)) i
+  \func sec (x : PushoutData f g) : fro (to x) = x
+    | pinl b => pmap pinl (pr.contraction b)
+    | pinr c => idp
+    | pglue a i => secGlue a i
+  \func secGlue (a : A) :
+    Path (\lam i => (pmap pinl (pr.contraction (f a)) *> path (pglue a)) @ i = {PushoutData f g} pglue a i)
+        (pmap pinl (pr.contraction (f a))) idp => run {
+    pathOver,
+    *> (coe_path (\lam i => (pmap pinl (pr.contraction (f a)) *> path (pglue a)) @ i) _ (path (pglue a))),
+    rewrite *>_inv-comm,
+    rewrite *>-assoc,
+    rewriteI {2} *>-assoc,
+    rewrite inv_*>,
+    rewrite idp_*>,
+    inv_*> _
+  }
+  \func ret (x : PushoutData {A} {\Sigma} {C} (\lam _ => ()) g) : to (fro x) = x
+    | pinl () => idp
+    | pinr c => idp
+    | pglue a i => retGlue a i
+
+  \func retGlue (a : A) :
+    Path (\lam i => to ((pmap pinl (pr.contraction (f a)) *> path (pglue a)) @ i) = pglue a i) idp idp => run {
+    pathOver,
+    *> (coe_path (\lam i => to ((pmap pinl (pr.contraction (f a)) *> path (pglue a)) @ i)) _ (path (pglue a))),
+    rewrite idp_*>,
+    rewriteI (pmap_inv-comm to (pmap pinl (pr.contraction (f a)) *> path (pglue a))),
+    rewrite *>_inv-comm,
+    rewrite pmap_*>-comm,
+    rewrite pmap_inv-comm,
+    rewrite pmap_inv-comm,
+    unfold pmap,
+    inv_*> _
+  }
+}
 
 \func OrlevelProp {A B : \Type} (p : isProp A) (q : isProp B) (e : A -> B -> Empty) (x y : Or A B) : x = y \elim x, y
   | inl a, inl a' => pmap inl (p a a')
@@ -353,4 +478,34 @@
   }
   \func betaP {A : \Type} {a a' : A} (p : a = a') : path (\lam i => p (invI i)) = inv p
     | idp => idp
+}
+
+\func condCtrToProp {A : \Type} (ctr : \Pi (a : A) -> Contr A) (a a' : A) : a = a' =>
+  inv ((ctr a).contraction a) *> (ctr a).contraction a'
+
+
+\func propExtEx {A B : \Type} (aP : isProp A) (bP : isProp B) (f : A -> B) (g : B -> A) : A = B =>
+  iso f g (\lam _ => aP _ _) (\lam _ => bP _ _)
+
+\func isqueezeL {A : \Type} {a a' : A} (p : a = a') (i : I) : p i = p left \elim p
+  | idp => idp
+
+\func eqvContr {A B : \Type} (pa : Contr A) (pb : Contr B) : \Pi (f : A -> B) -> Equiv f => run {
+  rewrite (isContrEqUnit pa),
+  rewrite (isContrEqUnit pb),
+  \lam f,
+  rewrite (funcToUnit.eq f (\lam x => x)),
+  idEquiv
+}
+
+\func fundamentalIP {A : \Type} {a a' : A} {R : A -> \Type} (r : R a) (cr : Contr (\Sigma (a : A) (R a))) :
+  (a = a') = R a' => Equiv-to-= (fEquiv a') \where {
+  \func f (a' : A) (p : a = a') : R a' \elim p
+    | idp => r
+  \func totalEq : Equiv (totalEquiv.total {A} {\lam a' => a = a'} {\lam a' => R a'} {f}) =>
+    eqvContr
+        (lsigma a)
+        cr
+        (totalEquiv.total {A} {\lam a' => a = a'} {\lam a' => R a'} {f})
+  \func fEquiv : \Pi (a' : A) -> Equiv (f a') => rewrite (totalEquiv f) totalEq
 }

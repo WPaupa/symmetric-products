@@ -4,7 +4,7 @@
 \import Meta
 \import Paths.Meta
 \import Utilities
-
+\import Logic
 
 \func Join (A : \Type) (B : \Type) => PushoutData {\Sigma A B} __.1 __.2
 
@@ -64,4 +64,67 @@
 \func joinContrLeft {A B : \Type} (pa : Contr A) : Contr (Join A B) => run {
   rewrite joinSymm,
   joinContrRight pa
+}
+
+\func joinProps {A B : \Prop} : isProp (Join A B) => condCtrToProp cndJoin \where {
+  \func cndJoin (_ : Join A B) : Contr (Join A B)
+    | pinl a => joinContrLeft (isProp=>isContr prop-isProp a)
+    | pinr b => joinContrRight (isProp=>isContr prop-isProp b)
+}
+
+\func joinEq {A : \Type} {B : \Prop} (a1 : A) : \Pi (a2 : A) -> (pinl a1 = {Join A B} pinl a2) = Join (a1 = a2) B =>
+  \lam a2 => iso (encode (pinl a2)) (decode (pinl a2)) (sec (pinl a2)) (ret a2) \where {
+
+  \func codeGlue (a : \Sigma A B) : Join (a1 = a.1) B = (\Sigma) => isContrEqUnit (joinContrRight (isProp=>isContr prop-isProp a.2))
+  \func code (x : Join A B) : \oo-Type \elim x
+    | pinl a2 => Join (a1 = a2) B
+    | pinr c => \Sigma
+    | pglue a i => codeGlue a i
+
+  \func encode (x : Join A B) (p : pinl a1 = x) : code x \elim p
+    | idp => pinl idp
+
+  \func decodeGlue (a2 : A) (j1 : a1 = a2) (j2 : B) : pmap pinl j1 = {pinl a1 = {Join A B} pinl a2} path (pglue (a1, j2)) *> inv (path (pglue (a2, j2)))
+    | a2, idp, j2 => inv (*>_inv _)
+  \func decodeGlue2 (a : \Sigma A B) (p1 : pinl a1 = {Join A B} pinl a.1) (p2 : pinl a1 = {Join A B} pinr a.2) : Path (\lam i => pinl a1 = pglue a i) p1 p2 => run {
+    pathOver,
+    isProp.=>isSet (isContr=>isProp (joinContrRight (isProp=>isContr prop-isProp a.2))) _ _ _ _
+  }
+
+  \func decode (x : Join A B) (_ : code x) : pinl a1 = x
+    | pinl b, pinl b1 => pmap pinl b1
+    | pinl a2, pinr b => path (pglue (a1, b)) *> inv (path (pglue (a2, b)))
+    | pinl a2, pglue j i => decodeGlue a2 j.1 j.2 i
+    | pinr b, () => path (pglue (a1, b))
+    | pglue a i, p =>
+        \let k => rewrite (isqueezeL (codeGlue a) i) p \in
+         {?} -- decodeGlue2 a _ (path (pglue (a1, a.2))) i
+
+  \func sec (x : Join A B) (p : pinl a1 = x) : decode x (encode x p) = p \elim p
+    | idp => idp
+  \func ret (a2 : A) (p : code (pinl a2)) : encode (pinl a2) (decode (pinl a2) p) = p \elim p
+    | pinl idp => idp
+    | pinr b => {?}
+    | pglue a i => {?}
+}
+
+\func joinContrSet {A : \Set} {B : \Prop} (b : B) : isSet (Join A B) =>
+  isProp.=>isSet (isContr=>isProp (joinContrRight (isProp=>isContr prop-isProp b)))
+
+\func joinSet {A : \Set} {B : \Prop} (x y : Join A B) : isProp (x = y)
+  | pinl b, pinl b1 => rewrite (joinEq b b1) joinProps
+  | b, pinr c => joinContrSet c b (pinr c)
+  | pinr c, b => joinContrSet c (pinr c) b
+
+\func joinEqLeft {A : \Set} {B : \Prop} (ca : A) (pa : \Pi (a : A) -> pinl ca = {Join A B} pinl a) : Contr (Join A B) \cowith
+  | center => pinl ca
+  | contraction => \case \elim __ \with {
+    | pinl b => pa b
+    | pinr c => path (pglue (ca, c))
+    | pglue a i => glueEq a i
+  } \where {
+  \func glueEq (a : \Sigma A B) : Path (\lam i => pinl ca = pglue a i) (pa a.1) (path (pglue (ca, a.2))) => run {
+    pathOver,
+    joinContrSet a.2 _ _ _ _
+  }
 }
