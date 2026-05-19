@@ -320,3 +320,29 @@
 
   \func z0Pathchar : (z0 = z0) = Q z0 => fundamentalIP contrQz0.center contrD
 }
+
+\func SP2SetIsSet {A : \Set1} : isSet (SP2 A) => run {
+  rewrite SP2Pushout,
+  connSetChar {gUP},
+  connSetSP2
+} \where {
+  \func setChar {X : \Type} (p : X) (y : X) (pr : p = y) (ctr : Contr (y = y)) (q : X) (a : p = q) :
+    \Pi (a' : p = q) -> a = a' \elim pr, a
+    | idp, idp => isContr=>isProp ctr idp
+
+  \lemma connSetChar {X : \Type} (cs : \Pi (x : X) -> TruncP (\Sigma (y : X) (x = y) (Contr (y = y)))) (p q : X) : isProp (p = q) => run {
+    TruncP.rec (isProp.levelProp (p = q)) (cs p),
+    \lam eq,
+    setChar p eq.1 eq.2 eq.3 q
+  }
+  \func gUP => loopSpaceContr.gUP {A}
+  \func connSetSP2 (x : gUP) : TruncP (\Sigma (y : gUP) (x = y) (Contr (y = y)))
+    | pinl b => inP (pinr (BSnbase 2, elimBS2.recFin2 b b), run {
+      rewrite elimBS2.recFin2Eta,
+      path (pglue (b, BSnbase 2))
+    }, loopSpaceContr A b b)
+    | pinr c => TruncP.map (borelXnIsMerelyCartesian c) $ \lam ye => (pinr (BSnbase 2, ye.1), pmap pinr ye.2, run {
+        rewriteI elimBS2.recFin2BetaSimp,
+        loopSpaceContr A (ye.1 0) (ye.1 1)
+      })
+}

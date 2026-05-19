@@ -392,6 +392,8 @@
     (\lam (a : A 0) (b : A 1) => recFin2 {A} (f a b 0) (f a b 1)) = f => ext recFin2Beta
   \func recFin2Eta {A : \Type} (a : A) : recFin2 a a = \lam _ => a =>
     pmap (__ a a) $ recFin2BetaExt {\lam _ => A} {\lam _ _ _ => a}
+  \func recFin2BetaSimp {A : \Type} (y : Fin 2 -> A) : recFin2 {\lam _ => A} (y 0) (y 1) = y => ext $ \lam x =>
+    recFin2Beta {\lam _ => A} {\lam _ _ => y} (y 0) (y 1) x
 
   \func elimBool*Contr {A : Fin 2 -> \Type} :
     Contr (\Sigma (f : A 0 -> A 1 -> \Pi (y : (BSnbase 2).1) -> A y)

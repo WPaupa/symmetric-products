@@ -30,6 +30,26 @@
     inv (path (tau a X)) *> path (tau a Y)
 }
 
+\func SP2Pushout (A : \Type) :
+  SP2 A = PushoutData {\Sigma A (BSn 2)} {A} {borelXn 2 A} __.1 (\lam p => (p.2, \lam _ => p.1)) => iso f g sec ret \where {
+  \func f (_ : SP2 A) : PushoutData {\Sigma A (BSn 2)} {A} {borelXn 2 A} __.1 (\lam p => (p.2, \lam _ => p.1))
+    | sigma f => pinr f
+    | delta a => pinl a
+    | tau a X i => pglue (a, X) i
+  \func g (_ : PushoutData {\Sigma A (BSn 2)} {A} {borelXn 2 A} __.1 (\lam p => (p.2, \lam _ => p.1))) : SP2 A
+    | pinr b => sigma b
+    | pinl c => delta c
+    | pglue a i => tau a.1 a.2 i
+  \func sec (x : SP2 A) : g (f x) = x
+    | sigma f => idp
+    | delta a => idp
+    | tau a X i => idp
+  \func ret (x : PushoutData {\Sigma A (BSn 2)} {A} {borelXn 2 A} __.1 (\lam p => (p.2, \lam _ => p.1))) : f (g x) = x
+    | pinl b => idp
+    | pinr c => idp
+    | pglue a i => idp
+}
+
 \func dcommf2 \plevels p1 <= p2 (A : \Type p1) (T : \Type p2) =>
   \Sigma (f : commstr 2 A T) (\Pi (a : A) (X : BSn 2) -> f (BSnbase 2) (\lam _ => a) = f X (\lam _ => a)) \where {
   \func compose \plevels p1 <= p2 {A : \Type p1} {M T : \Type p2} (f : dcommf2 A T) (g : T -> M) : dcommf2 A M =>
@@ -42,6 +62,18 @@
 \func liftSP2 {A T : \Type} (f : dcommf2 \levels \lp \lh A T) : SP2 A -> T =>
   SP2.rec (liftBorelXn f.1) f.2 \where {
   \func coh (X : BSn 2) (x : X.1 -> A) : liftSP2 f (injSP2.1 X x) = f.1 X x => idp
+  \func dcoh (p : \Pi (a : A) -> f.2 a (BSnbase 2) = idp) : dcommf2.compose injSP2 (liftSP2 f) = f => ext (idp, ext \lam a _ => run {
+    unfold transport,
+    unfold dcommf2.compose,
+    unfold liftSP2,
+    unfold SP2.rec,
+    unfold liftBorelXn,
+    unfold injSP2,
+    rewrite pmap_*>-comm,
+    rewrite pmap_inv-comm,
+    rewrite (p a),
+    idp_*> _
+  })
 
   \func liftCompose (h : SP2 A -> T) : liftSP2 (dcommf2.compose injSP2 h) = h =>
     ext $ SP2.elim (\lam x => idp {_} {h (injSP2.1 x.1 x.2)}) (\lam a => pmap h (inv (path (tau a (BSnbase 2))))) (\lam a X => run {
@@ -65,6 +97,11 @@
       rewrite inv_*>,
       pmap-idp h
     })
+
+  \func uniqExt (h : SP2 A -> T)
+                (hcoh : dcommf2.compose injSP2 h = f) :
+    h = liftSP2 f \elim hcoh
+    | idp => inv (liftCompose h)
 
   \func uniq (h : SP2 A -> T)
              (hcoh : dcommf2.compose injSP2 h = f) (x : SP2 A) :
