@@ -81,15 +81,15 @@
             })
      \in pc diagp.1 diagp.2
 
-\func loopSpaceContr (A : \Set1) (x0 x1 : A) : Contr (z0 = z0) => rewrite z0Pathchar contrQz0 \where {
-  \func BS2 : \Type2 => \Sigma (X : \Set1) (TruncP (Equiv {X} {Fin 2}))
-  \func hUP : \Type2 => borelXn 2 A
-  \func gUP : \Type2 => PushoutData {\Sigma A BS2} {A} {hUP} __.1 (\lam p => (p.2, \lam _ => p.1))
+\sfunc loopSpaceContr (A : \Set \lp) (x0 x1 : A) : Contr (z0 = z0) => rewrite z0Pathchar contrQz0 \where {
+  \func BS2 : \Type (\suc \lp) => \Sigma (X : \Set \lp) (TruncP (Equiv {X} {Fin 2}))
+  \func hUP : \Type (\suc \lp) => borelXn 2 A
+  \func gUP : \Type (\suc \lp) => PushoutData {\Sigma A BS2} {A} {hUP} __.1 (\lam p => (p.2, \lam _ => p.1))
   \func w0 : hUP => (BSnbase 2, elimBS2.recFin2 {\lam _ => A} x0 x1)
   \func z0 : gUP => pinr w0
   \func P : \Prop => x0 = x1
 
-  \func joinT (Kv : hUP) : \Type2 =>
+  \func joinT (Kv : hUP) : \Type (\suc \lp) =>
       Join (w0 = Kv) (\Sigma P (Kv.2 = \lam _ => x0))
 
   \func condIsPropCst (x : A) (K : BS2) (a : joinT (K, \lam _ => x)) : \Sigma P ((\lam _ => x) = {K.1 -> A} (\lam _ => x0)) \elim a
@@ -125,7 +125,7 @@
         )
         (\lam pe => pinr (pe.1, rewrite pe.2 idp))
 
-  \func Q (_ : gUP) : \oo-Type2
+  \func Q (_ : gUP) : \oo-Type (\suc \lp)
     | pinr Kv => joinT Kv
     | pinl x => \Sigma P (x = x0)
     | pglue (x, K) i => inv (Qeq x K) i
@@ -134,9 +134,9 @@
       {w0 = (a'.1, \lam _ => x0)} {\Sigma P ((\lam _ => x0) = (\lam _ => x0))}
       (isProp=>isContr prop-isProp (a'.2, idp))) _ _
 
-  \func D : \oo-Type2 => \Sigma (z : gUP) (Q z)
-  \func R : \oo-Type2 => \Sigma (w : hUP) (joinT w)
-  \func R' : \oo-Type2 => PushoutData {P} {\Sigma} {\Sigma BS2 P} (\lam _ => ()) (\lam p => (BSnbase 2, p))
+  \func D : \oo-Type (\suc \lp) => \Sigma (z : gUP) (Q z)
+  \func R : \oo-Type (\suc \lp) => \Sigma (w : hUP) (joinT w)
+  \func R' : \oo-Type (\suc \lp) => PushoutData {P} {\Sigma} {\Sigma BS2 P} (\lam _ => ()) (\lam p => (BSnbase 2, p))
 
   \func Rchar : R = R' => pushout-colim _ _ *> Rsum=Rctr *> Rctr=R' \where {
     \func Rsum => PushoutData {\Sigma (w : hUP) (\Sigma (w0 = w) (\Sigma P (w.2 = \lam _ => x0)))}
@@ -161,8 +161,11 @@
         unfold g,
         ext,
         rewrite coe_sigma,
-        rewrite transport_path-right,
-        idp_*> x.2.1
+        rewrite transport_path-right $
+        (idp_*> _, run {
+          rewrite coe_sigma,
+          ext ()
+        })
       })
       \lemma ret (x : P) : f (g x) = x => prop-pi
     }
@@ -170,7 +173,12 @@
     \func right= : rightR = (\Sigma BS2 P) => iso f g sec ret \where {
       \func f (x : rightR) : \Sigma BS2 P => (x.1.1, x.2.1)
       \func g (x : \Sigma BS2 P) : rightR => ((x.1, \lam _ => x0), (x.2, idp))
-      \func sec (x : rightR) : g (f x) = x => ext $ ext (idp, rewrite x.2.2 idp)
+      \func sec (x : rightR) : g (f x) = x => ext (run {
+        unfold g,
+        unfold f,
+        ext $
+        (idp, unfold transport (inv x.2.2))
+      }, ext ())
       \func ret (x : \Sigma BS2 P) : f (g x) = x => ext idp
     }
     \sfunc Rpf-fun :
@@ -181,7 +189,7 @@
       rewrite (path-fun.beta right=.f right=.g right=.sec right=.ret),
       idp
     }
-    \func Rpf : \oo-Type2 => PushoutData {P} {\Sigma} {\Sigma BS2 P} (\lam _ => ())
+    \func Rpf : \oo-Type (\suc \lp) => PushoutData {P} {\Sigma} {\Sigma BS2 P} (\lam _ => ())
         (\lam a' => path-fun right= ((path-fun (inv base=) a').1, (path-fun (inv base=) a').2.2))
     \func Rpf=R' : Rpf = R' => pushout-eqv-fun _ _ _ _ idp Rpf-fun
 
@@ -190,7 +198,7 @@
   }
 
 
-  \func Dflat : \oo-Type2 => PushoutData {\Sigma (x : \Sigma A BS2) (\Sigma P (x.1 = x0))}
+  \func Dflat : \oo-Type (\suc \lp) => PushoutData {\Sigma (x : \Sigma A BS2) (\Sigma P (x.1 = x0))}
       {\Sigma (y : A) (\Sigma P (y = x0))}
       {R}
       (\lam p => (p.1.1, p.2))
@@ -321,7 +329,7 @@
   \func z0Pathchar : (z0 = z0) = Q z0 => fundamentalIP contrQz0.center contrD
 }
 
-\func SP2SetIsSet {A : \Set1} : isSet (SP2 A) => run {
+\sfunc SP2SetIsSet {A : \Set} : isSet (SP2 A) => run {
   rewrite SP2Pushout,
   connSetChar {gUP},
   connSetSP2
