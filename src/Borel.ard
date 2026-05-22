@@ -20,6 +20,10 @@
 \func injBorelXn {n : Nat} {A : \Type} : commstr n A (borelXn n A) =>
   \lam X tup => (X, tup)
 
+\func borelConstPath {n : Nat} {A : \Type} (X Y : BSn n) (p : X = Y) (a : A) :
+  (X, \lam _ => a) = {borelXn n A} (Y, \lam _ => a) \elim p
+  | idp => idp
+
 \func borelXnIsMerelyCartesian {n : Nat} {A : \Type} (x : borelXn n A) :
   TruncP (\Sigma (y : Fin n -> A) (x = (BSnbase n, y))) => TruncP.map x.1.2
     (\lam eqv => Jl (\lam B _ => \Sigma (t : B.1 -> A) (x = (B, t))) (x.2, idp)

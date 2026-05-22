@@ -1,0 +1,111 @@
+\import Algebra.Meta
+\import Function.Meta
+\import Set
+\import Homotopy.Pointed
+\import Homotopy.Loop
+\import Paths
+\import Algebra.Group
+\import Algebra.Group.GroupHom
+\import Utilities
+\import Homotopy.EckmannHilton \hiding (#, .#, o, .o)
+\import Homotopy.Pushout
+\import Logic
+\import Meta
+\import Paths.Meta
+\import Category
+\import Algebra.Group.GroupCategory
+
+\func pi_ (m : Nat) (Z : Pointed) : Pointed \cowith
+  | E => underlying
+  | base => in0 (Omega^ m Z).base \where {
+  \func underlying : \Set => Trunc0 (Omega^ m Z)
+}
+
+\instance pi_group (n : Nat) (X : Pointed) : Group (pi_.underlying {suc n} {X})
+  | ide => ide
+  | * => *
+  | *-assoc => *-assoc
+  | inverse => inverse
+  | ide-left => ide-left
+  | inverse-left => inverse-left \where {
+  \func ide : pi_ (suc n) X => in0 (Omega^ (suc n) X).base
+
+  \func \infixl 7 * (_ _ : pi_ (suc n) X) : pi_ (suc n) X
+    | in0 x, in0 y => in0 (x *> y)
+
+  \func *-assoc {x y z : pi_ (suc n) X} : (x * y) * z = x * (y * z)
+    | {in0 x}, {in0 y}, {in0 z} => pmap in0 (*>-assoc _ _ _)
+
+  \func inverse (_ : pi_ (suc n) X) : pi_ (suc n) X
+    | in0 a => in0 (inv a)
+
+  \func ide-left {x : pi_ (suc n) X} : ide * x = x
+    | {in0 x} => pmap in0 (idp_*> _)
+
+  \func inverse-left {x : pi_ (suc n) X} : inverse x * x = ide
+    | {in0 x} => pmap in0 (inv_*> _)
+
+  \func *-comm {x y : pi_ (suc (suc n)) X} : x * {suc n} y = y * {suc n} x
+    | {in0 x}, {in0 y} => pmap in0 ((\new Omega^2-Commutative (Omega^ n X)).Commutative x y)
+}
+
+\func pi_functor {n : Nat} {X Y : Pointed} (f : X ->* Y) : pi_ n X ->* pi_ n Y =>
+  (\lam x => Trunc0.map x (Omega^-Func n f).1, pmap in0 (Omega^-Func n f).2)
+
+\func pi_functor-hom {n : Nat} {X Y : Pointed} (f : X ->* Y) : GroupHom (pi_group n X) (pi_group n Y) \cowith
+  | func => (pi_functor {suc n} {X} {Y} f).1
+  | func-* {x} {y} => compose x y \where {
+  \func compose (x y : pi_group n X) :
+    (pi_functor {suc n} f).1 (x pi_group.* y) = (pi_functor {suc n} f).1 x pi_group.* (pi_functor {suc n} f).1 y
+    | in0 a, in0 a1 => pmap in0 $
+      compose-general (Omega^-Func n f).1 (Omega^-Func n f).2 a a1
+  \func compose-general {A B : \Type} {a : A} {b : B} (f : A -> B)
+                        (of2 : f a = b) (pa : a = a) (pa1 : a = a) :
+    inv of2 *> pmap f (pa *> pa1) *> of2 = (inv of2 *> pmap f pa *> of2) *> inv of2 *> pmap f pa1 *> of2 => run {
+    rewriteI (*>-assoc (inv of2) (pmap f pa) of2),
+    rewriteI (*>-assoc _ (inv of2) (pmap f pa1 *> of2)),
+    rewrite (*>-assoc _ of2 (inv of2)),
+    rewrite *>_inv,
+    rewrite pmap_*>-comm,
+    rewrite *>-assoc,
+    rewrite *>-assoc,
+    idp
+  }
+}
+
+\instance pi_abgroup (n : Nat) (X : Pointed) : CGroup (pi_.underlying {suc (suc n)} {X})
+  | ide => pi_group.ide {suc n}
+  | * => pi_group.*
+  | *-assoc => pi_group.*-assoc
+  | inverse => pi_group.inverse
+  | ide-left => pi_group.ide-left
+  | inverse-left => pi_group.inverse-left
+  | *-comm => pi_group.*-comm
+
+\func pushoutVanKampen {A B C : Pointed} (f : A ->* C) (g : A ->* B) :
+  pi_group 0 (PushoutPointed f g) = GroupPushout (pi_functor-hom {0} f) (pi_functor-hom {0} g) => {?} \where {
+
+  \func PushoutPointed {A B C : Pointed} (f : A ->* C) (g : A ->* B) : Pointed (PushoutData f.1 g.1) \cowith
+    | base => pinl C.base
+
+  \func GroupPushout {A B C : Group} (f : GroupHom A B) (g : GroupHom A C) : Group \cowith
+    | E => E
+    | ide => ide
+    | * => *
+    | *-assoc {x} {y} {z} => path (*-assoc x y z)
+    | inverse => inverse
+    | ide-left {x} => path (ide-left x)
+    | inverse-left {x} => path (inverse-left x) \where {
+    \truncated \data E : \Set
+      | gpinl B
+      | gpinr C
+      | gpglue (x : A) : gpinl (f x) = gpinr (g x)
+
+      | ide
+      | \infix 7 * E E
+      | *-assoc (x y z : E) : (x * y) * z = x * (y * z)
+      | inverse E
+      | ide-left (x : E) : ide * x = x
+      | inverse-left (x : E) : inverse x * x = ide
+  }
+}

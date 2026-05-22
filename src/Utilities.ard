@@ -71,6 +71,15 @@
     | inP a => inP (f a)
 }
 
+\func Trunc0Eq {A : \Type} (pr : isSet A) : Trunc0 A = A => iso f in0 sec ret \where {
+  \func f (x : Trunc0 A) : A => {?}
+
+  \func sec (x : Trunc0 A) : in0 (f x) = x
+    | in0 a => {?}
+
+  \func ret (x : A) : f (in0 x) = x => {?}
+}
+
 -- This is basically flip, but using just flip doesn't work
 \func funExt- {A : \Type} {B : A -> \Type} {f g : \Pi (a : A) -> B a}
               (p : f = g) (a : A) : f a = g a =>

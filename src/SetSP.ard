@@ -1,12 +1,21 @@
 \import BSn
+\import Borel
 \import Commutative
 \import Meta
+\import OrbitSP2
 \import Paths.Meta
 \import SPnAxioms
 \import Utilities
 \import Logic.Unique
+\import Set
+\import Paths
+\import Function.Meta
+\import Logic
+\import Equiv.Univalence
 
-\truncated \data SetSP2 (A : \Set) : \Set
+\import SP2OfSet
+
+\truncated \data SetSP2 (A : \Type) : \Set
   | inSP2 A A
   | symSP2 (a a' : A) : inSP2 a a' = inSP2 a' a
 
@@ -24,16 +33,37 @@
   (\lam a a' => commstr.f f (elimBS2.recFin2 a a'))
   (\lam a a' => rewrite (commstr2IsComm f a a') idp)
 
+\func setTruncSP2 {A : \Type} : SetSP2 A = Trunc0 (borelXn 2 A) => {?}
 
-\func SPnAxiomSet {n : Nat} (A : \Type) (SPnA : \Type) : \Type =>
-  \Sigma (inj : commstr n A SPnA) (\Pi (T : \Set) (g : commstr n A T) ->
-      exists! (SPnA -> T) (\lam h => \Pi (x : Fin n -> A) ->
-          h (commstr.f inj x) = commstr.f g x
-      )
-  )
+\func setSP2IsSP2 {A : \Set} : SetSP2 A = SP2 A => run {
+  rewriteI (Trunc0Eq (SP2SetIsSet {A})),
+  rewrite setEq,
+  setTruncSP2
+} \where {
+  \func setEq : Trunc0 (SP2 A) = Trunc0 (borelXn 2 A) => iso f g sec ret \where {
+    \func in0eq {T : \Type} {a b : T} (_ : a = b) : in0 a = in0 b
+      | idp => idp
 
-\func isSPSetSP {A : \Set} : SPnAxiomSet {2} A (SetSP2 A) => (setSP2Inj, \lam T g =>
-    Contr.make
-        (liftSetSP2 {A} {T} g, {?})
-        {?}
-  )
+    \lemma p0 (a : A) (X : BSn 2) : in0 (BSnbase 2, \lam _ => a) = {Trunc0 (borelXn 2 A)} in0 (X, \lam _ => a) => run {
+      TruncP.rec prop-isProp X.2,
+      \lam eq,
+      \let k => inv (BSnPath X (BSnbase 2) eq),
+      \let k' => borelConstPath {2} {A} (BSnbase 2) X k a,
+      in0eq k'
+    }
+    \func f (_ : Trunc0 (SP2 A)) : Trunc0 (borelXn 2 A)
+      | in0 (sigma f) => in0 f
+      | in0 (delta a) => in0 (BSnbase 2, \lam _ => a)
+      | in0 (tau a X i) => p0 a X i
+
+    \func g (_ : Trunc0 (borelXn 2 A)) : Trunc0 (SP2 A)
+      | in0 f => in0 (sigma f)
+
+    \func sec (x : Trunc0 (SP2 A)) : g (f x) = x
+      | in0 (sigma f) => idp
+      | in0 (delta a) => inv $ pmap in0 (path (tau a (BSnbase 2)))
+
+    \func ret (x : Trunc0 (borelXn 2 A)) : f (g x) = x
+      | in0 a => idp
+  }
+}
