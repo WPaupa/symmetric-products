@@ -22,6 +22,23 @@
       )
   )
 
+-- | Set-restricted variant of SPnAxiom: requires the universal property only
+--   for set-valued targets T. Weaker than SPnAxiom (which quantifies over
+--   all oo-types), but compatible with the canonical bridges
+--   commstr → dcommf via set-pi (see OrbitSP2.dcommf2.fromCommstrSet).
+\func SPnAxiomSet {n : Nat} (A : \Type) (SPnA : \Type) : \Type =>
+  \Sigma (inj : commstr n A SPnA) (\Pi (T : \Set) (g : commstr n A T) ->
+      exists! (SPnA -> T) (\lam h => \Pi (x : Fin n -> A) ->
+          h (commstr.f inj x) = commstr.f g x
+      )
+  )
+
+-- | The full SPnAxiom trivially implies the set-restricted variant, by
+--   instantiating T : oo-Type at T : Set.
+\func SPnAxiom-to-Set {n : Nat} {A : \Type} {SPnA : \Type}
+                      (pr : SPnAxiom {n} A SPnA) : SPnAxiomSet {n} A SPnA =>
+  (pr.1, \lam T g => pr.2 T g)
+
 \func SPXBase {n : Nat} {X : \Type} {SPX : \Type}
   {pr : SPnAxiom {n} X SPX} (x : X) : SPX => pr.1 (BSnbase n) (\lam _ => x)
 

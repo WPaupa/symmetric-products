@@ -96,6 +96,13 @@
     | inverse => inverse
     | ide-left {x} => path (ide-left x)
     | inverse-left {x} => path (inverse-left x) \where {
+    -- | HIT presentation of the amalgamated free product B *_A C.
+    --   The first block of constructors give the carrier inclusions and
+    --   the gpglue relation. The second block freely generates a group
+    --   structure on E. The third block enforces that gpinl and gpinr
+    --   are group homomorphisms; without these constructors the HIT would
+    --   present the free group on |B| + |C| with one extra relation,
+    --   not the categorical pushout in Group.
     \truncated \data E : \Set
       | gpinl B
       | gpinr C
@@ -107,5 +114,57 @@
       | inverse E
       | ide-left (x : E) : ide * x = x
       | inverse-left (x : E) : inverse x * x = ide
+
+      | gpinl-* (x y : B) : gpinl (x B.* y) = gpinl x * gpinl y
+      | gpinl-ide : gpinl B.ide = ide
+      | gpinr-* (x y : C) : gpinr (x C.* y) = gpinr x * gpinr y
+      | gpinr-ide : gpinr C.ide = ide
+
+    -- | Universal property of GroupPushout (existence half): given group homs
+    --   h_B : B -> G and h_C : C -> G that agree on A, the induced map
+    --   E -> G is well-defined as the case-by-case eliminator. Each path
+    --   constructor of E maps to the corresponding group-law path in G.
+    \func recE {G : Group} (h_B : GroupHom B G) (h_C : GroupHom C G)
+               (coh : \Pi (a : A) -> h_B (f a) = h_C (g a))
+               (x : E) : G \elim x
+      | gpinl b => h_B b
+      | gpinr c => h_C c
+      | gpglue a i => coh a i
+      | ide => G.ide
+      | x * y => recE h_B h_C coh x G.* recE h_B h_C coh y
+      | *-assoc x y z i => G.*-assoc {recE h_B h_C coh x} {recE h_B h_C coh y} {recE h_B h_C coh z} i
+      | inverse x => G.inverse (recE h_B h_C coh x)
+      | ide-left x i => G.ide-left {recE h_B h_C coh x} i
+      | inverse-left x i => G.inverse-left {recE h_B h_C coh x} i
+      | gpinl-* x y i => h_B.func-* {x} {y} i
+      | gpinl-ide i => h_B.func-ide i
+      | gpinr-* x y i => h_C.func-* {x} {y} i
+      | gpinr-ide i => h_C.func-ide i
+
+    -- | Wrap recE as a GroupHom. The func-* equation holds definitionally:
+    --   recE preserves * by construction (the * clause computes).
+    \func recHom {G : Group} (h_B : GroupHom B G) (h_C : GroupHom C G)
+                 (coh : \Pi (a : A) -> h_B (f a) = h_C (g a))
+      : GroupHom (GroupPushout f g) G \cowith
+      | func x => recE h_B h_C coh x
+      | func-* => idp
+
+    -- | gpinl viewed as a group homomorphism B -> GroupPushout f g.
+    --   Uses the new gpinl-* / gpinl-ide path constructors.
+    \func gpinlHom : GroupHom B (GroupPushout f g) \cowith
+      | func b => gpinl b
+      | func-* {x} {y} => path (gpinl-* x y)
+      | func-ide => path gpinl-ide
+
+    -- | gpinr viewed as a group homomorphism C -> GroupPushout f g.
+    \func gpinrHom : GroupHom C (GroupPushout f g) \cowith
+      | func c => gpinr c
+      | func-* {x} {y} => path (gpinr-* x y)
+      | func-ide => path gpinr-ide
+
+    -- | The two compositions A -> B -> E and A -> C -> E agree at every
+    --   point of A. (Pointwise version of gpglue lifted to a path of homs.)
+    \func gpglue-comm (a : A) : gpinlHom (f a) = {GroupPushout f g} gpinrHom (g a) =>
+      path (gpglue a)
   }
 }

@@ -454,3 +454,15 @@
   (TruncP.rec-set (eltBSn X) (\lam x (f : X.1 -> A) _ => f x) (\lam x =>
       elimBS2 {X} _ x idp idp
   )).1 f h
+  \where {
+    -- | For any chosen element x : X.1, setRecBS2 X f h = f x.
+    --   This is the universal beta rule, which holds because TruncP.rec-set
+    --   into a propositional Sigma is uniquely determined.
+    \lemma beta {A : \Set} {X : BSn 2} (x : X.1) (f : X.1 -> A)
+                (h : \Pi (y : X.1) -> f y = f (notBS2 y))
+      : setRecBS2 X f h = f x => unfold setRecBS2 $
+      pmap (\lam s => s.1 f h)
+        (TruncP.rec-set.level (\lam y => elimBS2 {X} _ y idp idp) _
+            (\lam (g : X.1 -> A) (_ : \Pi (y : X.1) -> g y = g (notBS2 y)) => g x,
+             inP (x, idp)))
+  }

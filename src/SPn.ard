@@ -1,4 +1,8 @@
+\import Algebra.Meta
+\import Algebra.Monoid
+\import Algebra.Ordered
 \import BSn
+\import Meta
 \import Borel
 \import Data.List
 \import Data.Fin
@@ -6,29 +10,77 @@
 \import Function.Meta
 \import Homotopy.Pushout
 \import Function
+\import Paths
 \import Paths.Meta
 \import Utilities
 \import Logic
 \import Logic.Unique
 \import Arith.Nat
+\import Order.PartialOrder
 \import Set
 \import Order.StrictOrder
 
 \data partitionInto (n : Nat) (k : Nat) : \Set \elim k
-  | 1 => idPart
-  | suc k' => compPart (r1 r2 : Nat) (n = r1 Nat.+ r2) (partitionInto r2 k')
+  | 1 => idPart (0 NatSemiring.< n)
+  | suc k' => compPart (r1 r2 : Nat) (0 NatSemiring.< r1) (n = r1 Nat.+ r2) (partitionInto r2 k')
 
 \func partitions (n : Nat) : \Set => \Sigma (k : Nat) (partitionInto n k)
 
 \func partitionCount {n k : Nat} (lambda : partitionInto n k) (m : Nat) : Nat \elim k, lambda
-  | 1, idPart => \case NatSemiring.decideEq n m \with {
+  | 1, idPart _ => \case NatSemiring.decideEq n m \with {
     | yes _ => 1
     | no _ => 0
   }
-  | suc k, compPart r1 _ _ lambda => \case NatSemiring.decideEq r1 m \with {
+  | suc k, compPart r1 _ _ _ lambda => \case NatSemiring.decideEq r1 m \with {
     | yes _ => suc (partitionCount lambda m)
     | no _ => partitionCount lambda m
   }
+
+-- | Recursive sum of parts of a partition. Returns n by construction.
+\func partitionSize {n k : Nat} (lambda : partitionInto n k) : Nat \elim k, lambda
+  | 1, idPart _ => n
+  | suc k, compPart r1 _ _ _ rest => r1 Nat.+ partitionSize rest
+
+-- | Computation rule for partitionSize on compPart. Stated as a separate
+--   lemma so the proof can \elim the recursive argument (which is what
+--   exposes the function's definitional reduction — \elim on the parent
+--   `lambda` alone is not enough; see arend-quirks §3).
+\lemma partitionSize-step {n k : Nat} {r1 r2 : Nat} {r1_pos : 0 NatSemiring.< r1}
+                          {n_split : n = r1 Nat.+ r2} (rest : partitionInto r2 k)
+  : partitionSize (compPart r1 r2 r1_pos n_split rest) = r1 Nat.+ partitionSize rest
+  \elim k, rest
+  | 1, idPart _ => idp
+  | suc k, compPart r1' r2' r1'_pos n_split' rest' => idp
+
+-- | The recursive sum of parts equals n.
+\lemma partitionSize=n {n k : Nat} (lambda : partitionInto n k) : partitionSize lambda = n
+  \elim k, lambda
+  | 1, idPart _ => idp
+  | suc k, compPart r1 r2 _ n_split rest =>
+    partitionSize-step rest *> pmap (\lam y => r1 Nat.+ y) (partitionSize=n rest) *> inv n_split
+
+-- | Convert 0 < n (NatOrder) to 1 ≤ n (PartialOrder).
+\lemma <_to_<= {n : Nat} (p : 0 < n) : 1 <= n \elim n, p
+  | suc n, zero<suc => suc<=suc zero<=_
+
+-- | If a ≤ n and b < a, then n -' a < n -' b. (Strict monotonicity of monus
+--   in the subtrahend, given the upper bound that prevents clamping.)
+\lemma monus-strict-monotone-right {n a b : Nat} (a_bound : a <= n) (b_lt_a : b < a)
+  : n -' a < n -' b \elim n, a, b, b_lt_a
+  | 0, suc a, b, b_lt_a => absurd (a_bound NatOrder.zero<suc)
+  | suc n, suc a, 0, NatOrder.zero<suc => suc_<=_< (suc<=suc -'<=id)
+  | suc n, suc a, suc b, NatOrder.suc<suc b_lt_a' => monus-strict-monotone-right (suc<=suc.conv a_bound) b_lt_a'
+
+-- | Every partition of n into k parts has 1 ≤ k ≤ n (positivity of parts forces this).
+\lemma partitionInto_k<=n {n k : Nat} (lambda : partitionInto n k) : k <= n \elim k, lambda
+  | 1, idPart n_pos => <_to_<= n_pos
+  | suc k, compPart r1 r2 r1_pos n_split rest =>
+    \let
+      | ih : k <= r2 => partitionInto_k<=n rest
+      | sk_sr2 : suc k <= suc r2 => suc<=suc ih
+      | one_r1 : 1 <= r1 => <_to_<= r1_pos
+      | sr2_sum : suc r2 <= r1 Nat.+ r2 => transport (`<= r1 Nat.+ r2) (NatSemiring.+-comm {r2} {1}) (<=_+ one_r1 <=-refl)
+    \in transport (suc k <=) (inv n_split) (sk_sr2 <=∘ sr2_sum)
 
 \func powerPartition {n k : Nat} (X : \Type) (lambda : partitionInto n k) : \Type =>
   \Sigma (ct : classType lambda) (\Pi (m : Nat) -> (ct m).1 -> \Sigma (BSn m) X) \where {
@@ -38,11 +90,17 @@
 }
 
 \instance wfPartitions (n : Nat) : WellFoundedPoset (partitions n)
-  | < => {?} -- make it a Prop
-  | <-irreflexive => {?}
-  | <-transitive => {?}
-  | potential => {?}
-  | potentialMonotone => {?}
+  -- | λ < μ iff λ has strictly more parts than μ. Refining a partition makes
+  --   it smaller in this order; the maximally-refined partition (k = n) is at
+  --   the bottom, so well-founded recursion terminates on extensions.
+  | < lam mu => mu.1 NatSemiring.< lam.1
+  | <-irreflexive p => NatSemiring.<-irreflexive p
+  | <-transitive p q => NatSemiring.<-transitive q p
+  | potential lam => n -' lam.1
+  | potentialMonotone lam mu (mu_lt_lam : mu.1 NatSemiring.< lam.1) =>
+    \let
+      | lam_bound : lam.1 <= n => partitionInto_k<=n lam.2
+    \in monus-strict-monotone-right lam_bound mu_lt_lam
 
 \func partExtensionsType {n : Nat} {X : \Type} (lambda1 lambda2 : wfPartitions n) (ieq : lambda2 < lambda1)
                          (ct : powerPartition.classType lambda1.2) : \Type => {?}
