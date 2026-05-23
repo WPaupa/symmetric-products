@@ -160,6 +160,37 @@ work.
   This is the *existence* half of the universal property. Uniqueness (every
   hom factoring through agrees with `recHom`) is not yet stated.
 
+### 3.8 May 2026 — HomotopyGroup Tier 1+3 (van Kampen scaffolding)
+
+Built the back-direction half of van Kampen and refactored `pushoutVanKampen`
+into 4 clearly-named pieces.
+
+**Tier 1 (back direction):**
+- **`pinl-pointed`, `pinr-pointed`**: pointed map inclusions
+  `C/B ->* PushoutPointed f g`. The `pinr` pointedness threads through `g.2`,
+  `inv (pglue A.base)`, and `f.2`.
+- **`pi-pinl-hom`, `pi-pinr-hom`**: `pi_functor-hom` of the above, giving
+  group homs `π₁(C)/π₁(B) → π₁(PushoutPointed f g)`.
+- **`pushoutVanKampen-coh`** (Tier 1.3 — TODO `{?}`): A-agreement proved
+  pointwise after destructuring `Trunc0`. The path between the inner loops
+  is left as a hole pending the pi_functor-hom-pointed-htpy auxiliary.
+- **`vanKampen-back`**: the back-direction `GroupHom GroupPushout → π₁(pushout)`,
+  built via `GroupPushout.recHom` from the three above.
+
+**Tier 3 (refactor):**
+- **`vanKampen-forward`** (TODO `{?}`): the encode-decode side, multi-week.
+- **`vanKampen-sec`, `vanKampen-ret`** (TODO `{?}`): iso section/retraction.
+- **`vanKampen-iso`**: assembles forward + back + sec + ret into an
+  `Iso {GroupCat}`.
+- **`pushoutVanKampen` body**: now `Cat.isotoid {GroupCat} vanKampen-iso`,
+  routing through arend-lib's group univalence.
+
+**Net effect:** HomotopyGroup's goal count went from 1 (opaque) to 4 (named
+and structured). The hard part — `vanKampen-forward` encode-decode — is now
+isolated; everything else around it is mechanical scaffolding waiting for
+that piece. Total project state: 15 goals across 3 modules (SPn 10,
+HomotopyGroup 4, SPnAxioms 1).
+
 ### 3.7 May 2026 — `partitionSize=n` resolved + Arend quirk understood
 
 The earlier "blocked" claim around `partitionSize=n` was a misdiagnosis. The

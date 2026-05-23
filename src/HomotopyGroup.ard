@@ -83,10 +83,90 @@
   | *-comm => pi_group.*-comm
 
 \func pushoutVanKampen {A B C : Pointed} (f : A ->* C) (g : A ->* B) :
-  pi_group 0 (PushoutPointed f g) = GroupPushout (pi_functor-hom {0} f) (pi_functor-hom {0} g) => {?} \where {
+  pi_group 0 (PushoutPointed f g) = GroupPushout (pi_functor-hom {0} f) (pi_functor-hom {0} g)
+  => Cat.isotoid {GroupCat} (pushoutVanKampen.vanKampen-iso f g)
+  \where {
 
   \func PushoutPointed {A B C : Pointed} (f : A ->* C) (g : A ->* B) : Pointed (PushoutData f.1 g.1) \cowith
     | base => pinl C.base
+
+  -- | The pinl-inclusion C → PushoutPointed f g as a pointed map. The
+  --   pointedness condition holds by definition: PushoutPointed's basepoint
+  --   IS `pinl C.base`.
+  \func pinl-pointed {A B C : Pointed} (f : A ->* C) (g : A ->* B) : C ->* PushoutPointed f g =>
+    (\lam c => pinl c, idp)
+
+  -- | The pinr-inclusion B → PushoutPointed f g as a pointed map. The
+  --   pointedness condition routes `pinr B.base` → `pinr (g A.base)` (via g.2)
+  --   → `pinl (f A.base)` (via pglue) → `pinl C.base = base` (via f.2).
+  \func pinr-pointed {A B C : Pointed} (f : A ->* C) (g : A ->* B) : B ->* PushoutPointed f g =>
+    (\lam b => pinr b,
+     pmap pinr (inv g.2) *> inv (path (pglue A.base)) *> pmap pinl f.2)
+
+  -- | π₁ of pinl-pointed as a group homomorphism π₁(C) → π₁(PushoutPointed f g).
+  \func pi-pinl-hom {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+    : GroupHom (pi_group 0 C) (pi_group 0 (PushoutPointed f g))
+    => pi_functor-hom {0} (pinl-pointed f g)
+
+  -- | π₁ of pinr-pointed as a group homomorphism π₁(B) → π₁(PushoutPointed f g).
+  \func pi-pinr-hom {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+    : GroupHom (pi_group 0 B) (pi_group 0 (PushoutPointed f g))
+    => pi_functor-hom {0} (pinr-pointed f g)
+
+  -- | Pointwise A-agreement: the two ways of mapping a π₁(A) class into
+  --   π₁(PushoutPointed f g) — via pinl ∘ f, or via pinr ∘ g — give equal
+  --   classes. This is the hom-level analogue of pglue's homotopy. The path
+  --   between the inner loops is left as a hole pending the
+  --   pi_functor-hom-pointed-htpy auxiliary (Tier 2.3); given that lemma,
+  --   the proof reduces to exhibiting a pointed homotopy between
+  --   pinl-pointed ∘ f and pinr-pointed ∘ g, which pglue provides pointwise.
+  \func pushoutVanKampen-coh {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+                             (a : pi_group 0 A)
+    : pi-pinl-hom f g (pi_functor-hom {0} f a) = pi-pinr-hom f g (pi_functor-hom {0} g a)
+    \elim a
+    | in0 loop => pmap in0 {?}
+
+  -- | Back-direction of van Kampen: GroupPushout → π₁(pushout). Drops out of
+  --   recHom once the inclusion homs (pi-pinl-hom, pi-pinr-hom) are in place
+  --   and their A-agreement (pushoutVanKampen-coh) is provided.
+  \func vanKampen-back {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+    : GroupHom (GroupPushout (pi_functor-hom {0} f) (pi_functor-hom {0} g))
+               (pi_group 0 (PushoutPointed f g))
+    => GroupPushout.recHom {pi_group 0 A} {pi_group 0 C} {pi_group 0 B}
+                           {pi_functor-hom {0} f} {pi_functor-hom {0} g}
+                           (pi-pinl-hom f g) (pi-pinr-hom f g) (pushoutVanKampen-coh f g)
+
+  -- | Forward direction of van Kampen: π₁(pushout) → GroupPushout. This is
+  --   the encode-decode hard part; requires reading off how each loop in the
+  --   pushout decomposes into pinl/pinr segments connected by pglue
+  --   transitions. Estimated multi-week to complete; the back-direction
+  --   (vanKampen-back) is already in place to consume this from a future
+  --   session.
+  \func vanKampen-forward {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+    : GroupHom (pi_group 0 (PushoutPointed f g))
+               (GroupPushout (pi_functor-hom {0} f) (pi_functor-hom {0} g))
+    => {?}
+
+  -- | Section: back ∘ forward = id. Half of the iso proof, paired with ret.
+  \func vanKampen-sec {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+    : GroupCat.∘ (vanKampen-back f g) (vanKampen-forward f g)
+    = GroupCat.id (pi_group 0 (PushoutPointed f g))
+    => {?}
+
+  -- | Retraction: forward ∘ back = id.
+  \func vanKampen-ret {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+    : GroupCat.∘ (vanKampen-forward f g) (vanKampen-back f g)
+    = GroupCat.id (GroupPushout (pi_functor-hom {0} f) (pi_functor-hom {0} g))
+    => {?}
+
+  -- | The iso assembled from the four pieces. With this in hand,
+  --   pushoutVanKampen drops out as Cat.isotoid via GroupCat's univalence.
+  \func vanKampen-iso {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+    : Iso {GroupCat} (vanKampen-forward f g)
+    \cowith
+    | hinv => vanKampen-back f g
+    | hinv_f => vanKampen-sec f g
+    | f_hinv => vanKampen-ret f g
 
   \func GroupPushout {A B C : Group} (f : GroupHom A B) (g : GroupHom A C) : Group \cowith
     | E => E
