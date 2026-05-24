@@ -7,8 +7,8 @@ explicit set quotients in favor of the classifying space of the symmetric
 group.
 
 Source: `src/*.ard` (15 modules, ~3100 lines). Compiled with `arend.yaml`
-against `arend-lib`. As of this report **12 open `{?}` goals remain across
-3 modules**: `SPn` (10), `HomotopyGroup` (1), `SPnAxioms` (1).
+against `arend-lib`. As of this report **14 open `{?}` goals remain across
+3 modules**: `SPn` (10), `HomotopyGroup` (3), `SPnAxioms` (1).
 
 ---
 
@@ -63,7 +63,7 @@ SPnAxiom A SPnA :=
 | `SetSP` | ✓ | `SetSP2 A = Trunc0 (borelXn 2 A)` and `SetSP2 A = Trunc0 (naive SP2 A)`. Now uses `setSP2Inj` + `setSP2Inj.base` instead of the separate `borelToSetSP2` helper. |
 | `SPnAxioms` | ◯ | uniqueness, singleton, inclusion, functoriality; 1 hole in `isConnectedSPnX` (choice-over-non-set) |
 | `SPn` | ◯ | partition-pushout scaffolding. `wfPartitions` instance now closed; 10 holes remain in the extension/pushout machinery. |
-| `HomotopyGroup` | ◯ | π_n definition + functoriality + Eckmann-Hilton complete. `GroupPushout` HIT now augmented with hom constructors + its universal property (`recHom`) is proved. Remaining: van Kampen itself. |
+| `HomotopyGroup` | ◯ | π_n + functoriality + Eckmann-Hilton complete. `GroupPushout` HIT with hom constructors + universal property (`recHom`) proved. Van Kampen back-direction (`vanKampen-back`) closed, including `pushoutVanKampen-coh` / `loop-bridge` / `rhs-to-canonical` / `pgrg-cancel`. Remaining: 3 holes, all on the forward (encode-decode) side. |
 | ~~`Join`~~ | removed | retired in §3.6; uses arend-lib's `Homotopy.Join` now. |
 
 **Headline results actually proved.**
@@ -76,7 +76,8 @@ SPnAxiom A SPnA :=
 - **`wfPartitions n`** — `partitions n` is a well-founded poset under the
   "refinement makes you smaller" order (new this round).
 - **Universal property of `GroupPushout`** — case-by-case eliminator into any
-  group given a coherent pair of homs (new this round).
+  group given a coherent pair of homs.
+- **Van Kampen back-direction** — `vanKampen-back f g : GroupHom (GroupPushout (pi_functor-hom f) (pi_functor-hom g)) (pi_group 0 (PushoutPointed f g))`, fully closed including its A-agreement coherence `pushoutVanKampen-coh` (new this round).
 
 **Headline results not yet proved.**
 - Bridge `dcommf2 ↔ commstr 2`, hence `SPnAxiom {2} A (SP2 A)`.
@@ -159,6 +160,51 @@ work.
 
   This is the *existence* half of the universal property. Uniqueness (every
   hom factoring through agrees with `recHom`) is not yet stated.
+
+### 3.9 May 2026 — Van Kampen back-direction fully closed (this session)
+
+The Tier 1.3 hole (`pushoutVanKampen-coh`) and its dependency chain are now
+closed. The back-direction of van Kampen typechecks end-to-end.
+
+**Closed goals (2):**
+
+- **`pi_functor-hom-id`** at `n = 0` (T2): proved
+  `pi_functor-hom {0} (id-pointed X) = GroupHom.id {pi_group 0 X}` via
+  `exts (\lam e => \case \elim e \with { in0 loop => pmap in0 (idp_*> loop) })`.
+  The case-elim on `Trunc0` exposes the underlying `Omega` element; the loop
+  itself reduces to its identity-prefixed form via `idp_*>`. (The general-n
+  version would need induction on n; restricted to n=0 since van Kampen only
+  needs that.)
+
+- **`loop-bridge`** (T1): closes the path-algebra residual inside
+  `pushoutVanKampen-coh`. The proof factors into three pieces:
+
+  1. **`pgrg-cancel`**: small abstract path-algebra helper —
+     ```arend
+     ((inv p1 *> p2) *> p3) *> (inv p3 *> q *> p3) *> inv p3 *> inv p2 *> p1
+       = inv p1 *> (p2 *> q *> inv p2) *> p1
+     ```
+     proved by simultaneous `\elim p1, p2, p3 \| idp, idp, idp => idp`. All
+     three path variables reduce to `idp` in one match; both sides collapse
+     to `q`.
+
+  2. **`rhs-to-canonical`**: rewrites the RHS of `loop-bridge` to canonical
+     form via 8 `rewrite` steps (3× `pmap_inv-comm`, 2× `pmap_*>-comm`, 2×
+     `*>_inv-comm`, 2× `inv_inv`) then a single `pgrg-cancel` application
+     with the concrete paths `pmap pinl f.2`, `path (pglue A.base)`,
+     `pmap pinr g.2`, `pmap pinr (pmap g.1 loop)`.
+
+  3. **`loop-bridge`** body: 5 `pmap_*>-comm` / `pmap_inv-comm` chain steps
+     distributing the LHS to canonical, then `inv (rhs-to-canonical f g loop)`
+     to land on RHS.
+
+  Key trick: bare partial-applied constructors (`pinr {A.E} {C.E} {B.E} {f.1} {g.1}`)
+  rather than lambdas — `\lam b => pinr {...} b` doesn't unify with the bare
+  form in the goal, so `rewrite` patterns require the bare-constructor shape.
+
+**Project state:** 14 goals (SPn 10, HomotopyGroup 3, SPnAxioms 1) — down
+from 16 at the start of the session. HomotopyGroup's remaining 3 goals are
+all on the forward (encode-decode) side; the back-direction is complete.
 
 ### 3.8 May 2026 — HomotopyGroup Tier 1+3 (van Kampen scaffolding)
 
@@ -307,8 +353,8 @@ What's **still missing** to close §4.5:
 
 ## 4. Open goals and next actions
 
-**Current state: 12 open `{?}` goals across 3 modules** (SPn 10,
-HomotopyGroup 1, SPnAxioms 1).
+**Current state: 14 open `{?}` goals across 3 modules** (SPn 10,
+HomotopyGroup 3, SPnAxioms 1).
 
 ### 4.1 `SPn.ard` (10 goals) — partition-pushout construction
 
@@ -352,33 +398,52 @@ After `extend` is closed, `partExtensionsType` / `partExtension` /
 (~1–2 weeks). Finally, the actual `SPnAxiom`-satisfaction proof is its own
 multi-week project not yet stated in the file.
 
-### 4.2 `HomotopyGroup.ard` (1 goal) — `pushoutVanKampen`
+### 4.2 `HomotopyGroup.ard` (3 goals) — forward direction of van Kampen
+
+The back-direction of `pushoutVanKampen` is now fully proved end-to-end:
+`vanKampen-back` consumes `pi-pinl-hom`, `pi-pinr-hom`, and
+`pushoutVanKampen-coh` (closed via `loop-bridge` → `rhs-to-canonical` →
+`pgrg-cancel`) through `GroupPushout.recHom`. The three remaining goals are
+all on the **forward / encode-decode** side:
 
 ```
-pi_group 0 (PushoutPointed f g) = GroupPushout (pi_functor-hom f) (pi_functor-hom g)
+vanKampen-forward  : GroupHom (pi_group 0 (PushoutPointed f g))
+                              (GroupPushout (pi_functor-hom f) (pi_functor-hom g))
+vanKampen-sec      : vanKampen-back ∘ vanKampen-forward = id
+vanKampen-ret      : vanKampen-forward ∘ vanKampen-back = id
 ```
 
-The single open goal is the **set-truncated Seifert–van Kampen theorem**.
+`vanKampen-forward` is the keystone — the other two follow once the forward
+map is concrete enough to compute against.
 
-With `GroupPushout` fixed and `recHom` proved, the forward direction of the
-isomorphism is in reach: given a loop `p : pinl base = pinl base` in
-`PushoutData f g`, lift it to a `pi_1(B)`-element via the `pinl` retraction
-of `Trunc0`, then send via `gpinl` into `GroupPushout`. Same for `pinr`. The
-agreement on `A`'s loops is `gpglue`'s job.
+The mathematical content of `vanKampen-forward`: given a loop
+`p : Trunc0 (pinl C.base = pinl C.base)` in `PushoutPointed f g`, decode it
+into an alternating word in `pi_1(B)` and `pi_1(C)` connected by `gpglue`
+transitions. This is the encode-decode argument for the pushout HIT:
+either build a "code" type fibered over `PushoutData f g` whose total space
+is contractible (Licata-Brunerie style), or work with the explicit free
+product structure of `GroupPushout` and decompose paths.
 
 **Recommended next actions** (in increasing difficulty):
 
 1. **`π_1(S^1) = ℤ`** as a warmup (encode-decode on a single HIT) — ~1 week.
 2. **Special case of van Kampen with `A` contractible**: reduces to
-   `π_1(B ∨ C) = π_1(B) * π_1(C)` (free-product of fundamental groups). Lets
-   you debug the encode-decode argument without the `gpglue` complication.
-   ~1–2 weeks.
-3. **Full van Kampen**: encode-decode of `paths in PushoutData` against the
-   carrier of `GroupPushout`, then promotion through `Trunc0` and group
-   univalence. ~3–5 weeks.
+   `π_1(B ∨ C) = π_1(B) * π_1(C)`. Lets you debug the encode-decode argument
+   without the `gpglue` complication. ~1–2 weeks.
+3. **Full `vanKampen-forward`**: encode-decode of `paths in PushoutData`
+   against the carrier of `GroupPushout`, then promotion through `Trunc0`
+   and group univalence. ~3–5 weeks. `vanKampen-sec`/`vanKampen-ret` follow
+   directly afterward (~1–2 weeks each).
 
 (1) and (2) are independently valuable mathematics and should land in
 arend-lib eventually.
+
+**Auxiliary lemma that may be needed:**
+`pi_functor-hom-comp` and `pi_functor-hom-pointed-htpy` are still unproved
+(currently not stated; `pi_functor-hom-id` is proved at n=0 only). These
+become relevant for proving `vanKampen-sec` and `vanKampen-ret` where one
+needs to identify `pi_functor-hom (id-pointed _) = GroupHom.id` along a
+non-trivial pointed-homotopy chain.
 
 ### 4.3 `SPnAxioms.ard` (1 goal) — connectedness preservation
 
