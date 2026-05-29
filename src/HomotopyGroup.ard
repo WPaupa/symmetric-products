@@ -73,6 +73,19 @@
   }
 }
 
+-- | The identity pointed map, as a section of ->*.
+\func id-pointed (X : Pointed) : X ->* X => (\lam x => x, idp)
+
+-- | π functor preserves identities: pi_functor-hom (id-pointed) = GroupHom.id.
+--   Currently stated; the proof routes through GroupCat's hom equality,
+--   reducing to pointwise func agreement (Trunc0.map of an identity-like
+--   Loop-Func produces in0 ∘ id). Left as {?} for the full equality proof.
+\func pi_functor-hom-id {X : Pointed}
+  : pi_functor-hom {0} (id-pointed X) = GroupHom.id {pi_group 0 X}
+  => exts (\lam e => \case \elim e \with {
+       | in0 loop => pmap in0 (idp_*> loop)
+     })
+
 \instance pi_abgroup (n : Nat) (X : Pointed) : CGroup (pi_.underlying {suc (suc n)} {X})
   | ide => pi_group.ide {suc n}
   | * => pi_group.*
@@ -83,10 +96,198 @@
   | *-comm => pi_group.*-comm
 
 \func pushoutVanKampen {A B C : Pointed} (f : A ->* C) (g : A ->* B) :
-  pi_group 0 (PushoutPointed f g) = GroupPushout (pi_functor-hom {0} f) (pi_functor-hom {0} g) => {?} \where {
+  pi_group 0 (PushoutPointed f g) = GroupPushout (pi_functor-hom {0} f) (pi_functor-hom {0} g)
+  => Cat.isotoid {GroupCat} (pushoutVanKampen.vanKampen-iso f g)
+  \where {
 
   \func PushoutPointed {A B C : Pointed} (f : A ->* C) (g : A ->* B) : Pointed (PushoutData f.1 g.1) \cowith
     | base => pinl C.base
+
+  -- | The pinl-inclusion C → PushoutPointed f g as a pointed map. The
+  --   pointedness condition holds by definition: PushoutPointed's basepoint
+  --   IS `pinl C.base`.
+  \func pinl-pointed {A B C : Pointed} (f : A ->* C) (g : A ->* B) : C ->* PushoutPointed f g =>
+    (\lam c => pinl c, idp)
+
+  -- | The pinr-inclusion B → PushoutPointed f g as a pointed map. The
+  --   pointedness condition routes `pinr B.base` → `pinr (g A.base)` (via g.2)
+  --   → `pinl (f A.base)` (via pglue) → `pinl C.base = base` (via f.2).
+  \func pinr-pointed {A B C : Pointed} (f : A ->* C) (g : A ->* B) : B ->* PushoutPointed f g =>
+    (\lam b => pinr b,
+     pmap pinr (inv g.2) *> inv (path (pglue A.base)) *> pmap pinl f.2)
+
+  -- | π₁ of pinl-pointed as a group homomorphism π₁(C) → π₁(PushoutPointed f g).
+  \func pi-pinl-hom {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+    : GroupHom (pi_group 0 C) (pi_group 0 (PushoutPointed f g))
+    => pi_functor-hom {0} (pinl-pointed f g)
+
+  -- | π₁ of pinr-pointed as a group homomorphism π₁(B) → π₁(PushoutPointed f g).
+  \func pi-pinr-hom {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+    : GroupHom (pi_group 0 B) (pi_group 0 (PushoutPointed f g))
+    => pi_functor-hom {0} (pinr-pointed f g)
+
+  -- | Pointwise A-agreement: the two ways of mapping a π₁(A) class into
+  --   π₁(PushoutPointed f g) — via pinl ∘ f, or via pinr ∘ g — give equal
+  --   classes. After unfolding, the goal is:
+  --
+  --     idp *> pmap pinl (inv f.2 *> pmap f.1 loop *> f.2)
+  --   = inv q *> pmap pinr (inv g.2 *> pmap g.1 loop *> g.2) *> q
+  --
+  --   where q = pmap pinr (inv g.2) *> inv (path (pglue A.base)) *> pmap pinl f.2.
+  --   Cancelling the pmap (·) f.2 / g.2 wrappings on both sides, this reduces
+  --   to the naturality of pglue along loop:
+  --
+  --     pmap (pinl ∘ f.1) loop = pg *> pmap (pinr ∘ g.1) loop *> inv pg
+  --
+  --   (where pg = path (pglue A.base)), provable via `\elim loop | idp => …`
+  --   on a Jl-generalised motive. The `{?}` here awaits this path-algebra
+  --   proof; downstream uses it as a black box so the rest of the iso
+  --   structure is unaffected.
+  -- | pglue's naturality along a general path. For p : A.base = a',
+  --   the two ways of mapping p into the pushout — push then walk via pinl,
+  --   or walk via pinr after a pglue — agree as paths from pinl (f A.base)
+  --   to pinr (g a').
+  \func pglue-nat-general {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+                          {a' : A} (p : A.base = a')
+    : pmap (\lam a => pinl {_} {_} {_} {f.1} {g.1} (f.1 a)) p *> path (pglue a')
+    = path (pglue A.base) *> pmap (\lam a => pinr (g.1 a)) p
+    \elim p
+    | idp => idp_*> _
+
+  \func pushoutVanKampen-coh {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+                             (a : pi_group 0 A)
+    : pi-pinl-hom f g (pi_functor-hom {0} f a) = pi-pinr-hom f g (pi_functor-hom {0} g a)
+    \elim a
+    | in0 loop => pmap in0 (loop-bridge f g loop)
+
+  -- | The path between the two loop representations in PushoutPointed.
+  --   LHS is the pinl-side route; RHS is the pinr-side route (conjugated by
+  --   pglue). The proof reduces to pglue-nat-general after the standard
+  --   path-algebra: cancel outer `pmap pinl f.2` wrappings (both sides have
+  --   them), simplify inner `pgrg *> inv pgrg` etc. on the RHS, then apply
+  --   pglue-nat-general to the residual conjugation.
+  -- | Conjugation form of pglue-nat-general: loop in pinl-side equals
+  --   pglue-conjugated loop in pinr-side. Derived from pglue-nat-general
+  --   by multiplying both sides by inv pg on the right and simplifying.
+  -- | Conjugation form of pglue-nat-general:
+  --     pmap (pinl ∘ f.1) loop = pg *> pmap (pinr ∘ g.1) loop *> inv pg
+  --   Derived from pglue-nat-general by multiplying both sides by `*> inv pg`
+  --   on the right and simplifying `pg *> inv pg = idp`.
+  \func pglue-nat-conj {A B C : Pointed} (f : A ->* C) (g : A ->* B) (loop : A.base = A.base)
+    : pmap (\lam a => pinl {_} {_} {_} {f.1} {g.1} (f.1 a)) loop
+    = path (pglue A.base) *> pmap (\lam a => pinr (g.1 a)) loop *> inv (path (pglue A.base))
+    => \let
+         | pl-loop : pinl {_} {_} {_} {f.1} {g.1} (f.1 A.base) = pinl (f.1 A.base) => pmap (\lam a => pinl (f.1 a)) loop
+         | pr-loop : pinr {_} {_} {_} {f.1} {g.1} (g.1 A.base) = pinr (g.1 A.base) => pmap (\lam a => pinr (g.1 a)) loop
+         | pg : pinl {_} {_} {_} {f.1} {g.1} (f.1 A.base) = pinr (g.1 A.base) => path (pglue A.base)
+         | nat : pl-loop *> pg = pg *> pr-loop => pglue-nat-general f g loop
+       \in -- Goal: pl-loop = pg *> pr-loop *> inv pg
+           -- Chain: pl-loop                                    (= pl-loop *> idp definitionally)
+           --      = pl-loop *> (pg *> inv pg)                  via pmap (·*>) (inv *>_inv pg)
+           --      = (pl-loop *> pg) *> inv pg                  via inv *>-assoc
+           --      = (pg *> pr-loop) *> inv pg                  via pmap (·*> inv pg) nat
+           --      = pg *> (pr-loop *> inv pg)                  via *>-assoc
+           pmap (\lam y => pl-loop *> y) (inv (*>_inv pg))
+           *> inv (*>-assoc pl-loop pg (inv pg))
+           *> pmap (\lam y => y *> inv pg) nat
+           *> *>-assoc pg pr-loop (inv pg)
+
+  -- | Abstract path-algebra: re-associate and cancel two conjugate pairs.
+  --   With p1, p2, p3 eliminated to idp, both sides reduce to q.
+  \func pgrg-cancel {X : \Type} {x0 x1 x2 x3 : X}
+                    (p1 : x0 = x1) (p2 : x0 = x2) (p3 : x2 = x3) (q : x2 = x2)
+    : ((inv p1 *> p2) *> p3) *> (inv p3 *> q *> p3) *> inv p3 *> inv p2 *> p1
+    = inv p1 *> (p2 *> q *> inv p2) *> p1
+    \elim p1, p2, p3
+    | idp, idp, idp => idp
+
+  -- | RHS of loop-bridge, normalized to canonical form
+  --   `inv pglf *> pg *> pr-loop *> inv pg *> pglf`.
+  --   Sequence: distribute outer inv(...); distribute pmap pinr (inv g.2 *> ...);
+  --   convert pmap pinr (inv g.2) to inv pgrg three times; cancel pgrg *> inv pgrg
+  --   pairs twice; clean up idp_*>.
+  \func rhs-to-canonical {A B C : Pointed} (f : A ->* C) (g : A ->* B) (loop : A.base = A.base)
+    : inv (pmap (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) (inv g.2)
+         *> inv (path (pglue A.base)) *> pmap (pinl {A.E} {C.E} {B.E} {f.1} {g.1}) f.2) *>
+      pmap (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) (inv g.2 *> pmap g.1 loop *> g.2) *>
+      pmap (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) (inv g.2)
+        *> inv (path (pglue A.base)) *> pmap (pinl {A.E} {C.E} {B.E} {f.1} {g.1}) f.2
+    = inv (pmap (pinl {A.E} {C.E} {B.E} {f.1} {g.1}) f.2) *>
+      (path (pglue A.base) *>
+       pmap (\lam a => pinr {A.E} {C.E} {B.E} {f.1} {g.1} (g.1 a)) loop *>
+       inv (path (pglue A.base))) *>
+      pmap (pinl {A.E} {C.E} {B.E} {f.1} {g.1}) f.2
+    => run {
+         rewrite (pmap_inv-comm (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) g.2),
+         rewrite (pmap_*>-comm (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) (inv g.2) (pmap g.1 loop *> g.2)),
+         rewrite (pmap_*>-comm (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) (pmap g.1 loop) g.2),
+         rewrite (pmap_inv-comm (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) g.2),
+         rewrite (*>_inv-comm (inv (pmap (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) g.2))
+                              (inv (path (pglue {A.E} {C.E} {B.E} {f.1} {g.1} A.base)) *> pmap (pinl {A.E} {C.E} {B.E} {f.1} {g.1}) f.2)),
+         rewrite (*>_inv-comm (inv (path (pglue {A.E} {C.E} {B.E} {f.1} {g.1} A.base)))
+                              (pmap (pinl {A.E} {C.E} {B.E} {f.1} {g.1}) f.2)),
+         rewrite (inv_inv (path (pglue {A.E} {C.E} {B.E} {f.1} {g.1} A.base))),
+         rewrite (inv_inv (pmap (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) g.2)),
+         pgrg-cancel (pmap (pinl {A.E} {C.E} {B.E} {f.1} {g.1}) f.2)
+                     (path (pglue {A.E} {C.E} {B.E} {f.1} {g.1} A.base))
+                     (pmap (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) g.2)
+                     (pmap (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) (pmap g.1 loop))
+       }
+
+  \func loop-bridge {A B C : Pointed} (f : A ->* C) (g : A ->* B) (loop : A.base = A.base)
+    : path (\lam _ => pinl {_} {_} {_} {f.1} {g.1} C.base) *>
+      path (\lam i => pinl {_} {_} {_} {f.1} {g.1} ((inv f.2 *> pmap f.1 loop *> f.2) @ i))
+    = inv (pmap pinr (inv g.2) *> inv (path (pglue A.base)) *> pmap pinl f.2) *>
+      pmap pinr (inv g.2 *> pmap g.1 loop *> g.2) *>
+      pmap pinr (inv g.2) *> inv (path (pglue A.base)) *> pmap pinl f.2
+    => idp_*> _ *>
+       pmap_*>-comm pinl (inv f.2) (pmap f.1 loop *> f.2) *>
+       pmap (\lam y => pmap pinl (inv f.2) *> y) (pmap_*>-comm pinl (pmap f.1 loop) f.2) *>
+       pmap (\lam y => y *> (pmap pinl (pmap f.1 loop) *> pmap pinl f.2)) (pmap_inv-comm pinl f.2) *>
+       pmap (\lam y => inv (pmap pinl f.2) *> y *> pmap pinl f.2) (pglue-nat-conj f g loop) *>
+       inv (rhs-to-canonical f g loop)
+
+  -- | Back-direction of van Kampen: GroupPushout → π₁(pushout). Drops out of
+  --   recHom once the inclusion homs (pi-pinl-hom, pi-pinr-hom) are in place
+  --   and their A-agreement (pushoutVanKampen-coh) is provided.
+  \func vanKampen-back {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+    : GroupHom (GroupPushout (pi_functor-hom {0} f) (pi_functor-hom {0} g))
+               (pi_group 0 (PushoutPointed f g))
+    => GroupPushout.recHom {pi_group 0 A} {pi_group 0 C} {pi_group 0 B}
+                           {pi_functor-hom {0} f} {pi_functor-hom {0} g}
+                           (pi-pinl-hom f g) (pi-pinr-hom f g) (pushoutVanKampen-coh f g)
+
+  -- | Forward direction of van Kampen: π₁(pushout) → GroupPushout. This is
+  --   the encode-decode hard part; requires reading off how each loop in the
+  --   pushout decomposes into pinl/pinr segments connected by pglue
+  --   transitions. Estimated multi-week to complete; the back-direction
+  --   (vanKampen-back) is already in place to consume this from a future
+  --   session.
+  \func vanKampen-forward {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+    : GroupHom (pi_group 0 (PushoutPointed f g))
+               (GroupPushout (pi_functor-hom {0} f) (pi_functor-hom {0} g))
+    => {?}
+
+  -- | Section: back ∘ forward = id. Half of the iso proof, paired with ret.
+  \func vanKampen-sec {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+    : GroupCat.∘ (vanKampen-back f g) (vanKampen-forward f g)
+    = GroupCat.id (pi_group 0 (PushoutPointed f g))
+    => {?}
+
+  -- | Retraction: forward ∘ back = id.
+  \func vanKampen-ret {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+    : GroupCat.∘ (vanKampen-forward f g) (vanKampen-back f g)
+    = GroupCat.id (GroupPushout (pi_functor-hom {0} f) (pi_functor-hom {0} g))
+    => {?}
+
+  -- | The iso assembled from the four pieces. With this in hand,
+  --   pushoutVanKampen drops out as Cat.isotoid via GroupCat's univalence.
+  \func vanKampen-iso {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+    : Iso {GroupCat} (vanKampen-forward f g)
+    \cowith
+    | hinv => vanKampen-back f g
+    | hinv_f => vanKampen-sec f g
+    | f_hinv => vanKampen-ret f g
 
   \func GroupPushout {A B C : Group} (f : GroupHom A B) (g : GroupHom A C) : Group \cowith
     | E => E
@@ -96,6 +297,13 @@
     | inverse => inverse
     | ide-left {x} => path (ide-left x)
     | inverse-left {x} => path (inverse-left x) \where {
+    -- | HIT presentation of the amalgamated free product B *_A C.
+    --   The first block of constructors give the carrier inclusions and
+    --   the gpglue relation. The second block freely generates a group
+    --   structure on E. The third block enforces that gpinl and gpinr
+    --   are group homomorphisms; without these constructors the HIT would
+    --   present the free group on |B| + |C| with one extra relation,
+    --   not the categorical pushout in Group.
     \truncated \data E : \Set
       | gpinl B
       | gpinr C
@@ -107,5 +315,57 @@
       | inverse E
       | ide-left (x : E) : ide * x = x
       | inverse-left (x : E) : inverse x * x = ide
+
+      | gpinl-* (x y : B) : gpinl (x B.* y) = gpinl x * gpinl y
+      | gpinl-ide : gpinl B.ide = ide
+      | gpinr-* (x y : C) : gpinr (x C.* y) = gpinr x * gpinr y
+      | gpinr-ide : gpinr C.ide = ide
+
+    -- | Universal property of GroupPushout (existence half): given group homs
+    --   h_B : B -> G and h_C : C -> G that agree on A, the induced map
+    --   E -> G is well-defined as the case-by-case eliminator. Each path
+    --   constructor of E maps to the corresponding group-law path in G.
+    \func recE {G : Group} (h_B : GroupHom B G) (h_C : GroupHom C G)
+               (coh : \Pi (a : A) -> h_B (f a) = h_C (g a))
+               (x : E) : G \elim x
+      | gpinl b => h_B b
+      | gpinr c => h_C c
+      | gpglue a i => coh a i
+      | ide => G.ide
+      | x * y => recE h_B h_C coh x G.* recE h_B h_C coh y
+      | *-assoc x y z i => G.*-assoc {recE h_B h_C coh x} {recE h_B h_C coh y} {recE h_B h_C coh z} i
+      | inverse x => G.inverse (recE h_B h_C coh x)
+      | ide-left x i => G.ide-left {recE h_B h_C coh x} i
+      | inverse-left x i => G.inverse-left {recE h_B h_C coh x} i
+      | gpinl-* x y i => h_B.func-* {x} {y} i
+      | gpinl-ide i => h_B.func-ide i
+      | gpinr-* x y i => h_C.func-* {x} {y} i
+      | gpinr-ide i => h_C.func-ide i
+
+    -- | Wrap recE as a GroupHom. The func-* equation holds definitionally:
+    --   recE preserves * by construction (the * clause computes).
+    \func recHom {G : Group} (h_B : GroupHom B G) (h_C : GroupHom C G)
+                 (coh : \Pi (a : A) -> h_B (f a) = h_C (g a))
+      : GroupHom (GroupPushout f g) G \cowith
+      | func x => recE h_B h_C coh x
+      | func-* => idp
+
+    -- | gpinl viewed as a group homomorphism B -> GroupPushout f g.
+    --   Uses the new gpinl-* / gpinl-ide path constructors.
+    \func gpinlHom : GroupHom B (GroupPushout f g) \cowith
+      | func b => gpinl b
+      | func-* {x} {y} => path (gpinl-* x y)
+      | func-ide => path gpinl-ide
+
+    -- | gpinr viewed as a group homomorphism C -> GroupPushout f g.
+    \func gpinrHom : GroupHom C (GroupPushout f g) \cowith
+      | func c => gpinr c
+      | func-* {x} {y} => path (gpinr-* x y)
+      | func-ide => path gpinr-ide
+
+    -- | The two compositions A -> B -> E and A -> C -> E agree at every
+    --   point of A. (Pointwise version of gpglue lifted to a path of homs.)
+    \func gpglue-comm (a : A) : gpinlHom (f a) = {GroupPushout f g} gpinrHom (g a) =>
+      path (gpglue a)
   }
 }

@@ -11,11 +11,33 @@
 \import Logic.Unique
 \import Set
 \import Utilities
-\import Join
+\import Homotopy.Join
 \import Equiv
 \import Equiv.Sigma
 \import Equiv.Univalence
 \import Homotopy.Pushout
+
+-- | Inlined Join helpers (the local Join.ard module was retired in favour
+--   of arend-lib's Homotopy.Join). These two are the only pieces from the
+--   old module that SP2OfSet actually consumes.
+\func joinContrSet {A : \Set} {B : \Prop} (b : B) : isSet (Join A B) =>
+  isProp.=>isSet (isContr=>isProp (Join_Contr A (isProp=>isContr prop-isProp b)))
+
+\func joinEqLeft {A : \Set} {B : \Prop} (ca : A)
+                 (pa : \Pi (a : A) -> pinl ca = {Join A B} pinl a)
+  : Contr (Join A B) \cowith
+  | center => pinl ca
+  | contraction => \case \elim __ \with {
+    | pinl b => pa b
+    | pinr c => path (pglue (ca, c))
+    | pglue a i => glueEq a i
+  } \where {
+  \func glueEq (a : \Sigma A B)
+    : Path (\lam i => pinl ca = pglue a i) (pa a.1) (path (pglue (ca, a.2))) => run {
+    pathOver,
+    joinContrSet a.2 _ _ _ _
+  }
+}
 
 \func base2PathChar (A : BSnbase 2 = BSnbase 2 -> \Type)
                     (pi : A idp) (pn : A (BSnPath _ _ notBS2.notFin2Eq))
@@ -105,7 +127,7 @@
     | pinr c => c
 
   \func condCtrJoinCst (x : A) (K : BS2) (a : joinT (K, \lam _ => x)) : Contr (joinT (K, \lam _ => x))
-    => joinContrRight (isProp=>isContr prop-isProp (condIsPropCst x K a))
+    => Join_Contr (w0 = (K, \lam _ => x)) (isProp=>isContr prop-isProp (condIsPropCst x K a))
   \func contrP (_ : P) : Contr (joinT w0)
     | idp => run {
       unfold w0,
@@ -130,9 +152,9 @@
     | pinl x => \Sigma P (x = x0)
     | pglue (x, K) i => inv (Qeq x K) i
   \func transportQ (a' : \Sigma BS2 P) : transport Q (path (pglue (x0, a'.1))) (a'.2, idp) = {Q (pinr (a'.1, \lam _ => x0))}
-    pinr (a'.2, idp) => isContr=>isProp (joinContrRight
-      {w0 = (a'.1, \lam _ => x0)} {\Sigma P ((\lam _ => x0) = (\lam _ => x0))}
-      (isProp=>isContr prop-isProp (a'.2, idp))) _ _
+    pinr (a'.2, idp) => isContr=>isProp (Join_Contr
+      (w0 = (a'.1, \lam _ => x0))
+      (isProp=>isContr {\Sigma P ((\lam _ => x0) = (\lam _ => x0))} prop-isProp (a'.2, idp))) _ _
 
   \func D : \oo-Type (\suc \lp) => \Sigma (z : gUP) (Q z)
   \func R : \oo-Type (\suc \lp) => \Sigma (w : hUP) (joinT w)
