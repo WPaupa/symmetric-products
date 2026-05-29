@@ -10,13 +10,17 @@
 \import Logic
 \import Logic.Unique
 \import Set
-\import Utilities
 \import Homotopy.Join
 \import Equiv
 \import Equiv.Sigma
 \import Equiv.Univalence
 \import Homotopy.Pushout
-
+\import Utilities.Equiv
+\import Utilities.Fin
+\import Utilities.Join
+\import Utilities.PathFun
+\import Utilities.Paths
+\import Utilities.Pushout
 
 \func base2PathChar (A : BSnbase 2 = BSnbase 2 -> \Type)
                     (pi : A idp) (pn : A (BSnPath _ _ notBS2.notFin2Eq))

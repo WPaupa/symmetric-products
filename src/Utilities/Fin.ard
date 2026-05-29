@@ -1,0 +1,74 @@
+\import Logic
+\import Logic.Unique
+\import Equiv
+\import Data.Or
+\import BSn
+\import Paths
+\import Paths.Meta
+\import Meta
+\import Function.Meta
+
+\func emptyFin0 : Fin 0 = Empty => iso f g sec ret \where {
+  \func f (_ : Fin 0) : Empty
+  \func g (_ : Empty) : Fin 0
+  \func ret (x : Empty) : f (g x) = x
+  \func sec (x : Fin 0) : g (f x) = x
+}
+
+\func contrFin1 : Contr (Fin 1) => Contr.make
+    (Fin.fromNat 0)
+    lem \where {
+  \func lem (a : Fin 1) : Fin.fromNat {0} 0 = a
+    | 0 => idp
+}
+
+\lemma fin2char (x a a' : Fin 2) (n : x /= a) (n1 : x /= a') : a = a' \elim x, a, a'
+  | 0, 0, _ => absurd (n idp)
+  | 1, 1, _ => absurd (n idp)
+  | 0, 1, 0 => absurd (n1 idp)
+  | 0, 1, 1 => idp
+  | 1, 0, 0 => idp
+  | 1, 0, 1 => absurd (n1 idp)
+
+\func fin2Equiv : Equiv {Fin 2} {Fin 2} = Fin 2 => iso f g sec ret \where {
+  \func f (eq : Equiv {Fin 2} {Fin 2}) : Fin 2 => eq 0
+  \func g (_ : Fin 2) : Equiv {Fin 2} {Fin 2}
+    | 0 => idEquiv
+    | 1 => notBS2.notFin2Eq
+  \func fin2Inv (a : Fin 2) : Or (a = 0) (a = 1)
+    | 0 => inl idp
+    | 1 => inr idp
+  \func fNot (eq : Equiv {Fin 2} {Fin 2}) : f eq = notBS2.notFin2 (eq 1) =>
+    \case fin2Inv (f eq), fin2Inv (eq 1) \with {
+      | inl a, inl a1 => \case Equiv.isInj (a1 *> inv a) \with {}
+      | inl a, inr b => rewrite a (rewrite b idp)
+      | inr b, inl a => rewrite b (rewrite a idp)
+      | inr b, inr b1 => \case Equiv.isInj (b1 *> inv b) \with {}
+    }
+
+  \func seca (eq : Equiv {Fin 2} {Fin 2}) (a : Fin 2) : g (f eq) a = eq a \elim a
+    | 0 => \case fin2Inv (eq 0) \with {
+      | inl a => rewrite a idp
+      | inr b => rewrite b idp
+    }
+    | 1 => \case fin2Inv (eq 1) \with {
+      | inl a => rewrite fNot (rewrite a idp)
+      | inr b => rewrite fNot (rewrite b idp)
+    }
+
+  \func sec (eq : Equiv {Fin 2} {Fin 2}) : g (f eq) = eq => run {
+    Equiv.equals,
+    ext,
+    seca eq
+  }
+  \func ret (x : Fin 2) : f (g x) = x
+    | 0 => idp
+    | 1 => idp
+}
+
+\func trivialCaseF2 {A : \Type} {a : A} (p : Fin 2) : (\case p \with {| 0 => a | 1 => a}) = a
+  | 0 => idp
+  | 1 => idp \where {
+  \func extC {A : \Type} {a : A} : (\case __ : Fin 2 \with {| 0 => a | 1 => a}) = \lam _ => a =>
+    ext trivialCaseF2
+} -- this should be a meta

@@ -1,0 +1,132 @@
+\import Homotopy.Pushout
+\import Meta
+\import Paths.Meta
+\import Function.Meta
+\import Utilities.PathFun
+\import Paths
+\import Logic.Unique
+\import Logic
+
+\func Pushoutelim {A B C : \Type} {f : A -> B} {g : A -> C} {Z : PushoutData f g -> \Type}
+                  (lm : \Pi (b : B) -> Z (pinl b))
+                  (rm : \Pi (c : C) -> Z (pinr c))
+                  (gm : \Pi (a : A) -> Path (\lam i => Z (pglue a i)) (lm (f a)) (rm (g a)))
+                  (x : PushoutData f g) : Z x \elim x
+  | pinl b => lm b
+  | pinr c => rm c
+  | pglue a => gm a
+
+\func pushout-colim {A : \Type} {B C D : A -> \Type} (f : \Pi (a : A) -> B a -> C a) (g : \Pi (a : A) -> B a -> D a) :
+  sumPushout = pushoutSum => iso to fro sec ret \where {
+  \func pushoutSum => PushoutData {\Sigma (a : A) (B a)} {\Sigma (a : A) (C a)} {\Sigma (a : A) (D a)}
+      (\lam b => (b.1, f b.1 b.2))
+      (\lam c => (c.1, g c.1 c.2))
+  \func sumPushout => \Sigma (a : A) (PushoutData {B a} {C a} {D a} (f a) (g a))
+  \func to (x : sumPushout) : pushoutSum => \case x.2 \with {
+    | pinl c => pinl (x.1, c)
+    | pinr d => pinr (x.1, d)
+    | pglue b i => pglue (x.1, b) i
+  }
+  \func fro (_ : pushoutSum) : sumPushout
+    | pinl b => (b.1, pinl b.2)
+    | pinr c => (c.1, pinr c.2)
+    | pglue a i => (a.1, pglue a.2 i)
+
+  \func sec (x : sumPushout) : fro (to x) = x => \case x.2 \as x2, idp : x.2 = x2 \with {
+    | pinl b, p => unfold to $ rewrite p $ rewriteI p idp
+    | pinr c, p => unfold to $ rewrite p $ rewriteI p idp
+    | pglue a i, p => unfold to $ rewrite p $ rewriteI p idp
+  }
+
+  \func ret (x : pushoutSum) : to (fro x) = x
+    | pinl b => idp
+    | pinr c => idp
+    | pglue a i => idp
+}
+
+
+
+\func pushout-equiv {A A' B B' C C' : \Type}
+                    (eqA : A = A') (eqB : B = B') (eqC : C = C')
+                    (f : A -> B) (g : A -> C) :
+  PushoutData f g =
+  PushoutData {A'} {B'} {C'} (\lam a' => path-fun eqB (f (path-fun (inv eqA) a')))
+      (\lam a' => path-fun eqC (g (path-fun (inv eqA) a')))
+  | idp, idp, idp, f, g => idp \where {
+  \func beta-pinr {A A' B B' C C' : \Type}
+                  (eqA : A = A') (eqB : B = B') (eqC : C = C')
+                  (f : A -> B) (g : A -> C) (c : C) :
+    path-fun (pushout-equiv eqA eqB eqC f g) (pinr c) = pinr (path-fun eqC c) \elim eqA, eqB, eqC
+    | idp, idp, idp => idp
+  \func beta-pinl {A A' B B' C C' : \Type}
+                  (eqA : A = A') (eqB : B = B') (eqC : C = C')
+                  (f : A -> B) (g : A -> C) (b : B) :
+    path-fun (pushout-equiv eqA eqB eqC f g) (pinl b) = pinl (path-fun eqB b) \elim eqA, eqB, eqC
+    | idp, idp, idp => idp
+  \func beta-pglue {A A' B B' C C' : \Type}
+                   (eqA : A = A') (eqB : B = B') (eqC : C = C')
+                   (f : A -> B) (g : A -> C) (a : A) (i : I) :
+    path-fun (pushout-equiv eqA eqB eqC f g) (pglue a i) = pglue (path-fun eqA a) i \elim eqA, eqB, eqC
+    | idp, idp, idp => idp
+}
+
+\func pushout-eqv-fun {A B C : \Type} (f f' : A -> B) (g g' : A -> C)
+                      (p : f = f') (q : g = g')
+  : PushoutData f g = PushoutData f' g' \elim p, q
+  | idp, idp => idp \where {
+  \func beta-pinr {A B C : \Type} (f f' : A -> B) (g g' : A -> C)
+                  (p : f = f') (q : g = g') (c : C) : path-fun (pushout-eqv-fun f f' g g' p q) (pinr c) = pinr c \elim p, q
+    | idp, idp => idp
+  \func beta-pinl {A B C : \Type} (f f' : A -> B) (g g' : A -> C)
+                  (p : f = f') (q : g = g') (b : B) : path-fun (pushout-eqv-fun f f' g g' p q) (pinl b) = pinl b \elim p, q
+    | idp, idp => idp
+  \func beta-pglue {A B C : \Type} (f f' : A -> B) (g g' : A -> C)
+                   (p : f = f') (q : g = g') (a : A) (i : I) : path-fun (pushout-eqv-fun f f' g g' p q) (pglue a i) = pglue a i \elim p, q
+    | idp, idp => idp
+}
+
+\func pushout-contr {A B C : \Type} (pr : Contr B) (f : A -> B) (g : A -> C) :
+  PushoutData f g = PushoutData {A} {\Sigma} {C} (\lam _ => ()) g => iso to fro sec ret \where {
+  \func to (_ : PushoutData f g) : PushoutData {A} {\Sigma} {C} (\lam _ => ()) g
+    | pinl b => pinl ()
+    | pinr c => pinr c
+    | pglue a i => pglue a i
+  \func fro (_ : PushoutData {A} {\Sigma} {C} (\lam _ => ()) g) : PushoutData f g
+    | pinl b => pinl pr.center
+    | pinr c => pinr c
+    | pglue a i => (pmap pinl (pr.contraction (f a)) *> path (pglue a)) i
+  \func sec (x : PushoutData f g) : fro (to x) = x
+    | pinl b => pmap pinl (pr.contraction b)
+    | pinr c => idp
+    | pglue a i => secGlue a i
+  \func secGlue (a : A) :
+    Path (\lam i => (pmap pinl (pr.contraction (f a)) *> path (pglue a)) @ i = {PushoutData f g} pglue a i)
+        (pmap pinl (pr.contraction (f a))) idp => run {
+    pathOver,
+    *> (coe_path (\lam i => (pmap pinl (pr.contraction (f a)) *> path (pglue a)) @ i) _ (path (pglue a))),
+    rewrite *>_inv-comm,
+    rewrite *>-assoc,
+    rewriteI {2} *>-assoc,
+    rewrite inv_*>,
+    rewrite idp_*>,
+    inv_*> _
+  }
+  \func ret (x : PushoutData {A} {\Sigma} {C} (\lam _ => ()) g) : to (fro x) = x
+    | pinl () => idp
+    | pinr c => idp
+    | pglue a i => retGlue a i
+
+  \func retGlue (a : A) :
+    Path (\lam i => to ((pmap pinl (pr.contraction (f a)) *> path (pglue a)) @ i) = pglue a i) idp idp => run {
+    pathOver,
+    *> (coe_path (\lam i => to ((pmap pinl (pr.contraction (f a)) *> path (pglue a)) @ i)) _ (path (pglue a))),
+    rewrite idp_*>,
+    rewriteI (pmap_inv-comm to (pmap pinl (pr.contraction (f a)) *> path (pglue a))),
+    rewrite *>_inv-comm,
+    rewrite pmap_*>-comm,
+    rewrite pmap_inv-comm,
+    rewrite pmap_inv-comm,
+    unfold pmap,
+    inv_*> _
+  }
+}

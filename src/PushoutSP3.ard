@@ -9,11 +9,11 @@
 \import Logic.Unique
 \import Meta
 \import Paths.Meta
-\import Utilities
 \import Equiv
 \import Paths
 \import Equiv.Univalence
 \import Data.Sigma
+\import Utilities.Pushout
 
 \func orConst {A B C : \Type} (x : C) : (\lam _ => x) = Or.rec {A} {B} (\lam _ => x) (\lam _ => x) =>
   ext orConstX \where

@@ -6,7 +6,7 @@
 \import Paths.Meta
 \import Paths
 \import SPnAxioms
-\import Utilities
+\import Utilities.Unit
 
 \func commfunc (n : Nat) (A : \Type) (B : \Type) : \Type =>
   \Sigma (f : (Fin n -> A) -> B) (TruncP (\Sigma (str : commstr n A B) (commstr.f str = f))) \where {
@@ -31,7 +31,7 @@
   )
 
 \func AltToReg {n : Nat} {A : \Type} {SPnA : \Type}
-  (ax : SPnAxiomAlt {n} A SPnA) : TruncP (SPnAxiom {n} A SPnA) =>
+               (ax : SPnAxiomAlt {n} A SPnA) : TruncP (SPnAxiom {n} A SPnA) =>
   TruncP.map ax.1.2 (\lam cf => (cf.1, \lam T g => run {
     rewrite (commfunc.from-commstr-beta g),
     rewrite cf.2,

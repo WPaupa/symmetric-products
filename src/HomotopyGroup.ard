@@ -6,7 +6,6 @@
 \import Paths
 \import Algebra.Group
 \import Algebra.Group.GroupHom
-\import Utilities
 \import Homotopy.EckmannHilton \hiding (#, .#, o, .o)
 \import Homotopy.Pushout
 \import Logic

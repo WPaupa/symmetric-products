@@ -1,0 +1,25 @@
+\import Homotopy.Join
+\import Logic.Unique
+\import Logic
+\import Homotopy.Pushout
+\import Paths
+\import Meta
+
+\func joinContrSet {A : \Set} {B : \Prop} (b : B) : isSet (Join A B) =>
+  isProp.=>isSet (isContr=>isProp (Join_Contr A (isProp=>isContr prop-isProp b)))
+
+\func joinEqLeft {A : \Set} {B : \Prop} (ca : A)
+                 (pa : \Pi (a : A) -> pinl ca = {Join A B} pinl a)
+  : Contr (Join A B) \cowith
+  | center => pinl ca
+  | contraction => \case \elim __ \with {
+    | pinl b => pa b
+    | pinr c => path (pglue (ca, c))
+    | pglue a i => glueEq a i
+  } \where {
+  \func glueEq (a : \Sigma A B)
+    : Path (\lam i => pinl ca = pglue a i) (pa a.1) (path (pglue (ca, a.2))) => run {
+    pathOver,
+    joinContrSet a.2 _ _ _ _
+  }
+}

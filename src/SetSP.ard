@@ -14,9 +14,8 @@
 \import Paths.Meta
 \import SPnAxioms
 \import Set
-\import Utilities
-
 \import SP2OfSet
+\import Utilities.Trunc
 
 \truncated \data SetSP2 (A : \Type) : \Set
   | inSP2 A A

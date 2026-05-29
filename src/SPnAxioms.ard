@@ -11,9 +11,10 @@
 \import Logic.Unique
 \import Paths
 \import Paths.Meta
-\import Utilities
 \import Commutative
 \import Borel
+\import Utilities.Paths
+\import Utilities.Unit
 
 \func SPnAxiom {n : Nat} (A : \Type) (SPnA : \Type) : \Type =>
   \Sigma (inj : commstr n A SPnA) (\Pi (T : \oo-Type) (g : commstr n A T) ->

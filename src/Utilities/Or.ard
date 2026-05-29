@@ -1,0 +1,32 @@
+\import Data.Or
+\import Logic.Unique
+\import Logic
+\import Paths
+
+\func Or-assoc {A B C : \Type} : Or A (Or B C) = Or (Or A B) C => iso f g sec ret \where {
+  \func f (_ : Or A (Or B C)) : Or (Or A B) C
+    | inl a => inl (inl a)
+    | inr (inl b) => inl (inr b)
+    | inr (inr c) => inr c
+
+  \func g (_ : Or (Or A B) C) : Or A (Or B C)
+    | inl (inl a) => inl a
+    | inl (inr b) => inr (inl b)
+    | inr c => inr (inr c)
+
+  \func sec (x : Or A (Or B C)) : g (f x) = x
+    | inl _ => idp
+    | inr (inl _) => idp
+    | inr (inr _) => idp
+
+  \func ret (x : Or (Or A B) C) : f (g x) = x
+    | inl (inl _) => idp
+    | inl (inr _) => idp
+    | inr _ => idp
+}
+
+\func OrlevelProp {A B : \Type} (p : isProp A) (q : isProp B) (e : A -> B -> Empty) (x y : Or A B) : x = y \elim x, y
+  | inl a, inl a' => pmap inl (p a a')
+  | inl a, inr b => absurd (e a b)
+  | inr b, inl a => absurd (e a b)
+  | inr b, inr b' => pmap inr (q b b')

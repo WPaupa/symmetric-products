@@ -1,0 +1,29 @@
+\import Logic
+\import Logic.Unique
+\import Paths
+\import Set
+
+\func TruncPmap2 {A B C : \Type} (t1 : TruncP A) (t2 : TruncP B) (f : A -> B -> C) :
+  TruncP C \elim t1, t2
+  | inP a1, inP a2 => inP (f a1 a2)
+
+\func TruncPrec2 {A B C : \Type} (t1 : TruncP A) (t2 : TruncP B) (f : A -> B -> TruncP C)
+  : TruncP C \elim t1, t2
+  | inP a1, inP a2 => f a1 a2
+
+\lemma TruncPelim {A : \Type} {P : TruncP A -> \Type}
+                  (pr : \Pi (y : TruncP A) -> isProp (P y)) (f : \Pi (a : A) -> P (inP a)) (x : TruncP A) : P x =>
+  TruncP.remove (pr x) (rec f x) \where {
+  \lemma rec (f : \Pi (a : A) -> P (inP a)) (y : TruncP A) : TruncP (P y) \elim y
+    | inP a => inP (f a)
+}
+
+\func Trunc0Eq {A : \Type} (pr : isSet A) : Trunc0 A = A => iso f in0 sec ret \where {
+  \sfunc f (x : Trunc0 A) : A \level pr \elim x
+    | in0 a => a
+
+  \sfunc sec (x : Trunc0 A) : in0 (f x) = x \elim x
+    | in0 a => pmap in0 (\peval f (in0 a))
+
+  \func ret (x : A) : f (in0 x) = x => \peval f (in0 x)
+}

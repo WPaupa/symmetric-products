@@ -12,13 +12,13 @@
 \import Function
 \import Paths
 \import Paths.Meta
-\import Utilities
 \import Logic
 \import Logic.Unique
 \import Arith.Nat
 \import Order.PartialOrder
 \import Set
 \import Order.StrictOrder
+\import Utilities.Poset
 
 \data partitionInto (n : Nat) (k : Nat) : \Set \elim k
   | 1 => idPart (0 NatSemiring.< n)

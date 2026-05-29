@@ -5,7 +5,7 @@
 \import Logic.Classical
 \import Paths
 \import Set
-\import Utilities
+\import Utilities.Trunc
 
 \func lemOnTrue {X : \Prop} {dec : Dec X} (x : X) : dec = yes x
   | {X}, {yes e}, x => pmap yes (prop-isProp {X} e x)

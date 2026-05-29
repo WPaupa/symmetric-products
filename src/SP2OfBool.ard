@@ -10,8 +10,10 @@
 \import Logic
 \import Logic.Unique
 \import Set
-\import Utilities
 \import Equiv
+\import Utilities.Or
+\import Utilities.Fin
+\import Utilities.Paths
 
 \func BoolFactOr (X A B : \Type) (f : X -> Or A B) : \Sigma (g : X -> Fin 2) (g = \lam x => h (f x)) =>
   (\lam x => \case f x \with {

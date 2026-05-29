@@ -1,0 +1,48 @@
+\import Equiv
+\import Equiv.Univalence
+\import Paths.Meta
+\import Logic.Unique
+\import Equiv.Sigma
+\import Utilities.Unit
+\import Meta
+
+\func eqvFun {A B : \Type} (e : Equiv {A} {B}) : A -> B => e
+
+\func symEquiv (eq : Equiv) : Equiv \cowith
+  | A => eq.B
+  | B => eq.A
+  | f => eq.ret
+  | ret => eq.f
+  | ret_f => eq.f_ret
+  | sec => eq.f
+  | f_sec => eq.ret_f
+
+\func symSymEquiv {A B : \Type} (eq : Equiv {A} {B}) : symEquiv (symEquiv eq) = eq =>
+  Equiv.equals {_} {_} {symEquiv (symEquiv eq)} {eq} idp
+
+\func transId {A B : \Type} (eq : Equiv {A} {B}) : transEquiv eq idEquiv = eq =>
+  Equiv.equals {_} {_} {transEquiv eq idEquiv} {eq} idp
+
+\func idToIde {A : \Type} : =-to-Equiv (idp {\Type} {A}) = idEquiv => idp
+\func idToId {A : \Type} : Equiv-to-= (idEquiv {A}) = idp {\Type} {A} =>
+  rewriteI idToIde (univalence.ret_f idp)
+
+\func eqvContr {A B : \Type} (pa : Contr A) (pb : Contr B) : \Pi (f : A -> B) -> Equiv f => run {
+  rewrite (isContrEqUnit pa),
+  rewrite (isContrEqUnit pb),
+  \lam f,
+  rewrite (funcToUnit.eq f (\lam x => x)),
+  idEquiv
+}
+
+\func fundamentalIP {A : \Type} {a a' : A} {R : A -> \Type} (r : R a) (cr : Contr (\Sigma (a : A) (R a))) :
+  (a = a') = R a' => Equiv-to-= (fEquiv a') \where {
+  \func f (a' : A) (p : a = a') : R a' \elim p
+    | idp => r
+  \func totalEq : Equiv (totalEquiv.total {A} {\lam a' => a = a'} {\lam a' => R a'} {f}) =>
+    eqvContr
+        (lsigma a)
+        cr
+        (totalEquiv.total {A} {\lam a' => a = a'} {\lam a' => R a'} {f})
+  \func fEquiv : \Pi (a' : A) -> Equiv (f a') => rewrite (totalEquiv f) totalEq
+}

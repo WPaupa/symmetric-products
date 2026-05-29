@@ -1,0 +1,20 @@
+\import Meta
+\import Paths.Meta
+\import Function.Meta
+\import Logic.Unique
+
+\func exists! (A : \Type) (B : A -> \Type) : \Type => Contr (\Sigma (x : A) (B x))
+
+\func funcToUnit {A : \Type} : (A -> \Sigma) = (\Sigma) => iso
+    (\lam _ => ())
+    (\lam _ _ => ())
+    (\lam _ => ext)
+    (\lam _ => idp) \where {
+  \func eq : \Pi (f g : A -> \Sigma) -> f = g => rewrite funcToUnit $ \lam _ _ => idp
+}
+
+\func isContrEqUnit {X : \Type} (pr : Contr X) : X = (\Sigma) => iso
+    (\lam _ => ())
+    (\lam _ => pr.center)
+    pr.contraction
+    (\lam _ => idp)

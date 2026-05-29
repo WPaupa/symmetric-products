@@ -10,7 +10,7 @@
 \import Homotopy.Pushout
 \import Paths
 \import Data.Or
-\import Utilities
+\import Utilities.Paths
 
 \data SP2 (A : \Type)
   | sigma (f : borelXn 2 A)

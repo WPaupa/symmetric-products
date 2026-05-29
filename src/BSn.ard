@@ -11,9 +11,13 @@
 \import Logic
 \import Logic.Unique
 \import Paths
-\import Utilities
 \import Homotopy.HLevel
 \import Set
+\import Utilities.Equiv
+\import Utilities.Fin
+\import Utilities.Or
+\import Utilities.Paths
+\import Utilities.Trunc
 
 \func BSn (n : Nat) => \Sigma (X : \Set) (TruncP (Equiv {X} {Fin n}))
 
@@ -142,52 +146,52 @@
           | yes e => fzero
           | no n => 1
         }) (\lam {a} {a'} p => \case decBSn X x a, decBSn X x a' \with {
-        | yes e, yes e1 => inv e *> e1
-        | yes e, no n =>
-          \case run {
+          | yes e, yes e1 => inv e *> e1
+          | yes e, no n =>
+            \case run {
+              rewrite decBSn.beta,
+              rewrite e,
+              rewrite (decBSn.beta' X x a' n),
+              p
+            } \with {}
+          | no n, yes e => \case run {
             rewrite decBSn.beta,
             rewrite e,
-            rewrite (decBSn.beta' X x a' n),
+            rewrite (decBSn.beta' X x a n),
             p
           } \with {}
-        | no n, yes e => \case run {
-          rewrite decBSn.beta,
-          rewrite e,
-          rewrite (decBSn.beta' X x a n),
-          p
-        } \with {}
-        | no n, no n1 => bs2char X x a a' n n1
-      }) (\lam y => TruncP.map X.2 (\lam eq =>
-          transportInv
-              (\lam t => \Pi (x : t.1) -> \Sigma (x1 : t.1) ((\case decBSn {2} t x x1 \with {
-                | yes e => fzero
-                | no n => 1
-              }) = {Fin 2} y))
-              (BSnPath X (BSnbase 2) eq)
-              (\lam x => \case fin2Equiv.fin2Inv x, fin2Equiv.fin2Inv y \with {
-                | inl p, inl q => (y, run {
-                  rewrite (p, q),
-                  rewrite (decBSn.beta (BSnbase 2)),
-                  idp
+          | no n, no n1 => bs2char X x a a' n n1
+        }) (\lam y => TruncP.map X.2 (\lam eq =>
+            transportInv
+                (\lam t => \Pi (x : t.1) -> \Sigma (x1 : t.1) ((\case decBSn {2} t x x1 \with {
+                  | yes e => fzero
+                  | no n => 1
+                }) = {Fin 2} y))
+                (BSnPath X (BSnbase 2) eq)
+                (\lam x => \case fin2Equiv.fin2Inv x, fin2Equiv.fin2Inv y \with {
+                  | inl p, inl q => (y, run {
+                    rewrite (p, q),
+                    rewrite (decBSn.beta (BSnbase 2)),
+                    idp
+                  })
+                  | inl p, inr q => (y, run {
+                    rewrite (p, q),
+                    rewrite (decBSn.beta' (BSnbase 2) 0 1 (/=-sym fsuc/=0)),
+                    idp
+                  })
+                  | inr p, inl q => (notBS2.notFin2 y, run {
+                    rewrite (p, q),
+                    rewrite (decBSn.beta (BSnbase 2)),
+                    idp
+                  })
+                  | inr p, inr q => (notBS2.notFin2 y, run {
+                    rewrite (p, q),
+                    rewrite (decBSn.beta' (BSnbase 2) 1 0 fsuc/=0),
+                    idp
+                  })
                 })
-                | inl p, inr q => (y, run {
-                  rewrite (p, q),
-                  rewrite (decBSn.beta' (BSnbase 2) 0 1 (/=-sym fsuc/=0)),
-                  idp
-                })
-                | inr p, inl q => (notBS2.notFin2 y, run {
-                  rewrite (p, q),
-                  rewrite (decBSn.beta (BSnbase 2)),
-                  idp
-                })
-                | inr p, inr q => (notBS2.notFin2 y, run {
-                  rewrite (p, q),
-                  rewrite (decBSn.beta' (BSnbase 2) 1 0 fsuc/=0),
-                  idp
-                })
-              })
-              x
-      ))
+                x
+        ))
 
       \func sec (eq : Equiv {X.1} {Fin 2}) : g (f eq) = eq => Equiv.equals $ ext \lam x => \case decBSn X (f eq) x \with {
         | yes e => run {
@@ -391,8 +395,8 @@
     (\lam (a : A 0) (b : A 1) => recFin2 {A} (f a b 0) (f a b 1)) = f => ext recFin2Beta
   \func recFin2Eta {A : \Type} (a : A) : recFin2 a a = \lam _ => a =>
     pmap (__ a a) $ recFin2BetaExt {\lam _ => A} {\lam _ _ _ => a}
-  \func recFin2BetaSimp {A : \Type} (y : Fin 2 -> A) : recFin2 {\lam _ => A} (y 0) (y 1) = y => ext $ \lam x =>
-    recFin2Beta {\lam _ => A} {\lam _ _ => y} (y 0) (y 1) x
+  \func recFin2BetaSimp {A : \Type} (y : Fin 2 -> A) : recFin2 {\lam _ => A} (y 0) (y 1) = y =>
+    ext $ \lam x => recFin2Beta {\lam _ => A} {\lam _ _ => y} (y 0) (y 1) x
 
   \func elimBool*Contr {A : Fin 2 -> \Type} :
     Contr (\Sigma (f : A 0 -> A 1 -> \Pi (y : (BSnbase 2).1) -> A y)
@@ -457,6 +461,6 @@
     \lemma beta {A : \Set} {X : BSn 2} (x : X.1) (f : X.1 -> A)
                 (h : \Pi (y : X.1) -> f y = f (notBS2 y))
       : setRecBS2 X f h = f x => pmap (\lam s => s.1 f h) $
-      TruncP.rec-set.level (\lam y => elimBS2 {X} _ y idp idp) _
-          (\lam (g : X.1 -> A) _ => g x, inP (x, idp))
+    TruncP.rec-set.level (\lam y => elimBS2 {X} _ y idp idp) _
+        (\lam (g : X.1 -> A) _ => g x, inP (x, idp))
   }
