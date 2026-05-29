@@ -1,10 +1,10 @@
-\import BSn
-\import Borel
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
 \import Data.Or
 \import Data.Fin
 \import Function.Meta
 \import Meta
-\import OrbitSP2
+\import SymmetricProducts.OrbitSP2
 \import Paths
 \import Paths.Meta
 \import Logic

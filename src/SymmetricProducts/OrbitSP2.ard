@@ -1,9 +1,9 @@
-\import BSn
-\import Commutative
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Commutative
 \import Function.Meta
 \import Meta
 \import Paths.Meta
-\import Borel
+\import SymmetricProducts.Borel
 \import Logic.Unique
 \import Logic
 \import Homotopy.Pointed

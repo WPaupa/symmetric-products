@@ -1,9 +1,9 @@
 \import Algebra.Meta
 \import Algebra.Monoid
 \import Algebra.Ordered
-\import BSn
+\import SymmetricProducts.BSn
 \import Meta
-\import Borel
+\import SymmetricProducts.Borel
 \import Data.List
 \import Data.Fin
 \import Data.Or

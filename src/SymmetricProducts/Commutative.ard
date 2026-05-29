@@ -1,4 +1,4 @@
-\import BSn
+\import SymmetricProducts.BSn
 \import Data.Or
 \import Function.Meta
 \import Meta

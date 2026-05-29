@@ -1,6 +1,6 @@
-\import BSn
-\import Borel
-\import Commutative
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import SymmetricProducts.Commutative
 \import Data.Fin
 \import Equiv
 \import Equiv.Univalence
@@ -9,12 +9,12 @@
 \import Logic.Meta
 \import Logic.Unique
 \import Meta
-\import OrbitSP2
+\import SymmetricProducts.OrbitSP2
 \import Paths
 \import Paths.Meta
-\import SPnAxioms
+\import Ideas.SPnAxioms
 \import Set
-\import SP2OfSet
+\import SymmetricProducts.SP2OfSet
 \import Utilities.Trunc
 
 \truncated \data SetSP2 (A : \Type) : \Set

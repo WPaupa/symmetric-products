@@ -2,7 +2,7 @@
 \import Logic.Unique
 \import Equiv
 \import Data.Or
-\import BSn
+\import SymmetricProducts.BSn
 \import Paths
 \import Paths.Meta
 \import Meta

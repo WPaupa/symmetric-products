@@ -1,5 +1,5 @@
-\import BSn
-\import Borel
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
 \import Function.Meta
 \import Function
 \import Homotopy.Pushout

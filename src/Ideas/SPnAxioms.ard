@@ -1,18 +1,18 @@
-\import BSn
+\import SymmetricProducts.BSn
 \import Data.Bool
 \import Data.Or
 \import Data.Sigma
 \import Function
 \import Homotopy.Connected
 \import Homotopy.Space
-\import LEMConnectedness
+\import Ideas.LEMConnectedness
 \import Logic
 \import Logic.Classical
 \import Logic.Unique
 \import Paths
 \import Paths.Meta
-\import Commutative
-\import Borel
+\import SymmetricProducts.Commutative
+\import SymmetricProducts.Borel
 \import Utilities.Paths
 \import Utilities.Unit
 

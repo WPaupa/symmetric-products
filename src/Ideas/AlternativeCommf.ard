@@ -1,11 +1,11 @@
-\import BSn
-\import Commutative
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Commutative
 \import Logic
 \import Logic.Unique
 \import Meta
 \import Paths.Meta
 \import Paths
-\import SPnAxioms
+\import Ideas.SPnAxioms
 \import Utilities.Unit
 
 \func commfunc (n : Nat) (A : \Type) (B : \Type) : \Type =>
