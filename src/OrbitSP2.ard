@@ -54,43 +54,10 @@
   \Sigma (f : commstr 2 A T) (\Pi (a : A) (X : BSn 2) -> f (BSnbase 2) (\lam _ => a) = f X (\lam _ => a)) \where {
   \func compose \plevels p1 <= p2 {A : \Type p1} {M T : \Type p2} (f : dcommf2 A T) (g : T -> M) : dcommf2 A M =>
     (commstr.compose \levels (p1, p2) \lh f.1 g, \lam a X => pmap g (f.2 a X))
-
-  -- | Canonical promotion of a commstr 2 into a Set to a dcommf2.
-  --   The coherence path is unique by set-pi (every two paths between two
-  --   points in a Set are equal), so propositional BSn-induction extracts a
-  --   chosen path starting from idp at the basepoint.
-  \func fromCommstrSet {A : \Type} {T : \Set} (f : commstr 2 A T) : dcommf2 A T =>
-    (f, fromCommstrSet.coh f) \where {
-    \func cohProp {T : \Set} {t1 t2 : T} : isProp (t1 = t2) =>
-      \lam p q => set-pi
-
-    \func coh {A : \Type} {T : \Set} (f : commstr 2 A T)
-              (a : A) (X : BSn 2)
-      : f (BSnbase 2) (\lam _ => a) = f X (\lam _ => a) =>
-      recPropBSn {2} {\lam Y => f (BSnbase 2) (\lam _ => a) = f Y (\lam _ => a)}
-                 (\lam _ => cohProp)
-                 idp X
-
-    \func base {A : \Type} {T : \Set} (f : commstr 2 A T) (a : A)
-      : coh f a (BSnbase 2) = idp =>
-      recPropBSn.beta {2} {\lam Y => f (BSnbase 2) (\lam _ => a) = f Y (\lam _ => a)}
-                      {\lam _ => cohProp}
-                      {idp}
-  }
 }
 
 \func injSP2 {A : \Type} : dcommf2 A (SP2 A) => (\lam T x => sigma (T, x),
                                                  \lam a X => inv (path (tau a (BSnbase 2))) *> path (tau a X))
-
--- | When T is a set, every commstr 2 A T lifts to a function SP2 A -> T
---   without the user supplying the dcommf2 path data: the bridge picks the
---   coherence canonically via set-pi.
-\func liftSP2-fromSet {A : \Type} {T : \Set} (g : commstr 2 A T) : SP2 A -> T =>
-  liftSP2 (dcommf2.fromCommstrSet g) \where {
-  -- | Beta: agrees with g on every sigma (X, x), not just the basepoint.
-  \func coh {A : \Type} {T : \Set} {g : commstr 2 A T} (X : BSn 2) (x : X.1 -> A)
-    : liftSP2-fromSet g (injSP2.1 X x) = g X x => idp
-}
 
 \func liftSP2 {A T : \Type} (f : dcommf2 \levels \lp \lh A T) : SP2 A -> T =>
   SP2.rec (liftBorelXn f.1) f.2 \where {

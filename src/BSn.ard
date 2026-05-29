@@ -137,12 +137,11 @@
                 (inv (Equiv-to-= eq))
                 fin2char
         )
-      \func g (x : X.1) : Equiv {X.1} {Fin 2} => Equiv.fromInjSurj (
-                                                                     \case decBSn X x __ \with {
-                                                                       | yes e => fzero
-                                                                       | no n => 1
-                                                                     }
-                                                                   ) (\lam {a} {a'} p => \case decBSn X x a, decBSn X x a' \with {
+      \func g (x : X.1) : Equiv {X.1} {Fin 2} =>
+        Equiv.fromInjSurj (\case decBSn X x __ \with {
+          | yes e => fzero
+          | no n => 1
+        }) (\lam {a} {a'} p => \case decBSn X x a, decBSn X x a' \with {
         | yes e, yes e1 => inv e *> e1
         | yes e, no n =>
           \case run {
@@ -231,8 +230,8 @@
     (contrTotalBSn.contraction (X, x))
     pr
 
-\func JBS2
-  (A : \Pi (X : BSn 2) (x : X.1) -> \Type)
+\func JBS2 \plevels p1 <= p2
+  (A : \Pi (X : \Sigma (X : \Set p1) (TruncP (Equiv {X} {Fin 2}))) (x : X.1) -> \Type p2)
   (pr : A (BSnbase 2) (Fin.fromNat 0))
   {X : BSn 2} {x : X.1} : A X x => transport {\Sigma (X : BSn 2) X.1}
     (\lam t => A t.1 t.2) {BSnbase 2, Fin.fromNat 0} {X, x}
@@ -455,14 +454,9 @@
       elimBS2 {X} _ x idp idp
   )).1 f h
   \where {
-    -- | For any chosen element x : X.1, setRecBS2 X f h = f x.
-    --   This is the universal beta rule, which holds because TruncP.rec-set
-    --   into a propositional Sigma is uniquely determined.
     \lemma beta {A : \Set} {X : BSn 2} (x : X.1) (f : X.1 -> A)
                 (h : \Pi (y : X.1) -> f y = f (notBS2 y))
-      : setRecBS2 X f h = f x => unfold setRecBS2 $
-      pmap (\lam s => s.1 f h)
-        (TruncP.rec-set.level (\lam y => elimBS2 {X} _ y idp idp) _
-            (\lam (g : X.1 -> A) (_ : \Pi (y : X.1) -> g y = g (notBS2 y)) => g x,
-             inP (x, idp)))
+      : setRecBS2 X f h = f x => pmap (\lam s => s.1 f h) $
+      TruncP.rec-set.level (\lam y => elimBS2 {X} _ y idp idp) _
+          (\lam (g : X.1 -> A) _ => g x, inP (x, idp))
   }

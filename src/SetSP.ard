@@ -17,7 +17,6 @@
 \import Utilities
 
 \import SP2OfSet
-\import SPnInductiveWrong (SP2 \as NaiveSP2, delta \as nDelta, inSP, deltaEq, inSPEq)
 
 \truncated \data SetSP2 (A : \Type) : \Set
   | inSP2 A A
@@ -27,9 +26,8 @@
   \lam B x => setRecBS2 B (\lam b => inSP2 (x b) (x (notBS2 b)))
       (\lam b => rewrite (notNotBS2 b) (\lam i => symSP2 (x b) (x (notBS2 b)) i))
   \where {
-    -- | Beta rule for setSP2Inj at BSnbase 2: it returns inSP2 (f 0) (f 1).
-    \lemma base {A : \Set} (f : Fin 2 -> A) : setSP2Inj (BSnbase 2) f = inSP2 (f 0) (f 1) =>
-      setRecBS2.beta (0 : Fin 2) _ _ *> pmap (\lam y => inSP2 (f 0) (f y)) (notFin2isNot 0)
+    \lemma beta {A : \Set} (f : Fin 2 -> A) : setSP2Inj (BSnbase 2) f = inSP2 (f 0) (f 1) =>
+      setRecBS2.beta fzero _ _ *> pmap (\lam y => inSP2 (f 0) (f y)) (notFin2isNot 0)
   }
 
 \func recSetSP2 {A : \Set} {T : \Set} (f : A -> A -> T)
@@ -42,98 +40,36 @@
   (\lam a a' => commstr.f f (elimBS2.recFin2 a a'))
   (\lam a a' => rewrite (commstr2IsComm f a a') idp)
 
--- | SP2 of a set is the 0-truncation of the naive HIT for SP2.
-\func setTruncNaiveSP2 {A : \Type} : SetSP2 A = Trunc0 (NaiveSP2 A) =>
-  iso to fro sec ret \where {
-    \func fro' (x : NaiveSP2 A) : SetSP2 A
-      | nDelta a => inSP2 a a
-      | inSP a a' => inSP2 a a'
-      | deltaEq a i => inSP2 a a
-      | inSPEq a a' i => symSP2 a a' i
 
-    \func fro (x : Trunc0 (NaiveSP2 A)) : SetSP2 A
-      | in0 nsp => fro' nsp
-
-    \func to (x : SetSP2 A) : Trunc0 (NaiveSP2 A)
-      | inSP2 a a' => in0 (inSP a a')
-      | symSP2 a a' i => in0 (inSPEq a a' i)
-
-    \func sec (x : SetSP2 A) : fro (to x) = x
-      | inSP2 a a' => idp
-
-    \func retNSP (x : NaiveSP2 A) : to (fro' x) = in0 x
-      | nDelta a => pmap in0 (path (deltaEq a))
-      | inSP a a' => idp
-
-    \func ret (x : Trunc0 (NaiveSP2 A)) : to (fro x) = x
-      | in0 nsp => retNSP nsp
-  }
-
--- | The swap path in borelXn 2 A: swapping the two components of recFin2.
 \func swapBorel {A : \Type} (a a' : A) :
   (BSnbase 2, elimBS2.recFin2 a a') = {borelXn 2 A} (BSnbase 2, elimBS2.recFin2 a' a) =>
-  SigmaPath (BSnPath (BSnbase 2) (BSnbase 2) notBS2.notFin2Eq) funP \where {
-
-    \func transport-proj1 {x y : BSn 2} (p : x = y) (f : x.1 -> A) :
-      transport (\lam (X : BSn 2) => X.1 -> A) p f = transport (\lam (T : \Type) => T -> A) (pmap (\lam (s : BSn 2) => s.1) p) f
-      \elim p
-      | idp => idp
-
-    \func proj1bsnP : pmap (\lam (s : BSn 2) => s.1) (BSnPath (BSnbase 2) (BSnbase 2) notBS2.notFin2Eq) = Equiv-to-= notBS2.notFin2Eq =>
-      run {
-        unfold BSnPath,
-        SigmaPropPathBeta2 {\Set} {\lam A => TruncP (Equiv {A} {Fin 2})}
-            (\lam A x y => path (truncP {Equiv {A} {Fin 2}} x y))
-            {Fin 2} {Fin 2}
-            (Equiv-to-= notBS2.notFin2Eq)
-            {(BSnbase 2).2} {(BSnbase 2).2}
-      }
-
-    \func recFlip (x : Fin 2) : elimBS2.recFin2 {\lam _ => A} a a' (notBS2.notFin2 x) = elimBS2.recFin2 {\lam _ => A} a' a x \elim x
-      | 0 => idp
-      | 1 => idp
-
-    \func notFin2Eq-ret : (=-to-Equiv (Equiv-to-= notBS2.notFin2Eq)).ret = notBS2.notFin2 =>
-      pmap (\lam (e : Equiv {Fin 2} {Fin 2}) => e.ret) (univalence.f_ret notBS2.notFin2Eq)
-
-    \func funP : transport (\lam (X : BSn 2) => X.1 -> A) (BSnPath (BSnbase 2) (BSnbase 2) notBS2.notFin2Eq) (elimBS2.recFin2 a a') = elimBS2.recFin2 a' a =>
-      run {
-        rewrite (transport-proj1 (BSnPath (BSnbase 2) (BSnbase 2) notBS2.notFin2Eq) (elimBS2.recFin2 a a')),
-        rewrite proj1bsnP,
-        rewrite (path-fun.transport-fun (elimBS2.recFin2 a a') (Equiv-to-= notBS2.notFin2Eq)),
-        rewrite (path-fun.inv-p (Equiv-to-= notBS2.notFin2Eq)),
-        rewrite notFin2Eq-ret,
-        funExt recFlip
-      }
-  }
+  commstr2IsComm {A} {borelXn 2 A} (injBorelXn {2}) a' a
 
 \func setTruncSP2 {A : \Set} : SetSP2 A = Trunc0 (borelXn 2 A) =>
-  iso to fro sec ret \where {
+  iso f g sec ret \where {
 
-    \func to (x : SetSP2 A) : Trunc0 (borelXn 2 A)
+    \func f (_ : SetSP2 A) : Trunc0 (borelXn 2 A)
       | inSP2 a a' => in0 (BSnbase 2, elimBS2.recFin2 a a')
       | symSP2 a a' i => in0 (swapBorel a a' i)
 
-    \func fro (x : Trunc0 (borelXn 2 A)) : SetSP2 A
+    \func g (_ : Trunc0 (borelXn 2 A)) : SetSP2 A
       | in0 (X, f) => setSP2Inj X f
 
-    \func sec (x : SetSP2 A) : fro (to x) = x
-      | inSP2 a a' => setSP2Inj.base (elimBS2.recFin2 a a')
+    \func sec (x : SetSP2 A) : g (f x) = x
+      | inSP2 a a' => setSP2Inj.beta (elimBS2.recFin2 a a')
 
-    \func ret (x : Trunc0 (borelXn 2 A)) : to (fro x) = x
-      | in0 (X, f) => retBorel X f
-
-    -- Prop-induction on X reduces to the BSnbase 2 case.
-    \func retBorel (X : BSn 2) (f : X.1 -> A) : to (setSP2Inj X f) = in0 (X, f) =>
-      recPropBSn' {2}
-          {\lam Y => \Pi (g : Y.1 -> A) -> to (setSP2Inj Y g) = in0 (Y, g)}
-          (pi-isProp _ (\lam g p q => set-pi {Trunc0 (borelXn 2 A)} {to (setSP2Inj (BSnbase 2) g)} {in0 (BSnbase 2, g)} {p} {q}))
+    \func ret (x : Trunc0 (borelXn 2 A)) : f (g x) = x
+      | in0 (X, s) => recPropBSn' {2}
+          {\lam Y => \Pi (sp : Y.1 -> A) -> f (setSP2Inj Y sp) = in0 (Y, sp)}
+          isProp-prover
           retBorelBase
-          X f
+          X s
 
-    \func retBorelBase (f : Fin 2 -> A) : to (setSP2Inj (BSnbase 2) f) = in0 (BSnbase 2, f) =>
-      pmap to (setSP2Inj.base f) *>
-      pmap (\lam (g : Fin 2 -> A) => in0 {borelXn 2 A} (BSnbase 2, g)) (elimBS2.recFin2BetaSimp f)
+    \func retBorelBase (s : Fin 2 -> A) : f (setSP2Inj (BSnbase 2) s) = in0 (BSnbase 2, s) => run {
+      pmap f (setSP2Inj.beta s) *>,
+      pmap (\lam (sp : Fin 2 -> A) => in0 {borelXn 2 A} (BSnbase 2, sp)),
+      elimBS2.recFin2BetaSimp s
+    }
   }
 
 \func setSP2IsSP2 {A : \Set} : SetSP2 A = SP2 A => run {
