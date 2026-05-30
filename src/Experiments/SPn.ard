@@ -20,12 +20,26 @@
 \import Order.StrictOrder
 \import Utilities.Poset
 
+-- This is a (slightly outdated) sketch of the general
+-- definition of the n-th symmetric product. Contains
+-- several AI-generated lemmas, all commented in Claude-style.
+-- The current obstacle is developing a theory of extending
+-- points of a given shape to points of a more general shape.
+-- Then, a remaining obstacle will be to prove that this
+-- extension commutes with the injection to the Borel quotient.
+
+
+-- This type represents possible shapes of points in the n-th
+-- symmetric product. partitionInto n k means that there's n
+-- coordinates, split into k unique ones.
 \data partitionInto (n : Nat) (k : Nat) : \Set \elim k
   | 1 => idPart (0 NatSemiring.< n)
   | suc k' => compPart (r1 r2 : Nat) (0 NatSemiring.< r1) (n = r1 Nat.+ r2) (partitionInto r2 k')
 
+-- The type of all possible shapes in the SP^n
 \func partitions (n : Nat) : \Set => \Sigma (k : Nat) (partitionInto n k)
 
+-- The number of coordinates that repeat m times in a given shape lambda
 \func partitionCount {n k : Nat} (lambda : partitionInto n k) (m : Nat) : Nat \elim k, lambda
   | 1, idPart _ => \case NatSemiring.decideEq n m \with {
     | yes _ => 1
@@ -35,29 +49,6 @@
     | yes _ => suc (partitionCount lambda m)
     | no _ => partitionCount lambda m
   }
-
--- | Recursive sum of parts of a partition. Returns n by construction.
-\func partitionSize {n k : Nat} (lambda : partitionInto n k) : Nat \elim k, lambda
-  | 1, idPart _ => n
-  | suc k, compPart r1 _ _ _ rest => r1 Nat.+ partitionSize rest
-
--- | Computation rule for partitionSize on compPart. Stated as a separate
---   lemma so the proof can \elim the recursive argument (which is what
---   exposes the function's definitional reduction — \elim on the parent
---   `lambda` alone is not enough; see arend-quirks §3).
-\lemma partitionSize-step {n k : Nat} {r1 r2 : Nat} {r1_pos : 0 NatSemiring.< r1}
-                          {n_split : n = r1 Nat.+ r2} (rest : partitionInto r2 k)
-  : partitionSize (compPart r1 r2 r1_pos n_split rest) = r1 Nat.+ partitionSize rest
-  \elim k, rest
-  | 1, idPart _ => idp
-  | suc k, compPart r1' r2' r1'_pos n_split' rest' => idp
-
--- | The recursive sum of parts equals n.
-\lemma partitionSize=n {n k : Nat} (lambda : partitionInto n k) : partitionSize lambda = n
-  \elim k, lambda
-  | 1, idPart _ => idp
-  | suc k, compPart r1 r2 _ n_split rest =>
-    partitionSize-step rest *> pmap (\lam y => r1 Nat.+ y) (partitionSize=n rest) *> inv n_split
 
 -- | Convert 0 < n (NatOrder) to 1 ≤ n (PartialOrder).
 \lemma <_to_<= {n : Nat} (p : 0 < n) : 1 <= n \elim n, p
@@ -82,13 +73,17 @@
       | sr2_sum : suc r2 <= r1 Nat.+ r2 => transport (`<= r1 Nat.+ r2) (NatSemiring.+-comm {r2} {1}) (<=_+ one_r1 <=-refl)
     \in transport (suc k <=) (inv n_split) (sk_sr2 <=∘ sr2_sum)
 
+-- The type X^lambda_BSigma
 \func powerPartition {n k : Nat} (X : \Type) (lambda : partitionInto n k) : \Type =>
   \Sigma (ct : classType lambda) (\Pi (m : Nat) -> (ct m).1 -> \Sigma (BSn m) X) \where {
   \func classType (lambda : partitionInto n k) : \Type => \Pi (m : Nat) -> BSn (partitionCount lambda m)
+  -- The type X^lambda
   \func space (X : \Type) (lambda : partitionInto n k) => \Sigma (ct : classType lambda) (\Pi (m : Nat) -> (ct m).1 -> X)
+  -- A canonical map from X^lambda to the borel product, forgetting the partition
   \func extend (p : powerPartition X lambda) : borelXn n X => {?}
 }
 
+-- This will help us with induction on partitions
 \instance wfPartitions (n : Nat) : WellFoundedPoset (partitions n)
   -- | λ < μ iff λ has strictly more parts than μ. Refining a partition makes
   --   it smaller in this order; the maximally-refined partition (k = n) is at
@@ -102,8 +97,11 @@
       | lam_bound : lam.1 <= n => partitionInto_k<=n lam.2
     \in monus-strict-monotone-right lam_bound mu_lt_lam
 
+-- The type T_lambda1<lambda2(x) of possible extensions of x to a shape lambda2
 \func partExtensionsType {n : Nat} {X : \Type} (lambda1 lambda2 : wfPartitions n) (ieq : lambda2 < lambda1)
                          (ct : powerPartition.classType lambda1.2) : \Type => {?}
+
+-- The function extend, that extends an x to a shape lambda2, given a choice of extension
 \func partExtension {n : Nat} {X : \Type} (lambda1 lambda2 : wfPartitions n) (ieq : lambda2 < lambda1)
                     (x : powerPartition X lambda1.2)
                     (index : partExtensionsType {n} {X} lambda1 lambda2 ieq x.1)
@@ -112,9 +110,11 @@
   (ct : powerPartition.classType lambda1.2) (index : partExtensionsType {n} {X} lambda1 lambda2 ieq ct)
   : powerPartition.classType lambda2.2 => {?}
 
+-- The type of all lambda2 more general than lambda1, taking into account whole types of extensions
 \func allExtensions {n : Nat} {X : \Type} (lambda1 : wfPartitions n) (ct : powerPartition.classType lambda1.2) : \Type =>
   \Sigma (lambda2 : wfPartitions n) (ieq : lambda2 < lambda1) (index : partExtensionsType {n} {X} lambda1 lambda2 ieq ct)
 
+-- A type corresponding to gluings of spaces over a base space, (outdated)
 \data nonDisjointUnion (base : \Type) (indices : \Type) (spaces : indices -> \Type)
                        (glues : \Pi (i : indices) -> base -> spaces i) : \oo-Type
   | baseElt base
@@ -138,6 +138,7 @@
                    (ext : allExtensions {n} {X} lambda1 ct) (x : powerPartition X lambda1.2) : powerPartition X ext.1.2
   => {?}
 
+-- The space C_lambda, signifying the structure of contractions of more general cases
 \func contrSpace {n : Nat} {X : \Type} (lambda : wfPartitions n) (ct : powerPartition.classType lambda.2) : \Type =>
   \let
     | constr (lambda : wfPartitions n)
@@ -155,6 +156,7 @@
       ct
   \in constr lambda components
 
+-- The inductive step in the construction of SP^n
 \func SP-step (n d : Nat) (X : \Type) : \oo-Type (\suc \lp) \elim d
   | 0 => borelXn n X
   | suc d => PushoutData

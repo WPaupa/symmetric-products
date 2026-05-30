@@ -14,6 +14,7 @@
 \import Category
 \import Algebra.Group.GroupCategory
 
+-- A definition of n-th homotopy group
 \func pi_ (m : Nat) (Z : Pointed) : Pointed \cowith
   | E => underlying
   | base => in0 (Omega^ m Z).base \where {
@@ -71,6 +72,9 @@
     idp
   }
 }
+
+-- From here on, the file is AI-generated. It is an attempt at formalizing a
+-- version of the van Kampen theorem that deals with homotopy groups and pushouts.
 
 -- | The identity pointed map, as a section of ->*.
 \func id-pointed (X : Pointed) : X ->* X => (\lam x => x, idp)
