@@ -5,25 +5,35 @@
 \import Paths
 \import Paths.Meta
 
+-- A commutativity structure. We take an unordered
+-- n-element type X and a tuple of elements of A indexed
+-- by X, and we map it to some element of B.
+-- The paths in BSn testifying for this unorderedness of X
+-- guarantee commutativity.
 \func commstr \plevels p1 <= p2 (n : Nat) (A : \Type p1) (B : \Type p2) : \Type =>
   \Pi (X : BSn n) -> (X.1 -> A) -> B
   \where {
-    \func f
-            (t : commstr n A B) : (Fin n -> A) -> B => t (BSnbase n)
+    \func f (t : commstr n A B) : (Fin n -> A) -> B => t (BSnbase n)
+    -- We can map the result of a commutative function, and still get something commutative
     \func compose \plevels p1 <= p2 {A : \Type p1} {B : \Type p2} {C : \Type p2}
                                     (t : commstr n A B) (f : B -> C) : commstr n A C =>
       \lam B x => f (t B x)
+    -- We can map all arguments and plug it into a commutative function, and get something commutative
     \func precompose \plevels p1 <= p2 {A : \Type p1} {B : \Type p1} {C : \Type p2}
             (f : A -> B) (t : commstr n B C) : commstr n A C =>
       \lam B x => t B (\lam b => f (x b))
+    -- The constant function is commutative
     \func constant (b : B) : commstr n A B =>
       \lam _ _ => b
   }
 
+-- The justification of the name "commutativity structure",
+-- in the case n=2. The functions given by such structures are commutative
 \func commstr2IsComm \plevels p1 <= p2 {A : \Type p1} {B : \Type p2}
                      (f : commstr 2 A B) (a b : A) :
   commstr.f f (elimBS2.recFin2 b a) = commstr.f f (elimBS2.recFin2 a b) =>
   pmap (f (BSnbase 2)) (inv (elimOn1Ext a b)) *> mainLemma \where {
+  -- Computational boilerplate
   \func elimOn1Ext {X : \Type} (a b : X) : elimBS2 {BSnbase 2} (\lam _ => X) 1 a b = elimBS2.recFin2 b a =>
     ext (elimOn1 a b)
   \func elimOn1 {X : \Type} (a b : X) (t : Fin 2) :
@@ -48,6 +58,7 @@
            (elimBS2 {BSnbase 2} (\lam _ => X) 0 a b 1 = elimBS2.recFin2 {\lam _ => X} a b 1) =>
     rewrite notFin2isNot in elimBS2.beta {BSnbase 2} {\lam _ => X} {0} {a} {b}
 
+  -- The important part of the proof: applying the J-rule for BS2
   \func mainLemma : f (BSnbase 2) (elimBS2 {BSnbase 2} _ 1 a b) = f (BSnbase 2) (elimBS2.recFin2 a b) =>
     JBS2 (\lam B t => f B (elimBS2 {B} _ t a b) = f (BSnbase 2) (elimBS2.recFin2 a b))
         (pmap (f (BSnbase 2)) (elimOn0Ext a b))

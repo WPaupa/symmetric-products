@@ -19,10 +19,14 @@
 \import Utilities.Paths
 \import Utilities.Trunc
 
+-- The classifying type of the n-th symmetric group S_n,
+-- realized as the type of (unordered) n-element sets
 \func BSn (n : Nat) => \Sigma (X : \Set) (TruncP (Equiv {X} {Fin n}))
 
-\func BSnbase (n : Nat) : BSn n => (Fin n , inP idEquiv)
+-- The type is pointed by the ordered n-element set
+\func BSnbase (n : Nat) : BSn n => (Fin n, inP idEquiv)
 
+-- Paths in BSn correspond to equivalences of the n-element types
 \func BSnPath {n : Nat} (a b : BSn n) (eq : Equiv {a.1} {b.1}) : a = b =>
   SigmaPropPath (\lam _ x y i => truncP x y i) {a} {b} (Equiv-to-= eq)
 
@@ -35,12 +39,23 @@
   idp
 }
 
+\func BSnPathChar {n : Nat} (a b : BSn n) : (a.1 = b.1) = (a = b) => iso
+    (\lam eq => BSnPath a b (=-to-Equiv eq))
+    (pmap __.1)
+    (\lam eq => (univalence {a.1} {b.1}).ret_f eq)
+    (\lam y => \let main => (univalence {a.1} {b.1}).ret_f (pmap __.1 y)
+                    | defs => pmap (SigmaPropPath {\Set} {\lam x => TruncP (Equiv {x} {Fin n})}
+                    (\lam a x y i => truncP {Equiv {a} {Fin n}} x y i) {a} {b} __) main
+                    | final => rewrite (SigmaPropPathBeta (\lam a x y i => truncP {Equiv {a} {Fin n}} x y i) y) defs \in final)
+
 \instance connBSn (n : Nat) : Connected0 (BSn n)
   | isInh => inP (BSnbase n)
   | isConn0 b1 b2 => TruncP.map
       (TruncPmap2 b1.2 b2.2 (\lam eq1 eq2 => Equiv-to-= eq1 *> inv (Equiv-to-= eq2)))
       (SigmaPropPath (\lam _ x y i => truncP x y i) {b1} {b2})
 
+-- If a property of elements of BSn is a proposition,
+-- then we only need to prove it for the base (ordered) type
 \lemma recPropBSn {n : Nat} {B : BSn n -> \Type}
                   (p : \Pi (x : BSn n) -> isProp (B x))
                   (pb : B (BSnbase n))
@@ -51,6 +66,7 @@
     p (BSnbase n) (recPropBSn {n} {B} p pb (BSnbase n)) pb
 }
 
+-- It's enough to prove that it's a proposition for the base type
 \lemma recPropBSn' {n : Nat} {B : BSn n -> \Type}
                    (p : isProp (B (BSnbase n)))
                    (pb : B (BSnbase n))
@@ -60,6 +76,7 @@
     p (recPropBSn' {n} {B} p pb (BSnbase n)) pb
 }
 
+-- The elements of BSn are decideable sets
 \lemma decBSn {n : Nat} (X : BSn n) : \Pi (a b : X.1) -> Dec (a = b) =>
   TruncP.rec isProp-prover
       X.2 (\lam eq => transport (\lam x => \Pi (a : x) (b : x) -> Dec (a = {x} b)) (inv (Equiv-to-= eq))
@@ -78,18 +95,10 @@
     Dec.levelProp (decBSn X a b) (no t)
 }
 
-\func BSnPathChar {n : Nat} (a b : BSn n) : (a.1 = b.1) = (a = b) => iso
-    (\lam eq => BSnPath a b (=-to-Equiv eq))
-    (pmap __.1)
-    (\lam eq => (univalence {a.1} {b.1}).ret_f eq)
-    (\lam y => \let main => (univalence {a.1} {b.1}).ret_f (pmap __.1 y)
-                    | defs => pmap (SigmaPropPath {\Set} {\lam x => TruncP (Equiv {x} {Fin n})}
-                    (\lam a x y i => truncP {Equiv {a} {Fin n}} x y i) {a} {b} __) main
-                    | final => rewrite (SigmaPropPathBeta (\lam a x y i => truncP {Equiv {a} {Fin n}} x y i) y) defs \in final)
-
 \lemma isSetBSnElt {n : Nat} (a : BSn n) : isSet a.1 => recPropBSn
     (\lam X => isSet.levelProp {X.1}) (\lam x y p q => set-pi {Fin n} {x} {y} {p} {q}) a
 
+-- We have a n!-sheeted cover of BSn by a contractible space totalBSn
 \func totalBSn {n : Nat} => \Sigma (X : BSn n) (Equiv {X.1} {Fin n})
 
 \func contrTotalBSn {n : Nat} : Contr totalBSn \cowith
@@ -97,10 +106,11 @@
   | contraction (X, eq) =>
     \let a => transport (\lam x => \Sigma (e : Equiv {x.1} {Fin n}) ((x, e) = {totalBSn} (X, eq)))
         (BSnPath X (BSnbase n) eq) (eq, idp) \in totalBSnChar a.1 *> a.2
+    -- We start with a path between points (Base, eq) and we lift these
   \where {
+    -- We can rewrite a transport as an action of an equivalence
     \func transportLemma {X Y : \Set} (f : Equiv {X} {Y}) (p : X = {\Set} Y) :
       transport {\Set} (\lam (X : \Set) => Equiv {X} {Y}) p f = {Equiv {Y} {Y}} transEquiv (symEquiv (=-to-Equiv p)) f
-      -- here I had transEquiv in the wrong order and it still worked, unintuitive
       | _, idp => Equiv.equals idp
     \func doubleInv {A B : \Set} {eq : Equiv {A} {B}} :
       transEquiv (symEquiv (=-to-Equiv (Equiv-to-= (symEquiv eq)))) idEquiv = eq => run {
@@ -122,6 +132,9 @@
           (transportLemma idEquiv (Equiv-to-= (symEquiv eq)) *> doubleInv)
   }
 
+-- There's a 2-sheeted cover of BS2, since 2-element types are
+-- equivalent to their type of equivalences with Fin 2 (this is
+-- the bulk of the proof)
 \func contrTotalBS2 : Contr (\Sigma (X : BSn 2) X.1) \cowith
   | center => (BSnbase 2, fzero)
   | contraction => isPropTotalBS2 (BSnbase 2, fzero)
@@ -226,6 +239,9 @@
     }
   }
 
+-- The contractibility of the n-sheeted cover, expressed as a J-rule.
+-- If we have a property of all points in BSn and all equivalences
+-- of this point with Fin n, we only need to calculate it for the basepoint.
 \func JBSn {n : Nat}
            (A : \Pi (X : BSn n) (x : Equiv {X.1} {Fin n}) -> \Type)
            (pr : A (BSnbase n) idEquiv)
@@ -234,6 +250,10 @@
     (contrTotalBSn.contraction (X, x))
     pr
 
+-- For BS2, the equivalences are characterized by a single point,
+-- so we can have a property of all points in BS2 and all elements of these points.
+-- For level-polymorhpism, the type BS2 is written out explicitly here,
+-- as writing BSn \levels p1 2 is weirdly-behaved
 \func JBS2 \plevels p1 <= p2
   (A : \Pi (X : \Sigma (X : \Set p1) (TruncP (Equiv {X} {Fin 2}))) (x : X.1) -> \Type p2)
   (pr : A (BSnbase 2) (Fin.fromNat 0))
@@ -242,6 +262,7 @@
     (contrTotalBS2.contraction (X, x))
     pr
 
+-- There's exactly one 1-element type, up to unique isomorphism.
 \func BS1Contr : Contr (BSn 1) => transport {\Type} Contr (iso {\Sigma (x : BSn 1) (Equiv {x.1} {Fin 1})} {BSn 1}
     (\lam t => t.1)
     (\lam (b : BSn 1) => (b, TruncP.remove (isPropX2 b) b.2))
@@ -252,10 +273,15 @@
   \func fin1Prop (a b : Fin 1) : a = b
     | 0, 0 => idp
 
+  -- The element of BS1 is also contractible
   \func element (X : BSn 1) : Contr X.1 =>
     recPropBSn {1} {\lam x => Contr x.1} (\lam x => Contr.levelProp x.1) contrFin1 X
 }
 
+-- If one type is n-element and the other one is m-element,
+-- then their sum is (n+m)-element. This is a less general
+-- version of this statement, ideally we would like a general
+-- inclusion of BSn_1 \times ... in BS(n_1+...)
 \func extendBSn {n : Nat} (m : Nat) (x : BSn n) : BSn (n Nat.+ m) =>
   (Or x.1 (Fin m), TruncP.map x.2 (
     \lam eqv => transport (\lam t => Equiv {Or t (Fin m)} {Fin (n Nat.+ m)})
@@ -299,8 +325,10 @@
   }
 }
 
-
+-- Adapted heavily from a paper by Axel Ljungstrom and David Warn,
+-- the only non-identity self-equivalence of a 2-element type.
 \func notBS2 {X : BSn 2} : X.1 -> X.1 => equiv.1 \where {
+  -- The non-identity equivalence of Fin 2, along with computational rules
   \func notFin2 (_ : Fin 2) : Fin 2
     | 0 => 1
     | 1 => 0
@@ -310,19 +338,19 @@
   \func notFin2Beta {A : \Type} (a a' : A) (x : Fin 2) :
     (\case notFin2 x \with {0 => a | 1 => a'}) =
     (\case x \with {0 => a' | 1 => a}) \elim x
-    -- this can't be used in SetSP when the order of the cases is changed
     | 0 => idp
     | 1 => idp
 
   \func notFin2Eq : Equiv {Fin 2} {Fin 2} \cowith
     | f => notFin2
     | ret => notFin2
-    | ret_f => notFin2Inv -- this doesn't work with \case
+    | ret_f => notFin2Inv -- this doesn't work with \case here, why?
     | sec => notFin2
     | f_sec => notFin2Inv
 
   \lemma equiv : \Sigma (e : Equiv {X.1} {X.1}) (Not (e = idEquiv)) =>
     recPropBSn (\lam X => levelProp {X}) contrEqvFin2.center X \where {
+    -- There's exactly one non-identity self-equivalence of Fin 2
     \func fin2Dichotomy : \Pi (e : Equiv {Fin 2} {Fin 2}) (g : e /= idEquiv {Fin 2}) -> e = notFin2Eq =>
       transport (\lam x => \Pi (x0 x1 : x) (xneq : x0 /= x1) (e : x) (g : e /= x0) -> e = x1)
           (inv fin2Equiv)
@@ -338,12 +366,14 @@
           (\lam (a : Equiv {Fin 2} {Fin 2}) => not-isProp {a = idEquiv {Fin 2}})
           (inv (fin2Dichotomy e g))
 
+    -- There's exactly one non-identity self-equivalence of X for X in BS2
     \lemma levelProp : isProp (\Sigma (e : Equiv {X.1} {X.1}) (Not (e = idEquiv))) =>
       recPropBSn (\lam Y => isProp.levelProp (\Sigma (e : Equiv {Y.1} {Y.1}) (Not (e = idEquiv))))
           (isContr=>isProp contrEqvFin2) X
   }
 }
 
+-- The self-equivalence of points in BS2 is an involution
 \lemma notNotBS2 {X : BSn 2} : \Pi (x : X.1) -> notBS2 (notBS2 x) = x =>
   recPropBSn {2} (\lam X => pi-isProp _ \lam x => isSetBSnElt {2} X (notBS2 (notBS2 x)) x) (run {
     unfold notBS2,
@@ -355,11 +385,16 @@
     | 1 => idp
 }
 
+-- A beta-rule for notBS2
 \func notFin2isNot (x : Fin 2) : notBS2 {BSnbase 2} x = notBS2.notFin2 x => pmap (eqvFun __ x) equivEq \where {
   \func equivEq : (notBS2.equiv {BSnbase 2}).1 = notBS2.notFin2Eq =>
     notBS2.equiv.fin2Dichotomy (notBS2.equiv {BSnbase 2}).1 (notBS2.equiv {BSnbase 2}).2
 }
 
+-- Since there are no more than two nonequal elements
+-- in a given point of BS2, if we get these two nonequal
+-- elements, then a non-identity equivalence has to send
+-- one to the other.
 \func notEqToNotBS2 (X : BSn 2) (b1 b2 : X.1) (pr : b1 /= b2) : notBS2 b1 = b2 =>
   JBS2 (\lam X x => \Pi (y : X.1) (pr : x /= y) -> notBS2 x = y) notEqToNotFin2 {X} {b1} b2 pr \where {
   \func notEqToNotFin2 (y : Fin 2) (_ : fzero /= y) : notBS2 {BSnbase 2} 0 = y
@@ -367,9 +402,17 @@
     | 1, pr => notFin2isNot 0
 }
 
+-- Adapted heavily from a paper by Axel Ljungstrom and David Warn,
+-- an elimination rule for BS2: if we can show an element of a point
+-- of BS2, then we can define a function from this element by
+-- specifying its value on this point and on its negation.
 \func elimBS2 {X : BSn 2} (B : X.1 -> \Type)
               (x : X.1) (a : B x) (a' : B (notBS2 x)) (y : X.1) : B y =>
   (elimWithBeta \levels \lp \lh {X} {B} x).1 a a' y \where { -- why is the level annotation needed
+
+  -- We prove that being such an eliminator that satifies
+  -- computational rules is a proposition,
+  -- so that we can use the recursion to Prop principle.
   \func elimBetaType {Z : BSn 2} {A : Z.1 -> \Type} {z : Z.1} =>
     \Sigma (f : \Pi (a : A z) (a' : A (notBS2 z)) (y : Z.1) -> A y)
            (\Pi (a : _) (b : _) -> \Sigma (f a b z = a) (f a b (notBS2 z) = b))
@@ -384,6 +427,7 @@
           })
           {Y} {x}
           A)
+  -- An eliminator for Fin 2 based at 0, along with computational rules
   \func recFin2 {A : Fin 2 -> \Type} (a : A 0) (b : A 1) (x : Fin 2) : A x \elim x
     | 0 => a
     | 1 => b
@@ -398,6 +442,7 @@
   \func recFin2BetaSimp {A : \Type} (y : Fin 2 -> A) : recFin2 {\lam _ => A} (y 0) (y 1) = y =>
     ext $ \lam x => recFin2Beta {\lam _ => A} {\lam _ _ => y} (y 0) (y 1) x
 
+  -- Proof there's only one eliminator of Fin 2
   \func elimBool*Contr {A : Fin 2 -> \Type} :
     Contr (\Sigma (f : A 0 -> A 1 -> \Pi (y : (BSnbase 2).1) -> A y)
                   (\Pi (a : A 0) -> \Pi (b : A 1) -> \Sigma (f a b 0 = a) (f a b 1 = b))) \cowith
@@ -418,6 +463,7 @@
                    (recFin2, \lam _ _ => (idp, idp)))
                (recFin2BetaExt {A} {fp.1}) pth \in inv (pth1 fp.2)
 
+  -- An eliminator for Fin 2 with a given basepoint
   \func fin2Elim (A : Fin 2 -> \Type) (y : Fin 2)
                  (a : A y) (b : A (notBS2.notFin2 y)) (x : Fin 2) : A x \elim y, x
     | 0, 0 => a
@@ -448,10 +494,14 @@
     => (elimWithBeta \levels \lp \lh {X} {B} x).2 a a'
 }
 
+-- Every element of BSn (except for BS0) is merely inhabited
 \func eltBSn {n : Nat} (X : BSn (suc n)) : TruncP X.1 => TruncP.map X.2
     (\lam eqv => rewrite (Equiv-to-= eqv) (fzero {n})) -- (\lam eqv => eqv.ret (fzero {n}))
 -- doesn't work (unintiuitive)
 
+-- A recursion principle similar to prop-rec, but with sets.
+-- If a function to sets is commutative, then it lifts to a function
+-- from a tuple indexed by an unordered 2-element set.
 \func setRecBS2 {A : \Set} (X : BSn 2)
                 (f : X.1 -> A) (h : \Pi (x : X.1) -> f x = f (notBS2 x)) : A =>
   (TruncP.rec-set (eltBSn X) (\lam x (f : X.1 -> A) _ => f x) (\lam x =>

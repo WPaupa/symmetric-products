@@ -19,14 +19,21 @@
 \import Utilities.Trunc
 \import Utilities.Unit
 
+-- The type A^n//S_n, known as the homotopy quotient
+-- or the Borel construction of X^n
 \func borelXn (n : Nat) (A : \Type) : \Type => \Sigma (X : BSn n) (X.1 -> A)
 
+-- There's a commutative function (or rather: commutativity structure)
+-- with n arguments from A to the Borel construction.
 \func injBorelXn {n : Nat} {A : \Type} : commstr n A (borelXn n A) =>
   \lam X tup => (X, tup)
 
 \func borelConstPath {n : Nat} {A : \Type} (X Y : BSn n) (p : X = Y) (a : A) :
   (X, \lam _ => a) = {borelXn n A} (Y, \lam _ => a) \elim p
   | idp => idp
+
+
+-- The proof that the homotopy quotient preserves connectedness
 
 \func borelXnIsMerelyCartesian {n : Nat} {A : \Type} (x : borelXn n A) :
   TruncP (\Sigma (y : Fin n -> A) (x = (BSnbase n, y))) => TruncP.map x.1.2
@@ -55,6 +62,7 @@
     | suc f => i f
 }
 
+-- X^1//1 = X
 \func borelX1=X (X : \Type) : borelXn 1 X = X =>
   rewrite (Equiv-to-= (sigma-right (\lam A => fromContr (BS1Contr.element A))))
   (QEquiv-to-= (contr-left BS1Contr))
@@ -63,6 +71,9 @@
     rewrite (isContrEqUnit pr) (unit-func X)
 }
 
+-- Currying: the Borel construction is a type such that
+-- functions from it are in a 1-1 correspondence with
+-- n-argument commutativity structures
 \func liftBorelXn {n : Nat} {A : \Type} {T : \Type}
                   (f : commstr n A T) (x : borelXn n A) : T => f x.1 x.2 \where {
   \func coh(X : BSn n) (x : X.1 -> A) : liftBorelXn f (X, x) = f X x => idp
@@ -70,9 +81,16 @@
              (y : borelXn n A) : liftBorelXn f y = h y => pr y.1 y.2
 }
 
+-- The Borel construction is not the n-th symmetric product,
+-- for example it sends the contractible type to the
+-- non-contractible BSn
 \func borelXnUnit=BSn {n : Nat} : borelXn n (\Sigma) = BSn n =>
   rewrite (Equiv-to-= (sigma-right {BSn n} (\lam A => =-to-Equiv (funcToUnit {A.1}))))
       (QEquiv-to-= (contr-right {BSn n} (\lam _ => unit-isContr)))
+
+-- Farjoun introduces a pointed Borel construction.
+-- It is still not the n-th symmetric product, but at least
+-- it sends the contractible type to the contractible type.
 
 \func borelBaseCofib {n : Nat} {A : Pointed} (X : BSn n) : borelXn n A =>
   (X, \lam _ => A.base)
