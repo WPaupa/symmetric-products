@@ -21,21 +21,32 @@
     | inl a => idp
     | inr b => idp
 
+-- The third symmetric product as an iterated pushout construction.
+-- We start by contracting subspaces corresponding to [x,x,y] and then
+-- contract the subspace corresponding to [x,x,x].
 \func SP3 (X : \Type) => PushoutData diag __.2 \where {
+  -- The space S^3_2(X), with subspace corresponding to [x,x,y] contracted
   \func step : \Type => PushoutData fatdiag (\lam x => (x.2, x.3))
+  -- The map presenting \Sigma (b : BSn 2) (x y : X) as a subspace corresponding to [x,x,y]
   \func fatdiag (_ : \Sigma (b : BSn 2) (x y : X)) : borelXn 3 X
     | (b, x, y) => (extendBSn 1 b , Or.rec (\lam _ => x) (\lam _ => y))
+  -- The map presenting (BS3 // BS2) \times X as a subspace correspodning to [x,x,x] in S^3_2(X)
   \func diag (x : \Sigma subspaceBS2 X) : step => Pushoutelim {_} {_} {_} {_} {_} {\lam _ => step}
       (\lam t => pinl (t, \lam _ => x.2))
       (\lam _ => pinr (x.2, x.2))
       (\lam b => rewrite orConst $ path (pglue (b, x.2, x.2)))
       x.1
+  -- The mapping cone: BS3 // BS2
   \func subspaceBS2 : \Type => PushoutData {BSn 2} {BSn 3} {\Sigma} (extendBSn 1) (\lam _ => ())
 }
 
+-- This pushout construction sends contractible spaces to contractible spaces
+-- We prove it by showing that the map (BS3 // BS2) -> S^3_2(Unit) is a homotopy
+-- equivalence, and that the pushout of a homotopy equivalence and a constant map
+-- is contractible.
 \func SP3ContrIsContr : Contr (SP3 (\Sigma)) =>
   pushoutEqv (\Sigma SP3.subspaceBS2 (\Sigma)) SP3.step equivDiag \where {
-  \func orConstUnit {A B : \Type} (x : \Sigma) : orConst {A} {B} x = idp
+  \func orConstUnit {A B : \Type} (x : \Sigma) : orConst {A} {B} x = idp -- funny that this works
     | () => idp
 
   \func pushoutId (X : \Type) : Contr (PushoutData {X} {X} {\Sigma} idEquiv (\lam _ => ())) \cowith

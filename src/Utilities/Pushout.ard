@@ -142,22 +142,3 @@
     inv_*> _
   }
 }
-
--- A bit more involved version of Join_Contr, instead
--- of asking for paths in A between all elements of A,
--- we ask for paths in the join. We also require B to be a Prop.
-\func joinEqLeft {A : \Type} {B : \Prop} (ca : A)
-                 (pa : \Pi (a : A) -> pinl ca = {Join A B} pinl a)
-  : Contr (Join A B) \cowith
-  | center => pinl ca
-  | contraction => \case \elim __ \with {
-    | pinl b => pa b
-    | pinr c => path (pglue (ca, c))
-    | pglue a i => glueEq a i
-  } \where {
-  \func glueEq (a : \Sigma A B)
-    : Path (\lam i => pinl ca = pglue a i) (pa a.1) (path (pglue (ca, a.2))) => run {
-    pathOver,
-    isProp.=>isSet (isContr=>isProp (Join_Contr A (isProp=>isContr prop-isProp a.2))) _ _ _ _
-  }
-}

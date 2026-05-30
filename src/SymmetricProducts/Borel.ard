@@ -1,3 +1,4 @@
+\import Data.Fin
 \import Function
 \import Homotopy.Connected
 \import Homotopy.Pushout
@@ -27,11 +28,6 @@
 -- with n arguments from A to the Borel construction.
 \func injBorelXn {n : Nat} {A : \Type} : commstr n A (borelXn n A) =>
   \lam X tup => (X, tup)
-
-\func borelConstPath {n : Nat} {A : \Type} (X Y : BSn n) (p : X = Y) (a : A) :
-  (X, \lam _ => a) = {borelXn n A} (Y, \lam _ => a) \elim p
-  | idp => idp
-
 
 -- The proof that the homotopy quotient preserves connectedness
 
@@ -141,3 +137,51 @@
         })
         a
 }
+
+-- Constructions of paths in the homotopy quotient
+
+\func borelConstPath {n : Nat} {A : \Type} (X Y : BSn n) (p : X = Y) (a : A) :
+  (X, \lam _ => a) = {borelXn n A} (Y, \lam _ => a) \elim p
+  | idp => idp
+
+-- The paths below are specifically for borelXn 2 A
+
+\func swapBorel {A : \Type} (a a' : A) :
+  (BSnbase 2, elimBS2.recFin2 a a') = {borelXn 2 A} (BSnbase 2, elimBS2.recFin2 a' a) =>
+  commstr2IsComm {A} {borelXn 2 A} (injBorelXn {2}) a' a
+
+-- A useful lemma for the paths below
+\func transportConst {A B C : \Type} (p : B = C) (a : A) : transport (\lam X => X -> A) p (\lam _ => a) = \lam _ => a \elim p
+  | idp => idp
+
+-- If an element is equal to a diagonal element, then it itself is a diagonal element
+\func borelConstToEq {A : \Type} (x y z : A)
+                     (diag : (BSnbase 2, \lam _ => x) = {borelXn 2 A} (BSnbase 2, elimBS2.recFin2 y z)) : y = z
+  => \let diagp => SigmaPathChar _ _ diag
+          | pc => base2PathChar
+              (\lam q => transport (\lam a => a -> A) (pmap __.1 q) (\lam _ => x) = elimBS2.recFin2 y z -> y = z)
+              (\lam lp => inv (pmap (__ fzero) lp) *> pmap (__ (fsuc fzero)) lp)
+              (run {
+                unfold BSnPath,
+                rewrite (SigmaPropPathBeta2 (\lam A x y => path (truncP {Equiv {A} {Fin 2}} x y)) (Equiv-to-= notBS2.notFin2Eq)),
+                rewrite transportConst,
+                \lam p,
+                inv (pmap (__ fzero) p) *> pmap (__ (fsuc fzero)) p
+              })
+     \in pc diagp.1 diagp.2
+
+-- Two diagonal elements connected by a path in borelXn 2 A come from the same element
+\func borelConstEq {A : \Type} (x y : A)
+                   (diag : (BSnbase 2, \lam _ => x) = {borelXn 2 A} (BSnbase 2, \lam _ => y)) : x = y
+  => \let diagp => SigmaPathChar _ _ diag
+          | pc => base2PathChar
+              (\lam q => transport (\lam a => a -> A) (pmap __.1 q) (\lam _ => x) = (\lam _ => y) -> x = y)
+              (\lam lp => pmap (__ fzero) lp)
+              (run {
+                unfold BSnPath,
+                rewrite (SigmaPropPathBeta2 (\lam A x y => path (truncP {Equiv {A} {Fin 2}} x y)) (Equiv-to-= notBS2.notFin2Eq)),
+                rewrite transportConst,
+                \lam p,
+                pmap (__ fzero) p
+              })
+     \in pc diagp.1 diagp.2

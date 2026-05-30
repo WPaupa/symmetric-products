@@ -514,3 +514,41 @@
     TruncP.rec-set.level (\lam y => elimBS2 {X} _ y idp idp) _
         (\lam (g : X.1 -> A) _ => g x, inP (x, idp))
   }
+
+-- To prove something for all paths BSnbase 2 = BSnbase 2,
+-- we need to prove it for the identity and the flip.
+\func base2PathChar (A : BSnbase 2 = BSnbase 2 -> \Type)
+                    (pi : A idp) (pn : A (BSnPath _ _ notBS2.notFin2Eq))
+                    (eq : BSnbase 2 = BSnbase 2) : A eq =>
+  general A idp (BSnPath _ _ notBS2.notFin2Eq)
+      (run {
+        pmap-/= (pmap __.1),
+        unfold BSnPath,
+        rewrite (SigmaPropPathBeta2 (\lam A x y => path (truncP {Equiv {A} {Fin 2}} x y)) (Equiv-to-= notBS2.notFin2Eq)),
+        pmap-/= =-to-Equiv,
+        unfold pmap,
+        rewrite (univalence.f_ret notBS2.notFin2Eq : =-to-Equiv (Equiv-to-= notBS2.notFin2Eq) = notBS2.notFin2Eq),
+        unfold =-to-Equiv,
+        unfold transport,
+        \lam e,
+        \case pmap (\lam f => eqvFun f fzero) e \with {}
+      })
+      pi pn eq
+  \where {
+    -- In more generality, there are exactly two such different paths.
+    -- This is easier to prove, as it's a Pi-type and we can rewrite
+    -- paths on BSnbase 2 by using BSnPathChar.
+    \func general : \Pi (A : BSnbase 2 = BSnbase 2 -> \Type)
+                        (p q : BSnbase 2 = BSnbase 2) (pr : p /= q)
+                        (pi : A p) (pn : A q)
+                        (eq : BSnbase 2 = BSnbase 2) -> A eq =>
+      \let | k => inv (BSnPathChar (BSnbase 2) (BSnbase 2))
+           | k' => k *> QEquiv-to-= (univalence {Fin 2} {Fin 2}) *> fin2Equiv
+      \in rewrite k' (\lam _ p q ne ap aq e => \case decBSn.decFin p e \with {
+        | yes e1 => rewriteI e1 ap
+        | no n => rewriteI (fin2char p q e ne n) aq
+      })
+    -- More computationally, every path is either idp or flip
+    \func comp (p : BSnbase 2 = BSnbase 2) : Or (p = idp) (p = BSnPath _ _ notBS2.notFin2Eq) =>
+      base2PathChar (\lam p => Or (p = idp) (p = BSnPath _ _ notBS2.notFin2Eq)) (inl idp) (inr idp) p
+  }

@@ -17,10 +17,17 @@
 \import SymmetricProducts.SP2OfSet
 \import Utilities.Trunc
 
+-- The set-structure of SP^2(A)
+-- We obtain the n-type structure of SP^n(A)
+-- by writing out the first n levels of the infinite
+-- tower of coherences, and truncating at level n
 \truncated \data SetSP2 (A : \Type) : \Set
   | inSP2 A A
   | symSP2 (a a' : A) : inSP2 a a' = inSP2 a' a
 
+-- There is a commutativity structure corresponding
+-- to a canonical morphism A^2 -> SP^2 A. We use the
+-- fact that commutativity structures correspond to commutative maps in sets
 \func setSP2Inj {A : \Set} : commstr 2 A (SetSP2 A) =>
   \lam B x => setRecBS2 B (\lam b => inSP2 (x b) (x (notBS2 b)))
       (\lam b => rewrite (notNotBS2 b) (\lam i => symSP2 (x b) (x (notBS2 b)) i))
@@ -28,6 +35,8 @@
     \lemma beta {A : \Set} (f : Fin 2 -> A) : setSP2Inj (BSnbase 2) f = inSP2 (f 0) (f 1) =>
       setRecBS2.beta fzero _ _ *> pmap (\lam y => inSP2 (f 0) (f y)) (notFin2isNot 0)
   }
+
+-- A lifting of a commutative function to sets to a function from SetSP2
 
 \func recSetSP2 {A : \Set} {T : \Set} (f : A -> A -> T)
                 (pr : \Pi (a b : A) -> f a b = f b a) (x : SetSP2 A) : T \elim x
@@ -39,11 +48,9 @@
   (\lam a a' => commstr.f f (elimBS2.recFin2 a a'))
   (\lam a a' => rewrite (commstr2IsComm f a a') idp)
 
-
-\func swapBorel {A : \Type} (a a' : A) :
-  (BSnbase 2, elimBS2.recFin2 a a') = {borelXn 2 A} (BSnbase 2, elimBS2.recFin2 a' a) =>
-  commstr2IsComm {A} {borelXn 2 A} (injBorelXn {2}) a' a
-
+-- This is true for all types,
+-- but way easier to prove for sets (and
+-- we only need it for sets.
 \func setTruncSP2 {A : \Set} : SetSP2 A = Trunc0 (borelXn 2 A) =>
   iso f g sec ret \where {
 
@@ -71,6 +78,10 @@
     }
   }
 
+-- If A is a set, then the true symmetric product
+-- and its set-truncation coincide. We use a lemma
+-- that works for all types: gluing diagonal
+-- subspaces doesn't change the set-truncation.
 \func setSP2IsSP2 {A : \Set} : SetSP2 A = SP2 A => run {
   rewriteI (Trunc0Eq (SP2SetIsSet {A})),
   rewrite setEq,

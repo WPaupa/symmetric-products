@@ -12,10 +12,16 @@
 \import Data.Or
 \import Utilities.Paths
 
+-- The type SP2, classically homotopy equivalent to the
+-- second symmetric product. The type borelXn 2 A already
+-- approximates the second symmetric product away from
+-- the diagonals, and on the diagonals it has a subspace
+-- BS2 that this type glues.
 \data SP2 (A : \Type)
   | sigma (f : borelXn 2 A)
   | delta A
   | tau (a : A) (X : BSn 2) : delta a = sigma (X, \lam _ => a) \where {
+  -- Computational rules
   \func elim {Z : SP2 A -> \Type}
              (s : \Pi (x : borelXn 2 A) -> Z (sigma x))
              (d : \Pi (a : A) -> Z (delta a)) (eq : \Pi (a : A) (X : BSn 2) ->
@@ -26,10 +32,10 @@
   \func rec {Z : \Type} (s : borelXn 2 A -> Z) (eq : \Pi (a : A) (X : BSn 2) ->
       s (BSnbase 2, \lam _ => a) = s (X, \lam _ => a)) : SP2 A -> Z =>
     elim s (\lam a => s (BSnbase 2, \lam _ => a)) eq
-  \func cone-prop (a : A) (X Y : BSn 2) : sigma (X, \lam _ => a) = sigma (Y, \lam _ => a) =>
-    inv (path (tau a X)) *> path (tau a Y)
 }
 
+-- The type SP2 can also be expressed as a pushout,
+-- without changing any structure.
 \func SP2Pushout (A : \Type) :
   SP2 A = PushoutData {\Sigma A (BSn 2)} {A} {borelXn 2 A} __.1 (\lam p => (p.2, \lam _ => p.1)) => iso f g sec ret \where {
   \func f (_ : SP2 A) : PushoutData {\Sigma A (BSn 2)} {A} {borelXn 2 A} __.1 (\lam p => (p.2, \lam _ => p.1))
@@ -50,18 +56,31 @@
     | pglue a i => idp
 }
 
+-- We analyze commutativity structures
+-- that are constant on the extended diagonal.
+-- Notice that dcommf2 is not yet the type of commutative
+-- functions A to T, because it contains structure
+-- coming from paths of the extended diagonal.
 \func dcommf2 \plevels p1 <= p2 (A : \Type p1) (T : \Type p2) =>
   \Sigma (f : commstr 2 A T) (\Pi (a : A) (X : BSn 2) -> f (BSnbase 2) (\lam _ => a) = f X (\lam _ => a)) \where {
   \func compose \plevels p1 <= p2 {A : \Type p1} {M T : \Type p2} (f : dcommf2 A T) (g : T -> M) : dcommf2 A M =>
     (commstr.compose \levels (p1, p2) \lh f.1 g, \lam a X => pmap g (f.2 a X))
 }
 
+-- There's a commutativity structure constant
+-- on the extended diagonal that can be taken
+-- to mean a canonical morphism A^2 -> SP2 A
 \func injSP2 {A : \Type} : dcommf2 A (SP2 A) => (\lam T x => sigma (T, x),
                                                  \lam a X => inv (path (tau a (BSnbase 2))) *> path (tau a X))
 
+-- Every commutativity structure constant on the
+-- extended diagonal lifts to a function from SP2 A
 \func liftSP2 {A T : \Type} (f : dcommf2 \levels \lp \lh A T) : SP2 A -> T =>
   SP2.rec (liftBorelXn f.1) f.2 \where {
+  -- This lifting really does lift f, at least as a commutativity structure
   \func coh (X : BSn 2) (x : X.1 -> A) : liftSP2 f (injSP2.1 X x) = f.1 X x => idp
+  -- It lifts f as a dcommf2 as long as there's no additional structure in f
+  -- for testifying that the extended diagonal is constant
   \func dcoh (p : \Pi (a : A) -> f.2 a (BSnbase 2) = idp) : dcommf2.compose injSP2 (liftSP2 f) = f => ext (idp, ext \lam a _ => run {
     unfold transport,
     unfold dcommf2.compose,
@@ -75,6 +94,7 @@
     idp_*> _
   })
 
+  -- Proof the lifting is unique
   \func liftCompose (h : SP2 A -> T) : liftSP2 (dcommf2.compose injSP2 h) = h =>
     ext $ SP2.elim (\lam x => idp {_} {h (injSP2.1 x.1 x.2)}) (\lam a => pmap h (inv (path (tau a (BSnbase 2))))) (\lam a X => run {
       pathOver,
@@ -108,6 +128,8 @@
     | idp => pmap (__ x) $ inv (liftCompose h)
 }
 
+-- The second symmetric product of a contractible type is contractible
+-- (we have a proof of Contr (pointedBorelXn 2 UnitPointed) in Borel.ard)
 \func SP2UnitIsContr : SP2 (\Sigma) = pointedBorelXn 2 UnitPointed => iso f g sec ret \where {
   \func f (_ : SP2 (\Sigma)) : pointedBorelXn 2 UnitPointed
     | sigma f => pinr f

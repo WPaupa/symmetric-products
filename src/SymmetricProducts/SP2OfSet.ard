@@ -21,95 +21,45 @@
 \import Utilities.Paths
 \import Utilities.Pushout
 
-\func base2PathChar (A : BSnbase 2 = BSnbase 2 -> \Type)
-                    (pi : A idp) (pn : A (BSnPath _ _ notBS2.notFin2Eq))
-                    (eq : BSnbase 2 = BSnbase 2) : A eq =>
-  general A idp (BSnPath _ _ notBS2.notFin2Eq)
-      (run {
-        pmap-/= (pmap __.1),
-        unfold BSnPath,
-        rewrite (SigmaPropPathBeta2 (\lam A x y => path (truncP {Equiv {A} {Fin 2}} x y)) (Equiv-to-= notBS2.notFin2Eq)),
-        pmap-/= =-to-Equiv,
-        unfold pmap,
-        rewrite (univalence.f_ret notBS2.notFin2Eq : =-to-Equiv (Equiv-to-= notBS2.notFin2Eq) = notBS2.notFin2Eq),
-        unfold =-to-Equiv,
-        unfold transport,
-        \lam e,
-        \case pmap (\lam f => eqvFun f fzero) e \with {}
-      })
-      pi pn eq
-  \where {
-  \func general : \Pi (A : BSnbase 2 = BSnbase 2 -> \Type)
-                      (p q : BSnbase 2 = BSnbase 2) (pr : p /= q)
-                      (pi : A p) (pn : A q)
-                      (eq : BSnbase 2 = BSnbase 2) -> A eq =>
-    \let | k => inv (BSnPathChar (BSnbase 2) (BSnbase 2))
-         | k' => k *> QEquiv-to-= (univalence {Fin 2} {Fin 2}) *> fin2Equiv
-    \in rewrite k' (\lam _ p q ne ap aq e => \case decBSn.decFin p e \with {
-      | yes e1 => rewriteI e1 ap
-      | no n => rewriteI (fin2char p q e ne n) aq
-    })
-  \func comp (p : BSnbase 2 = BSnbase 2) : Or (p = idp) (p = BSnPath _ _ notBS2.notFin2Eq) =>
-    base2PathChar (\lam p => Or (p = idp) (p = BSnPath _ _ notBS2.notFin2Eq)) (inl idp) (inr idp) p
-}
-
-\func transportConst {A B C : \Type} (p : B = C) (a : A) : transport (\lam X => X -> A) p (\lam _ => a) = \lam _ => a \elim p
-  | idp => idp
-
-\func borelEq {A : \Type} (x y z : A)
-              (diag : (BSnbase 2, \lam _ => x) = {borelXn 2 A} (BSnbase 2, elimBS2.recFin2 y z)) : y = z
-  => \let diagp => SigmaPathChar _ _ diag
-        | pc => base2PathChar
-            (\lam q => transport (\lam a => a -> A) (pmap __.1 q) (\lam _ => x) = elimBS2.recFin2 y z -> y = z)
-            (\lam lp => inv (pmap (__ fzero) lp) *> pmap (__ (fsuc fzero)) lp)
-            (run {
-              unfold BSnPath,
-              rewrite (SigmaPropPathBeta2 (\lam A x y => path (truncP {Equiv {A} {Fin 2}} x y)) (Equiv-to-= notBS2.notFin2Eq)),
-              rewrite transportConst,
-              \lam p,
-              inv (pmap (__ fzero) p) *> pmap (__ (fsuc fzero)) p
-            })
-          \in pc diagp.1 diagp.2
-\func borelEq2 {A : \Type} (x y : A)
-               (diag : (BSnbase 2, \lam _ => x) = {borelXn 2 A} (BSnbase 2, \lam _ => y)) : x = y
-  => \let diagp => SigmaPathChar _ _ diag
-        | pc => base2PathChar
-            (\lam q => transport (\lam a => a -> A) (pmap __.1 q) (\lam _ => x) = (\lam _ => y) -> x = y)
-            (\lam lp => pmap (__ fzero) lp)
-            (run {
-              unfold BSnPath,
-              rewrite (SigmaPropPathBeta2 (\lam A x y => path (truncP {Equiv {A} {Fin 2}} x y)) (Equiv-to-= notBS2.notFin2Eq)),
-              rewrite transportConst,
-              \lam p,
-              pmap (__ fzero) p
-            })
-     \in pc diagp.1 diagp.2
+-- This file is a formalization of a proof by Ulrik Buchholtz
+-- that SP2 sends sets to sets. We use his notation
+-- to make it easier to follow.
 
 \sfunc loopSpaceContr (A : \Set \lp) (x0 x1 : A) : Contr (z0 = z0) => rewrite z0Pathchar contrQz0 \where {
+  -- we make it level-polymorphic, so we write out BS2 explicitly
   \func BS2 : \Type (\suc \lp) => \Sigma (X : \Set \lp) (TruncP (Equiv {X} {Fin 2}))
+  -- hUP - homotopy unordered pairs
   \func hUP : \Type (\suc \lp) => borelXn 2 A
+  -- gUP - genuine unordered pairs. We use the pushout definition
   \func gUP : \Type (\suc \lp) => PushoutData {\Sigma A BS2} {A} {hUP} __.1 (\lam p => (p.2, \lam _ => p.1))
   \func w0 : hUP => (BSnbase 2, elimBS2.recFin2 {\lam _ => A} x0 x1)
+  -- We start by proving that for every "model" element of gUP, the loop space of this element is contractible
+  -- z0 is such a model element
   \func z0 : gUP => pinr w0
   \func P : \Prop => x0 = x1
 
+  -- The join appearing in the definition of Q
   \func joinT (Kv : hUP) : \Type (\suc \lp) =>
       Join (w0 = Kv) (\Sigma P (Kv.2 = \lam _ => x0))
 
+  -- If we have an element of this joinT, then we also have an element of the other
+  -- type appearing in the definition of Q.
   \func condIsPropCst (x : A) (K : BS2) (a : joinT (K, \lam _ => x)) : \Sigma P ((\lam _ => x) = {K.1 -> A} (\lam _ => x0)) \elim a
-    | pinl b => \let | bK : BSnbase 2 = K => pmap __.1 b
+    | pinl b =>\let | bK : BSnbase 2 = K => pmap __.1 b
                      | bW : w0 = (BSnbase 2, \lam _ => x) => rewrite bK b
-                     | x01 : P => borelEq x x0 x1 (inv bW)
+                     | x01 : P => borelConstToEq x x0 x1 (inv bW)
                      | bW1 : (BSnbase 2, \lam _ => x0) = {borelXn 2 A} (BSnbase 2, \lam _ => x) => run {
                        rewriteI (elimBS2.recFin2Eta x0),
                        rewrite {2} x01,
                        bW
                      }
-                     | x0x => borelEq2 x0 x bW1 \in (x01, inv (pmap (\lam y _ => y) x0x))
+                     | x0x => borelConstEq x0 x bW1 \in (x01, inv (pmap (\lam y _ => y) x0x))
     | pinr c => c
-
+  -- Since this other type in the definition of Q is a Prop, an element of it gives us contractibility
   \func condCtrJoinCst (x : A) (K : BS2) (a : joinT (K, \lam _ => x)) : Contr (joinT (K, \lam _ => x))
     => Join_Contr (w0 = (K, \lam _ => x)) (isProp=>isContr prop-isProp (condIsPropCst x K a))
+
+  -- If P holds, then Q(z0) is contractible
   \func contrP (_ : P) : Contr (joinT w0)
     | idp => run {
       unfold w0,
@@ -118,6 +68,7 @@
       pinr (idp, idp)
     }
 
+  -- The type Q agrees for the pushout gluing
   \func Qeq (x : A) (K : BS2) : joinT (K, \lam _ => x) = (\Sigma P (x = x0)) =>
     propExtEx (condCtrToProp (condCtrJoinCst x K)) prop-isProp
         (\lam pd =>
@@ -133,25 +84,37 @@
     | pinr Kv => joinT Kv
     | pinl x => \Sigma P (x = x0)
     | pglue (x, K) i => inv (Qeq x K) i
+
+  -- A computational fact facilitating the later use of the flattening lemma
   \func transportQ (a' : \Sigma BS2 P) : transport Q (path (pglue (x0, a'.1))) (a'.2, idp) = {Q (pinr (a'.1, \lam _ => x0))}
     pinr (a'.2, idp) => isContr=>isProp (Join_Contr
       (w0 = (a'.1, \lam _ => x0))
       (isProp=>isContr {\Sigma P ((\lam _ => x0) = (\lam _ => x0))} prop-isProp (a'.2, idp))) _ _
 
+  -- The type D and R, as defined in the proof
   \func D : \oo-Type (\suc \lp) => \Sigma (z : gUP) (Q z)
   \func R : \oo-Type (\suc \lp) => \Sigma (w : hUP) (joinT w)
+
+  -- The type R can also be expressed as such a pushout
   \func R' : \oo-Type (\suc \lp) => PushoutData {P} {\Sigma} {\Sigma BS2 P} (\lam _ => ()) (\lam p => (BSnbase 2, p))
 
+  -- This proof relies mostly on treating paths as functions, it compiles pretty slow, but not
+  -- as slow as the corresponding proof for D.
+  -- Keep in mind that this equality needs to be able to be translated to a function
   \func Rchar : R = R' => pushout-sigma _ _ *> Rsum=Rctr *> Rctr=R' \where {
+    -- Firstly, we can write the sum of pushouts as a pushout of sums
     \func Rsum => PushoutData {\Sigma (w : hUP) (\Sigma (w0 = w) (\Sigma P (w.2 = \lam _ => x0)))}
         {\Sigma (w : hUP) (w0 = w)} {\Sigma (w : hUP) (\Sigma P (w.2 = \lam _ => x0))}
         (\lam b => (b.1, b.2.1))
         (\lam c => (c.1, c.2.2))
+    -- Secondly, we can replace a contractible type by Sigma
     \func Rctr => PushoutData {\Sigma (w : hUP) (\Sigma (w0 = w) (\Sigma P (w.2 = \lam _ => x0)))}
         {\Sigma} {\Sigma (w : hUP) (\Sigma P (w.2 = \lam _ => x0))}
         (\lam _ => ())
         (\lam c => (c.1, c.2.2))
     \func Rsum=Rctr : Rsum = Rctr => pushout-contr (lsigma _) _ _
+    -- Thirdly, we can notice equalities in the base type and the right type of the pushout
+    -- that give an equality of pushouts
     \func baseR => \Sigma (w : hUP) (\Sigma (w0 = w) (\Sigma P (w.2 = \lam _ => x0)))
     \func base= : baseR = P => iso f g sec ret \where {
       \func f (x : baseR) : P => x.2.2.1
@@ -185,6 +148,8 @@
       }, ext ())
       \func ret (x : \Sigma BS2 P) : f (g x) = x => ext idp
     }
+    -- We use these equalities to get the final step. We start by explicitly writing out the functions,
+    -- and then showing that they are equal in the next step, to get better computational properties.
     \sfunc Rpf-fun :
       (\lam a' => path-fun right= ((path-fun (inv base=) a').1, (path-fun (inv base=) a').2.2)) = \lam p => (BSnbase 2, p) => run {
       unfold base=,
@@ -201,7 +166,7 @@
       pushout-equiv base= (idp {\Type} {\Sigma}) right= (\lam _ => ()) (\lam c => (c.1, c.2.2)) *> Rpf=R'
   }
 
-
+  -- A direct result of the flattening lemma
   \func Dflat : \oo-Type (\suc \lp) => PushoutData {\Sigma (x : \Sigma A BS2) (\Sigma P (x.1 = x0))}
       {\Sigma (y : A) (\Sigma P (y = x0))}
       {R}
@@ -209,8 +174,13 @@
       (\lam p => ((p.1.2, \lam _ => p.1.1), transport Q (PushoutData.ppglue p.1) p.2))
   \func Dflat=D : Dflat = D
     => PushoutData.flattening Q
+
+  -- The type D expressed as the pushout from the proof,
+  -- with the second version of R.
   \func D' =>
     PushoutData {\Sigma BS2 P} {P} {R'} (\lam bp => bp.2) pinr
+  -- This proof looks long, but the only thing going on is
+  -- chasing through the functions induced by paths (mostly using path-fun.beta)
   \sfunc Dflat=D' : Dflat = D' => run {
     pushout-equiv base= left= Rchar (\lam p => (p.1.1, p.2)) (\lam p => ((p.1.2, \lam _ => p.1.1), transport Q (PushoutData.ppglue p.1) p.2)) *>,
     unfold base=,
@@ -257,10 +227,14 @@
     }
   }
 
+  -- I don't know why this function is defined in the proof,
+  -- but I left it here for completeness
   \func h (_ : R') : BS2
     | pinl b => BSnbase 2
     | pinr c => c.1
     | pglue a i => BSnbase 2
+
+  -- A proof that D (or, D') is contractible
 
   \func RgluePath (p : P) : Path (\lam i => pinr (pglue p i) = {D'} pinr (pinl ())) idp
     (inv (path (pglue (BSnbase 2, p))) *> path (pglue (BSnbase 2, p)) *> pmap pinr (inv (path (pglue p))))
@@ -295,6 +269,28 @@
     | center => pinr (pinl ())
     | contraction a => inv (contractionD a)
 
+
+  -- A bit more involved version of Join_Contr, instead
+  -- of asking for paths in A between all elements of A,
+  -- we ask for paths in the join. We also require B to be a Prop.
+  \func joinEqLeft {A : \Type} {B : \Prop} (ca : A)
+                   (pa : \Pi (a : A) -> pinl ca = {Join A B} pinl a)
+    : Contr (Join A B) \cowith
+    | center => pinl ca
+    | contraction => \case \elim __ \with {
+      | pinl b => pa b
+      | pinr c => path (pglue (ca, c))
+      | pglue a i => glueEq a i
+    } \where {
+    \func glueEq (a : \Sigma A B)
+      : Path (\lam i => pinl ca = pglue a i) (pa a.1) (path (pglue (ca, a.2))) => run {
+      pathOver,
+      isProp.=>isSet (isContr=>isProp (Join_Contr A (isProp=>isContr prop-isProp a.2))) _ _ _ _
+    }
+  }
+
+  -- We aim to use the lemma joinEqLeft to prove contractibility of Q z0,
+  -- so we need to prove its assumption.
   \sfunc Qz0Eq (b : w0 = w0) : pinl idp = {Q z0} pinl b => run {
     \let bW => SigmaPathChar _ _ b,
     rewrite (SigmaPathChar.eq b),
@@ -332,6 +328,9 @@
   \func z0Pathchar : (z0 = z0) = Q z0 => fundamentalIP contrQz0.center contrD
 }
 
+-- We used the pushout definition of SP2, so we need to translate it back.
+-- Then we prove that we indeed only needed to check contractibility of loop spaces
+-- for "model" points.
 \sfunc SP2SetIsSet {A : \Set} : isSet (SP2 A) => run {
   rewrite SP2Pushout,
   connSetChar {gUP},
