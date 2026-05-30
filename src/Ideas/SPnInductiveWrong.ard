@@ -8,6 +8,8 @@
 -- of the diagram X ---(diagonal map) --> X^2 -- (flip) --|
 --                                         ^--------------|
 -- However adapting this diagram naively to hott doesn't work
+-- In fact, the HIT defined this way is the same as the naive
+-- SP2 defined by just adding in paths inSP a b = inSP b a.
 \data SP2 (A : \Type)
   | delta A
   | inSP A A

@@ -8,6 +8,9 @@
 \import Ideas.SPnAxioms
 \import Utilities.Unit
 
+-- An alternative definition of commutativity structure,
+-- an attempt to have the type of commutative functions
+-- be a subtype of the type of all functions.
 \func commfunc (n : Nat) (A : \Type) (B : \Type) : \Type =>
   \Sigma (f : (Fin n -> A) -> B) (TruncP (\Sigma (str : commstr n A B) (commstr.f str = f))) \where {
   \func from-commstr (f : commstr n A B) : commfunc n A B =>
@@ -15,6 +18,11 @@
   \func from-commstr-beta (f : commstr n A B) : commstr.f f = (from-commstr f).1 =>
     idp
 }
+
+-- It turns out that choosing this definition doesn't
+-- change the strong universal property in SPnAxioms.
+-- This doesn't amount to much, because this property
+-- is too strong to be useful.
 
 -- In SPnAxioms: \func SPnAxiom {n : Nat} (A : \Type) (SPnA : \Type) : \Type =>
 --   \Sigma (inj : commf n A SPnA) (\Pi (T : \oo-Type) (g : commf n A T) ->

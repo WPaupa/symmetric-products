@@ -7,6 +7,12 @@
 \import Set
 \import Utilities.Trunc
 
+-- Under the law of excluded middle,
+-- we can check connectedness by checking if
+-- all functions to the 2-element type are constant.
+-- This is used to check if the (strong) axiomatic
+-- SPn preserves connectedness.
+
 \func lemOnTrue {X : \Prop} {dec : Dec X} (x : X) : dec = yes x
   | {X}, {yes e}, x => pmap yes (prop-isProp {X} e x)
   | {X}, {no n}, x => absurd (n x)

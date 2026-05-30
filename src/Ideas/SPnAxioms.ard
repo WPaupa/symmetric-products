@@ -16,6 +16,10 @@
 \import Utilities.Paths
 \import Utilities.Unit
 
+-- An (unnecesarily strong) axiom for the n-th symmetric product,
+-- by universal property. The problem is that instead of checking
+-- coherence only on Fin n -> A, we should check it on the whole
+-- \Sigma (X : BSn n) (X.1 -> A)
 \func SPnAxiom {n : Nat} (A : \Type) (SPnA : \Type) : \Type =>
   \Sigma (inj : commstr n A SPnA) (\Pi (T : \oo-Type) (g : commstr n A T) ->
       exists! (SPnA -> T) (\lam h => \Pi (x : Fin n -> A) ->
@@ -23,9 +27,12 @@
       )
   )
 
+-- This axiom implies pointedness
 \func SPXBase {n : Nat} {X : \Type} {SPX : \Type}
   {pr : SPnAxiom {n} X SPX} (x : X) : SPX => pr.1 (BSnbase n) (\lam _ => x)
 
+-- An attempt of a proof that this axiom implies preserving
+-- connectedness. I don't know whether this is provable.
 \func isConnectedSPnX {n : Nat} (X : Connected0) {SPX : \Type}
   (pr : SPnAxiom {n} X SPX) : Connected0 SPX \cowith
   | isInh => TruncP.map X.isInh (SPXBase {n} {X} {SPX} {pr})
@@ -41,7 +48,7 @@
           | univmapCoh : \Pi (x : Fin n -> X) -> univmap (commstr.f pr.1 x) = commstr.f map x => univmapStr.center.2
           | univmapUniv
             (g : \Sigma (x : SPX -> Bool) (\Pi (x1 : Fin n -> X) ->
-                x (Commutative.commstr.f pr.1 x1) = Commutative.commstr.f map x1)) =>
+                x (commstr.f pr.1 x1) = commstr.f map x1)) =>
             pmap __.1 (univmapStr.contraction g)
           | univmapEqF : univmap = f => univmapUniv (f, \lam _ => idp)
           | mapValue : Bool => commstr.f map (\lam _ => bp)
@@ -61,6 +68,9 @@
               (\lam path => funExt- (inv univmapEqF) x *> funExt- path x) \in thesis
       )).isConn0)
 
+-- A proof that there's at most one space that
+-- satisfies this axiom, up to canonical isomorphism.
+-- Classical proof for spaces defined by universal property.
 \func SPnUniqueness {n : Nat}
   {X Y Z : \Type}
   (spY : SPnAxiom {n} X Y)
@@ -89,6 +99,7 @@
     | fgIsId : (\lam x => f (g x)) = id => inv fgCoh *> idmapZIsId \in
   iso f g (funExt- gfIsId) (funExt- fgIsId)
 
+-- A proof that it preserves contractibility
 \func contrSPnContr {n : Nat} {X : \Type}
   (pr : SPnAxiom {n} (\Sigma) X) : X = (\Sigma) =>\let
     | f (_ : X) : \Sigma => ()
@@ -107,6 +118,8 @@
     | ret (x : X) : bpX = x => funExt- (inv univmapIsConst *> univmapEqId) x \in
   iso f g ret sec
 
+-- There's a canonical injection from SP^n to SP^(n+1), that can be
+-- used to define SP^infty
 \func injSPnSPsucn {n : Nat} {A : \Type} {bp : A} {Sn : \Type} {Ssn : \Type}
                    (prn : SPnAxiom {n} A Sn) (prsn : SPnAxiom {suc n} A Ssn) : Sn -> Ssn =>
     (prn.2 Ssn injOnBase).center.1 \where {
