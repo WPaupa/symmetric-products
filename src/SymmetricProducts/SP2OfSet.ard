@@ -17,7 +17,6 @@
 \import Homotopy.Pushout
 \import Utilities.Equiv
 \import Utilities.Fin
-\import Utilities.Join
 \import Utilities.PathFun
 \import Utilities.Paths
 \import Utilities.Pushout
@@ -143,7 +142,7 @@
   \func R : \oo-Type (\suc \lp) => \Sigma (w : hUP) (joinT w)
   \func R' : \oo-Type (\suc \lp) => PushoutData {P} {\Sigma} {\Sigma BS2 P} (\lam _ => ()) (\lam p => (BSnbase 2, p))
 
-  \func Rchar : R = R' => pushout-colim _ _ *> Rsum=Rctr *> Rctr=R' \where {
+  \func Rchar : R = R' => pushout-sigma _ _ *> Rsum=Rctr *> Rctr=R' \where {
     \func Rsum => PushoutData {\Sigma (w : hUP) (\Sigma (w0 = w) (\Sigma P (w.2 = \lam _ => x0)))}
         {\Sigma (w : hUP) (w0 = w)} {\Sigma (w : hUP) (\Sigma P (w.2 = \lam _ => x0))}
         (\lam b => (b.1, b.2.1))
@@ -222,13 +221,13 @@
     unfold base=.g,
     pmap (\lam f => PushoutData __.2 f),
     unfold Rchar,
-    rewrite (path-fun.beta-*> (pushout-colim _ _) (Rchar.Rsum=Rctr *> Rchar.Rctr=R')),
-    unfold pushout-colim,
-    rewrite (path-fun.beta pushout-colim.to pushout-colim.fro pushout-colim.sec pushout-colim.ret),
+    rewrite (path-fun.beta-*> (pushout-sigma _ _) (Rchar.Rsum=Rctr *> Rchar.Rctr=R')),
+    unfold pushout-sigma,
+    rewrite (path-fun.beta pushout-sigma.to pushout-sigma.fro pushout-sigma.sec pushout-sigma.ret),
     ext,
     \lam a',
     rewrite (transportQ a'),
-    unfold pushout-colim.to,
+    unfold pushout-sigma.to,
     rewrite (path-fun.beta-*> Rchar.Rsum=Rctr Rchar.Rctr=R'),
     unfold Rchar.Rsum=Rctr,
     unfold pushout-contr,
@@ -309,8 +308,7 @@
       | idp => run {
       rewrite (set-pi {Fin 2 -> A} {w0.2} {w0.2} {q2} {idp}),
       pmap pinl,
-      inv,
-      SigmaPath-idp
+      idp
     }
     \func ifFlipSpec :
       \Pi (q2 : transport (\lam a => a -> A) (pmap __.1 (BSnPath (BSnbase 2) (BSnbase 2) notBS2.notFin2Eq)) w0.2 = w0.2) ->

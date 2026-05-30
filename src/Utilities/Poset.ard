@@ -8,6 +8,11 @@
 \import Order.PartialOrder
 \import Paths
 
+-- A slightly strict, but computationally useful
+-- version of well foundedness: a poset is well-founded,
+-- if there's a natural potential function decreasing along with the elements.
+-- This is so that we can define things inductively,
+-- based on the order.
 \class WellFoundedPoset \extends StrictPoset {
   | potential (x : E) : Nat
   | potentialMonotone (x y : E) (x < y) : potential x NatSemiring.< potential y

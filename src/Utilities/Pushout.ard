@@ -6,7 +6,9 @@
 \import Paths
 \import Logic.Unique
 \import Logic
+\import Homotopy.Join
 
+-- A dependent version of Pushout.rec
 \func Pushoutelim {A B C : \Type} {f : A -> B} {g : A -> C} {Z : PushoutData f g -> \Type}
                   (lm : \Pi (b : B) -> Z (pinl b))
                   (rm : \Pi (c : C) -> Z (pinr c))
@@ -16,7 +18,8 @@
   | pinr c => rm c
   | pglue a => gm a
 
-\func pushout-colim {A : \Type} {B C D : A -> \Type} (f : \Pi (a : A) -> B a -> C a) (g : \Pi (a : A) -> B a -> D a) :
+-- A pushout of a sigma-type is equal to the sigma-type of the pushout
+\func pushout-sigma {A : \Type} {B C D : A -> \Type} (f : \Pi (a : A) -> B a -> C a) (g : \Pi (a : A) -> B a -> D a) :
   sumPushout = pushoutSum => iso to fro sec ret \where {
   \func pushoutSum => PushoutData {\Sigma (a : A) (B a)} {\Sigma (a : A) (C a)} {\Sigma (a : A) (D a)}
       (\lam b => (b.1, f b.1 b.2))
@@ -44,8 +47,10 @@
     | pglue a i => idp
 }
 
-
-
+-- An equality of pushouts comes from equalities of
+-- pushed out types and appropriate liftings of functions.
+-- This is important for the computational rules,
+-- as path-fun lifts from given equalities to pushout-equiv.
 \func pushout-equiv {A A' B B' C C' : \Type}
                     (eqA : A = A') (eqB : B = B') (eqC : C = C')
                     (f : A -> B) (g : A -> C) :
@@ -70,6 +75,8 @@
     | idp, idp, idp => idp
 }
 
+-- Pushouts of equal functions are equal, and
+-- the computational rules are x => x
 \func pushout-eqv-fun {A B C : \Type} (f f' : A -> B) (g g' : A -> C)
                       (p : f = f') (q : g = g')
   : PushoutData f g = PushoutData f' g' \elim p, q
@@ -85,6 +92,11 @@
     | idp, idp => idp
 }
 
+-- A version of pushout-equiv for contractible types:
+-- a pushout of a function to a contractible type is equal
+-- to a mapping cone. This has a simpler definition with
+-- rewrites, but writing it out as iso leads to better
+-- computational properties of path-fun.
 \func pushout-contr {A B C : \Type} (pr : Contr B) (f : A -> B) (g : A -> C) :
   PushoutData f g = PushoutData {A} {\Sigma} {C} (\lam _ => ()) g => iso to fro sec ret \where {
   \func to (_ : PushoutData f g) : PushoutData {A} {\Sigma} {C} (\lam _ => ()) g
@@ -128,5 +140,24 @@
     rewrite pmap_inv-comm,
     unfold pmap,
     inv_*> _
+  }
+}
+
+-- A bit more involved version of Join_Contr, instead
+-- of asking for paths in A between all elements of A,
+-- we ask for paths in the join. We also require B to be a Prop.
+\func joinEqLeft {A : \Type} {B : \Prop} (ca : A)
+                 (pa : \Pi (a : A) -> pinl ca = {Join A B} pinl a)
+  : Contr (Join A B) \cowith
+  | center => pinl ca
+  | contraction => \case \elim __ \with {
+    | pinl b => pa b
+    | pinr c => path (pglue (ca, c))
+    | pglue a i => glueEq a i
+  } \where {
+  \func glueEq (a : \Sigma A B)
+    : Path (\lam i => pinl ca = pglue a i) (pa a.1) (path (pglue (ca, a.2))) => run {
+    pathOver,
+    isProp.=>isSet (isContr=>isProp (Join_Contr A (isProp=>isContr prop-isProp a.2))) _ _ _ _
   }
 }

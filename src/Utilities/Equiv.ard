@@ -6,7 +6,11 @@
 \import Utilities.Unit
 \import Meta
 
+-- This circumvents a weird behaviour wherein equivalences can't be treated
+-- as functions, for example in pmap
 \func eqvFun {A B : \Type} (e : Equiv {A} {B}) : A -> B => e
+
+-- Constructions on QEquivs, brought over to Equivs. More convenient to deal with.
 
 \func symEquiv (eq : Equiv) : Equiv \cowith
   | A => eq.B
@@ -23,10 +27,12 @@
 \func transId {A B : \Type} (eq : Equiv {A} {B}) : transEquiv eq idEquiv = eq =>
   Equiv.equals {_} {_} {transEquiv eq idEquiv} {eq} idp
 
+-- Beta-rules for univalence
 \func idToIde {A : \Type} : =-to-Equiv (idp {\Type} {A}) = idEquiv => idp
 \func idToId {A : \Type} : Equiv-to-= (idEquiv {A}) = idp {\Type} {A} =>
   rewriteI idToIde (univalence.ret_f idp)
 
+-- Functions between contractible spaces are always equivalences
 \func eqvContr {A B : \Type} (pa : Contr A) (pb : Contr B) : \Pi (f : A -> B) -> Equiv f => run {
   rewrite (isContrEqUnit pa),
   rewrite (isContrEqUnit pb),
@@ -35,6 +41,10 @@
   idEquiv
 }
 
+-- The fundamental theorem of identity proofs,
+-- we prove it by generalizing the function (a = a') -> R a'
+-- to a general a', and since the general (sigma) function
+-- is an equivalence, the concretized function is also one.
 \func fundamentalIP {A : \Type} {a a' : A} {R : A -> \Type} (r : R a) (cr : Contr (\Sigma (a : A) (R a))) :
   (a = a') = R a' => Equiv-to-= (fEquiv a') \where {
   \func f (a' : A) (p : a = a') : R a' \elim p

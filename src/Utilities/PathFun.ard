@@ -5,11 +5,13 @@
 \import Paths.Meta
 \import Utilities.Equiv
 
+-- Treating a path as a function, by transport.
 \func path-fun {A B : \Type} (p : A = B) : A -> B => transport (\lam x => x) p \where {
   \func eta (p : A = B) : path-fun p = {A -> B} =-to-Equiv p
     | idp => idp
   \func beta (f : A -> B) (g : B -> A) (sec : \Pi (x : A) -> g (f x) = x) (ret : \Pi (x : B) -> f (g x) = x) :
     path-fun (iso f g sec ret) = f => idp
+  -- If two paths generate the same function, they are the same path
   \func equals (p q : A = B) (_ : path-fun p = path-fun q) : p = q
     | p, idp, pr =>
       \let k => rewrite path-fun.eta pr
@@ -20,6 +22,8 @@
       }
   \func inv-p (p : A = B) : path-fun (inv p) = (=-to-Equiv p).ret
     | idp => idp
+
+  -- A computational rule for =-to-Equiv of iso provable using path-fun
   \func equiv-eq (f : A -> B) (g : B -> A) (sec : \Pi (x : A) -> g (f x) = x) (ret : \Pi (x : B) -> f (g x) = x) :
     =-to-Equiv (iso f g sec ret) = \new Equiv {
                                      | A => A
@@ -35,6 +39,7 @@
     beta f g sec ret
   }
 
+  -- A computational rule for inv provable using path-fun
   \func inv-iso (f : A -> B) (g : B -> A) (sec : \Pi (x : A) -> g (f x) = x) (ret : \Pi (x : B) -> f (g x) = x) :
     inv (iso f g sec ret) = iso g f ret sec => run {
     equals {B} {A} _ _,

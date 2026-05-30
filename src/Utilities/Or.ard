@@ -25,6 +25,7 @@
     | inr _ => idp
 }
 
+-- The function Or.levelProp from arend-lib, but rewritten with isProp instead of Prop.
 \func OrlevelProp {A B : \Type} (p : isProp A) (q : isProp B) (e : A -> B -> Empty) (x y : Or A B) : x = y \elim x, y
   | inl a, inl a' => pmap inl (p a a')
   | inl a, inr b => absurd (e a b)

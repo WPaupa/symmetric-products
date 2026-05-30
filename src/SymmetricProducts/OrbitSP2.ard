@@ -82,7 +82,6 @@
           (pmap h (inv (path (tau a (BSnbase 2)))))
           (\lam i => h (tau a X i))
          ),
-      rewrite path-at,
       rewriteI (pmap_inv-comm h),
       rewrite *>_inv-comm,
       rewrite inv_inv,
@@ -91,11 +90,11 @@
       rewriteI {2} *>-assoc,
       rewriteI (pmap_*>-comm h (path (tau a (BSnbase 2))) (inv (path (tau a (BSnbase 2))))),
       rewrite *>_inv,
-      rewrite pmap-idp,
+      unfold pmap,
       rewrite idp_*>,
       rewriteI (pmap_*>-comm h (inv (path (tau a X))) (path (tau a X))),
       rewrite inv_*>,
-      pmap-idp h
+      idp
     })
 
   \func uniqExt (h : SP2 A -> T)

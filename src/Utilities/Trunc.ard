@@ -3,6 +3,7 @@
 \import Paths
 \import Set
 
+-- These functions should be part of the TruncP where block
 \func TruncPmap2 {A B C : \Type} (t1 : TruncP A) (t2 : TruncP B) (f : A -> B -> C) :
   TruncP C \elim t1, t2
   | inP a1, inP a2 => inP (f a1 a2)
@@ -18,6 +19,7 @@
     | inP a => inP (f a)
 }
 
+-- A way of converting isSet to \Set
 \func Trunc0Eq {A : \Type} (pr : isSet A) : Trunc0 A = A => iso f in0 sec ret \where {
   \sfunc f (x : Trunc0 A) : A \level pr \elim x
     | in0 a => a
