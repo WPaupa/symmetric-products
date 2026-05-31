@@ -9,8 +9,8 @@
 
 ## What is done
 
-This repo contains a working definition of the second symmetric product (in `OrbitSP2.ard`) and third symmetric product
-(in `PushoutSP3.ard`). It contains a direct calculation of the second symmetric product of the two-element set 
+This repo contains a working definition of the second symmetric product (in `SP2.ard`) and third symmetric product
+(in `SP3.ard`). It contains a direct calculation of the second symmetric product of the two-element set 
 that can be extended to a calculation of the second symmetric product of a general decidable set.
 
 There are formalized facts about the classifying space of the n-th symmetric group (in `BSn.ard` and `Commutative.ard`) and the Borel quotient of

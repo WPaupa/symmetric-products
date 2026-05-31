@@ -9,7 +9,7 @@
 \import Logic.Meta
 \import Logic.Unique
 \import Meta
-\import SymmetricProducts.OrbitSP2
+\import SymmetricProducts.SP2
 \import Paths
 \import Paths.Meta
 \import Ideas.SPnAxioms

@@ -4,7 +4,7 @@
 \import Data.Fin
 \import Function.Meta
 \import Meta
-\import SymmetricProducts.OrbitSP2
+\import SymmetricProducts.SP2
 \import Paths
 \import Paths.Meta
 \import Logic
