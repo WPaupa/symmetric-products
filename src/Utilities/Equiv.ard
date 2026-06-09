@@ -6,10 +6,6 @@
 \import Utilities.Unit
 \import Meta
 
--- This circumvents a weird behaviour wherein equivalences can't be treated
--- as functions, for example in pmap
-\func eqvFun {A B : \Type} (e : Equiv {A} {B}) : A -> B => e
-
 -- Constructions on QEquivs, brought over to Equivs. More convenient to deal with.
 
 \func symEquiv (eq : Equiv) : Equiv \cowith

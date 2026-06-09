@@ -357,11 +357,11 @@
           (\lam x0 x1 neq01 e neqe0 => fin2char x0 e x1 (/=-sym neqe0) neq01)
           idEquiv
           notFin2Eq
-          (\lam eq => \case pmap (\lam f => eqvFun f fzero) eq \with {})
+          (\lam eq => \case pmap (\lam (f : Equiv {Fin 2} {Fin 2}) => f fzero) eq \with {})
 
     \func contrEqvFin2 : Contr (\Sigma (e : Equiv {Fin 2} {Fin 2}) (Not (e = idEquiv))) \cowith
       | center => (notFin2Eq, \lam p => fsuc/=0 {_} {0}
-          (pmap (eqvFun __ fzero) p)) -- why is eqvFun needed here?
+          (pmap (\lam (f : Equiv {Fin 2} {Fin 2}) => f fzero) p))
       | contraction (e, g) => SigmaPropPath
           (\lam (a : Equiv {Fin 2} {Fin 2}) => not-isProp {a = idEquiv {Fin 2}})
           (inv (fin2Dichotomy e g))
@@ -386,7 +386,8 @@
 }
 
 -- A beta-rule for notBS2
-\func notFin2isNot (x : Fin 2) : notBS2 {BSnbase 2} x = notBS2.notFin2 x => pmap (eqvFun __ x) equivEq \where {
+\func notFin2isNot (x : Fin 2) : notBS2 {BSnbase 2} x = notBS2.notFin2 x =>
+  pmap (\lam (f : Equiv {Fin 2} {Fin 2}) => f x) equivEq \where {
   \func equivEq : (notBS2.equiv {BSnbase 2}).1 = notBS2.notFin2Eq =>
     notBS2.equiv.fin2Dichotomy (notBS2.equiv {BSnbase 2}).1 (notBS2.equiv {BSnbase 2}).2
 }
@@ -531,7 +532,7 @@
         unfold =-to-Equiv,
         unfold transport,
         \lam e,
-        \case pmap (\lam f => eqvFun f fzero) e \with {}
+        \case pmap (\lam (f : Equiv {Fin 2} {Fin 2}) => f fzero) e \with {}
       })
       pi pn eq
   \where {
