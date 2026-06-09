@@ -3,6 +3,7 @@
 \import Equiv.Univalence
 \import Meta
 \import Paths.Meta
+\import Function.Meta
 \import Utilities.Equiv
 
 -- Treating a path as a function, by transport.
@@ -12,13 +13,12 @@
   \func beta (f : A -> B) (g : B -> A) (sec : \Pi (x : A) -> g (f x) = x) (ret : \Pi (x : B) -> f (g x) = x) :
     path-fun (iso f g sec ret) = f => idp
   -- If two paths generate the same function, they are the same path
-  \func equals (p q : A = B) (_ : path-fun p = path-fun q) : p = q
-    | p, idp, pr =>
-      \let k => rewrite path-fun.eta pr
-           | k' : =-to-Equiv p = {Equiv {A} {A}} idEquiv => Equiv.equals k \in run {
+  \func equals (p q : A = B) (pr : path-fun p = path-fun q) : p = q =>
+      \let k => rewrite path-fun.eta $ rewrite path-fun.eta pr
+           | k' : =-to-Equiv p = {Equiv {A} {B}} =-to-Equiv q => Equiv.equals k \in run {
         rewriteI (univalence.ret_f p),
         rewrite k',
-        idToId
+        univalence.ret_f q
       }
   \func inv-p (p : A = B) : path-fun (inv p) = (=-to-Equiv p).ret
     | idp => idp

@@ -1,0 +1,164 @@
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import Data.Or
+\import Data.Fin
+\import Function.Meta
+\import Meta
+\import SymmetricProducts.SP2
+\import Paths
+\import Paths.Meta
+\import Logic
+\import Logic.Unique
+\import Set
+\import Homotopy.Join
+\import Equiv
+\import Equiv.Sigma
+\import Equiv.Univalence
+\import Homotopy.Pushout
+\import SymmetricProducts.SP3
+\import Utilities.Equiv
+\import Utilities.Fin
+\import Utilities.PathFun
+\import Utilities.Paths
+\import Utilities.Pushout
+
+-- This file is a generalization of the proof in the file SP2OfSet.ard
+-- to SP3. We try to use the same notation
+
+\func recFin3 {A : Fin 3 -> \Type} (a : A 0) (b : A 1) (c : A 2) (x : Fin 3) : A x \elim x
+  | 0 => a
+  | 1 => b
+  | 2 => c \where {
+  \func eta {A : \Type} (a : A) : recFin3 a a a = \lam _ => a => ext (\case \elim __ \with {
+    | 0 => idp
+    | 1 => idp
+    | 2 => idp
+  })
+}
+
+\sfunc loopSpaceContr (A : \Set \lp) (x0 x1 x2 : A) : Contr (z0 = z0) => {?} \where {
+  \func BS3 : \Type (\suc \lp) => \Sigma (X : \Set \lp) (TruncP (Equiv {X} {Fin 3}))
+  \func hUT : \Type (\suc \lp) => borelXn 3 A
+  \func iUT : \Type (\suc \lp) => SP3.step {A}
+  \func gUT : \Type (\suc \lp) => SP3 A
+  \func C : \Type (\suc \lp) => SP3.subspaceBS2
+
+  \func w0 : hUT => (BSnbase 3, recFin3 {\lam _ => A} x0 x1 x2)
+  \func y0 : iUT => pinl w0
+  \func z0 : gUT => pinl y0
+
+  \func P : \Prop => \Sigma (x0 = x1) (x1 = x2)
+
+  \func T (_ : iUT) : \Type
+    | pinl b => b.2 = (\lam _ => x0)
+    | pinr c => \Sigma (c.1 = x0) (c.2 = x0)
+    | pglue a i => glueEq a i \where {
+    \func glueEq (a : \Sigma (BSn 2) A A) :
+      (Or.rec {a.1.1} {Fin 1} (\lam _ => a.2) (\lam _ => a.3) = (\lam _ => x0)) = (\Sigma (a.2 = x0) (a.3 = x0)) => {?}
+    -- Equivalence of propositions
+  }
+
+  \func Trepr : (\Sigma (s : iUT) (T s)) = C => {?}
+
+  \func joinT (s : iUT) : \Type (\suc \lp) => Join (y0 = s) (\Sigma P (T s))
+
+  \func Q (_ : gUT) : \oo-Type (\suc \lp)
+    | pinl s => joinT s
+    | pinr x => \Sigma P (x = x0)
+    | pglue a i => glueEq a i \where {
+    \func glueEq (a : \Sigma C A) : joinT (SP3.diag a) = (\Sigma P (a.2 = x0)) => {?}
+    \func diagonalLemma (a : \Sigma C A) (p : y0 = SP3.diag a) : \Sigma P (a.2 = x0) => {?}
+  }
+
+  \func D : \oo-Type (\suc \lp) => \Sigma (z : gUT) (Q z)
+  \func R : \oo-Type (\suc \lp) => \Sigma (s : iUT) (joinT s)
+
+  \func R' : \oo-Type (\suc \lp) => PushoutData {P} {\Sigma} {\Sigma C P} (\lam _ => ()) (\lam p => (pinr (), p))
+
+  \func Rchar : R = R' => pushout-sigma _ _ *> Rsum=Rctr *> Rctr=Rpf *> Rpf=R' \where {
+    \func Rsum => PushoutData {\Sigma (s : iUT) (\Sigma (y0 = s) (\Sigma P (T s)))}
+        {\Sigma (s : iUT) (y0 = s)} {\Sigma (s : iUT) (\Sigma P (T s))}
+        (\lam s => (s.1, s.2.1))
+        (\lam s => (s.1, s.2.2))
+    \func Rctr => PushoutData {\Sigma (s : iUT) (\Sigma (y0 = s) (\Sigma P (T s)))}
+        {\Sigma} {\Sigma (s : iUT) (\Sigma P (T s))}
+        (\lam _ => ())
+        (\lam s => (s.1, s.2.2))
+    \func Rsum=Rctr : Rsum = Rctr => pushout-contr (lsigma _) _ _
+    \func baseR => \Sigma (s : iUT) (\Sigma (y0 = s) (\Sigma P (T s)))
+    \func base= : baseR {A} {x0} {x1} {x2} = P => iso f g sec ret \where {
+      \func f (x : baseR {A} {x0} {x1} {x2}) : P => x.2.2.1
+      \func g (x : P) : baseR {A} {x0} {x1} {x2} => {?}
+      \func sec (x : baseR {A} {x0} {x1} {x2}) : g (f x) = x => {?}
+      \lemma ret (x : P) : f (g x) = x => prop-pi
+    }
+    \func rightR => \Sigma (s : iUT) (\Sigma P (T s))
+    \func right= : rightR = (\Sigma C P) => iso f g sec ret \where {
+      \func f (x : rightR) : \Sigma C P => ({?}, x.2.1)
+      \func g (x : \Sigma C P) : rightR => {?}
+      \func sec (x : rightR) : g (f x) = x => {?}
+      \func ret (x : \Sigma C P) : f (g x) = x => {?}
+    }
+    \func Rpf => PushoutData {P} {\Sigma} {\Sigma C P} (\lam _ => ())
+        (\lam a' => path-fun right= ((path-fun (inv base=) a').1, (path-fun (inv base=) a').2.2))
+    \func Rctr=Rpf : Rctr = Rpf =>
+      pushout-equiv base= (idp {\Type} {\Sigma}) right= (\lam _ => ()) (\lam c => (c.1, c.2.2))
+
+    \sfunc Rpf-fun :
+      (\lam a' => path-fun right= ((path-fun (inv base=) a').1, (path-fun (inv base=) a').2.2)) = \lam p => (pinr (), p) => run {
+      unfold base=,
+      rewrite (path-fun.beta-inv base=.f base=.g base=.sec base=.ret),
+      unfold right=,
+      rewrite (path-fun.beta right=.f right=.g right=.sec right=.ret),
+      idp
+    }
+    \func Rpf=R' : Rpf = R' => pushout-eqv-fun _ _ _ _ idp Rpf-fun
+  }
+
+  \func Dflat : \oo-Type (\suc \lp) => PushoutData {\Sigma (x : \Sigma C A) (joinT (SP3.diag x))}
+      {\Sigma (y : iUT) (joinT y)}
+      {\Sigma (z : A) (\Sigma P (z = x0))}
+      (\lam p => (SP3.diag p.1, p.2))
+      (\lam p => (p.1.2, transport Q (PushoutData.ppglue p.1) p.2))
+
+  \func Dflat=D : Dflat = D => PushoutData.flattening Q
+
+  \func D' : \oo-Type (\suc \lp) => PushoutData {\Sigma C P} {P} {R'} __.2 pinr
+
+  \func Dflat=D' : D = D' => {?}
+
+  \func RgluePath (p : P) : Path (\lam i => pinr (pglue p i) = {D'} pinr (pinl ())) idp
+      (inv (path (pglue (pinr (), p))) *> path (pglue (pinr (), p)) *> pmap pinr (inv (path (pglue p))))
+    => run {
+      pathOver,
+      *> (coe_path (\lam i => pinr (pglue p i)) idp idp),
+      rewriteI *>-assoc,
+      rewrite inv_*>,
+      rewrite idp_*>,
+      inv,
+      pmap_inv-comm pinr (path (pglue p))
+    }
+  \func DgluePath (c : C) (p : P) : Path (\lam i => pglue (c, p) i = {D'} pinr (pinl ()))
+      (path (pglue (pinr (), p)) *> inv (pmap pinr (path (pglue p))))
+      (inv (path (pglue (c, p))) *> path (pglue (pinr (), p)) *> pmap pinr (inv (path (pglue p)))) => run {
+    pathOver,
+    *> (coe_path (\lam i => pglue (c, p) i) _ idp),
+    pmap (inv (path (pglue (c, p))) *>),
+    pmap (path (pglue (pinr (), p)) *>),
+    inv,
+    pmap_inv-comm pinr (path (pglue p))
+  }
+
+  \func contractionD (d : D') : d = pinr (pinl ())
+    | pinl p => path (pglue (pinr (), p)) *> inv (pmap pinr (path (pglue p)))
+    | pinr (pinl ()) => idp
+    | pinr (pinr (c, p)) => inv (path (pglue (c, p))) *> path (pglue (pinr (), p)) *> pmap pinr (inv (path (pglue p)))
+    | pinr (pglue p i) => RgluePath p i
+    | pglue (c, p) i => DgluePath c p i
+
+  \func contrD' : Contr D' \cowith
+    | center => pinr (pinl ())
+    | contraction a => inv (contractionD a)
+
+  -- Contractibility of Q(z0) left for later
+}
