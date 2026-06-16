@@ -47,9 +47,18 @@
     | pinl s => joinT s
     | pinr x => \Sigma P (x = x0)
     | pglue a i => glueEq a i \where {
-    \func TisProp (s : iUT) : isProp (T {A} {x0} s)
+    \func TisPropAt (x : A) (s : iUT) : isProp (T {A} {x} s) \elim s
       | pinl b => \lam _ _ => set-pi
       | pinr c => prop-isProp
+    \func TisProp (s : iUT) : isProp (T {A} {x0} s) => TisPropAt x0 s
+    \func recFin3ConstToEq (x : A) (p : recFin3 {\lam _ => A} x0 x1 x2 = \lam _ => x) : \Sigma P (x = x0)
+      => ((pmap (__ 0) p *> inv (pmap (__ 1) p),
+           pmap (__ 1) p *> inv (pmap (__ 2) p)),
+          inv (pmap (__ 0) p))
+    \func diagonalPinl (b : BS3) (x : A) (p : y0 = SP3.diag (pinl b, x)) : \Sigma P (x = x0) =>
+      recFin3ConstToEq x (transport (\lam s => T {A} {x} s) (inv p) idp)
+    \func diagonalPinr (x : A) (p : y0 = SP3.diag (pinr (), x)) : \Sigma P (x = x0) =>
+      recFin3ConstToEq x (transport (\lam s => T {A} {x} s) (inv p) (idp, idp))
     \func diagT (a : \Sigma C A) (_ : a.2 = x0) : T {A} {x0} (SP3.diag a)
       | (pinl b, x), ax => ext (\lam _ => ax)
       | (pinr (), x), ax => (ax, ax)
@@ -75,7 +84,9 @@
       propExtEx (condCtrToProp (condCtrJoinDiag a)) prop-isProp
         (joinToRight a)
         (\lam pe => pinr (pe.1, diagT a pe.2))
-    \func diagonalLemma (a : \Sigma C A) (p : y0 = SP3.diag a) : \Sigma P (a.2 = x0) => {?}
+    \func diagonalLemma (a : \Sigma C A) (_ : y0 = SP3.diag a) : \Sigma P (a.2 = x0)
+      | (pinl b, x), p => diagonalPinl b x p
+      | (pinr (), x), p => diagonalPinr x p
   }
 
   \func D : \oo-Type (\suc \lp) => \Sigma (z : gUT) (Q z)
