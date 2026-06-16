@@ -18,7 +18,7 @@
   | pinl b => b.2 = (\lam _ => x0)
   | pinr c => \Sigma (c.1 = x0) (c.2 = x0)
   | pglue a i => glueEq a i \where {
-  \func glueEq (a : \Sigma (BSn 2) A A) :
+  \sfunc glueEq (a : \Sigma (BSn 2) A A) :
     (Or.rec {a.1.1} {Fin 1} (\lam _ => a.2) (\lam _ => a.3) = (\lam _ => x0)) = (\Sigma (a.2 = x0) (a.3 = x0)) =>
     propExtEx
         (\lam p q => set-pi {Or a.1.1 (Fin 1) -> A}
@@ -110,9 +110,9 @@
     \func flattenF : flattenBase -> flattenLeft => SP3.fatdiag
     \func flattenG : flattenBase -> flattenRight => \lam x => (x.2, x.3)
     \func flattenMiddle : I -> \Type => PushoutData.flattening.TotalPushout {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T {A} {x0}}
-    \func flattenLeftEqv => PushoutData.flattening.totalPushoutLeft {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T {A} {x0}}
-    \func flattenRightEqv => PushoutData.flattening.totalPushoutRight {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T {A} {x0}}
-    \func flattenMiddleRightPath :
+    \sfunc flattenLeftEqv => PushoutData.flattening.totalPushoutLeft {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T {A} {x0}}
+    \sfunc flattenRightEqv => PushoutData.flattening.totalPushoutRight {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T {A} {x0}}
+    \sfunc flattenMiddleRightPath :
       Path (\lam i => flattenMiddle (invI i))
           (PushoutData.flattening.TotalPushout.tinr {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T} {right}
               (x0, x0) (idp, idp))
@@ -120,7 +120,7 @@
               (x0, x0) (idp, idp)) =>
       path \lam i => PushoutData.flattening.TotalPushout.tinr {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T} {invI i}
           (x0, x0) (idp, idp)
-    \func flattenMiddleRightBeta :
+    \sfunc flattenMiddleRightBeta :
       path-fun (inv (path flattenMiddle))
           (PushoutData.flattening.TotalPushout.tinr {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T} {right}
               (x0, x0) (idp, idp)) =

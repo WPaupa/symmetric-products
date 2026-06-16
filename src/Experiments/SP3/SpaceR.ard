@@ -45,10 +45,10 @@
         (\lam s => (s.1, s.2.2))
     \func Rsum=Rctr : Rsum = Rctr => pushout-contr (lsigma _) _ _
     \func baseR : \oo-Type (\suc \lp) => \Sigma (s : iUT) (\Sigma (y0 = s) (\Sigma P (T {A} {x0} s)))
-    \func baseR=tail : baseR = (\Sigma P (T {A} {x0} y0)) =>
+    \sfunc baseR=tail : baseR = (\Sigma P (T {A} {x0} y0)) =>
       sigmaCommute *> Equiv-to-= (contr-left (lsigma y0) {\lam p => \Sigma P (T {A} {x0} p.1)})
-    \func baseR-isProp : isProp baseR => rewrite baseR=tail prop-isProp
-    \func base= : baseR = P => iso f g (\lam x => baseR-isProp (g (f x)) x) ret \where {
+    \sfunc baseR-isProp : isProp baseR => rewrite baseR=tail prop-isProp
+    \func base= : baseR = P => iso f g sec ret \where {
       \func f (x : baseR) : P => x.2.2.1
       \func w0Fatdiag (x : P) : w0 = SP3.fatdiag (BSnbase 2, x0, x0) =>
         SigmaPath extendBSnBase (run {
@@ -62,6 +62,7 @@
       \func y0Path (x : P) : y0 = pinr (x0, x0) =>
         pmap pinl (w0Fatdiag x) *> path (pglue (BSnbase 2, x0, x0))
       \func g (x : P) : baseR => (pinr (x0, x0), (y0Path x, (x, (idp, idp))))
+      \sfunc sec => \lam x => baseR-isProp (g (f x)) x
       \lemma ret (x : P) : f (g x) = x => prop-pi
     }
     \func rightR => \Sigma (s : iUT) (\Sigma P (T {A} {x0} s))
@@ -69,14 +70,14 @@
       \func f (x : rightR) : \Sigma C P => (path-fun T.repr (x.1, x.2.2), x.2.1)
       \func g (x : \Sigma C P) : rightR => ((path-fun (inv T.repr) x.1).1,
                                             (x.2, (path-fun (inv T.repr) x.1).2))
-      \func sec (x : rightR) : g (f x) = x =>
+      \sfunc sec (x : rightR) : g (f x) = x =>
         \let | q => pathFunInvId T.repr (x.1, x.2.2)
              | qp => SigmaPathChar _ _ q
         \in SigmaPath qp.1 (run {
           rewrite coe_sigma,
           SigmaPath prop-pi qp.2
         })
-      \func ret (x : \Sigma C P) : f (g x) = x => ext (pathFunIdInv T.repr x.1)
+      \sfunc ret (x : \Sigma C P) : f (g x) = x => ext (pathFunIdInv T.repr x.1)
     }
     \func Rpf => PushoutData {P} {\Sigma} {\Sigma C P} (\lam _ => ())
         (\lam a' => path-fun right= ((path-fun (inv base=) a').1, (path-fun (inv base=) a').2.2))
@@ -86,7 +87,7 @@
     \sfunc Rpf-fun :
       (\lam a' => path-fun right= ((path-fun (inv base=) a').1, (path-fun (inv base=) a').2.2)) = \lam p => (pinr (), p) => run {
       unfold base=,
-      rewrite (path-fun.beta-inv base=.f base=.g (\lam x => baseR-isProp (base=.g (base=.f x)) x) base=.ret),
+      rewrite (path-fun.beta-inv base=.f base=.g base=.sec base=.ret),
       unfold right=,
       rewrite (path-fun.beta right=.f right=.g right=.sec right=.ret),
       unfold base=.g,
