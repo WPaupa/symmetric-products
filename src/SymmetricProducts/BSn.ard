@@ -284,17 +284,17 @@
 -- inclusion of BSn_1 \times ... in BS(n_1+...)
 \func extendBSn {n : Nat} (m : Nat) (x : BSn n) : BSn (n Nat.+ m) =>
   (Or x.1 (Fin m), TruncP.map x.2 (
-    \lam eqv => transport (\lam t => Equiv {Or t (Fin m)} {Fin (n Nat.+ m)})
+    \lam eqv => transport {\Set} (\lam t => Equiv {Or t (Fin m)} {Fin (n Nat.+ m)})
         (inv (Equiv-to-= eqv)) (extendFin {n} {m})
   )) \where {
 
   \func extendFin {a b : Nat} : Equiv {Or (Fin a) (Fin b)} {Fin (a Nat.+ b)} \elim b
     | 0 => \new Equiv {
-      | f => Or.rec (id : Fin a -> Fin a) (rewrite emptyFin0 absurd)
+      | f => Or.rec (id : Fin a -> Fin a) (rewrite (emptyFin0 : Fin 0 = {\Set} Empty) absurd)
       | ret => inl
       | ret_f => \case \elim __ \with {
         | inl a1 => idp
-        | inr b => absurd $ rewriteI emptyFin0 b
+        | inr b => absurd $ rewriteI (emptyFin0 : Fin 0 = {\Set} Empty) b
       }
       | sec => inl
       | f_sec _ => idp

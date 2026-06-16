@@ -1,0 +1,149 @@
+\import Data.Or
+\import Equiv.Univalence
+\import Experiments.SP3.Utils
+\import Homotopy.Pushout
+\import Logic
+\import Meta
+\import Paths
+\import Paths.Meta
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import SymmetricProducts.SP3
+\import Utilities.PathFun
+\import Utilities.Paths
+\import Utilities.Pushout
+\import Equiv
+
+\func T {A : \Set \lp} {x0 : A} (x : SP3.step {A}) : \Type \elim x
+  | pinl b => b.2 = (\lam _ => x0)
+  | pinr c => \Sigma (c.1 = x0) (c.2 = x0)
+  | pglue a i => glueEq a i \where {
+  \func glueEq (a : \Sigma (BSn 2) A A) :
+    (Or.rec {a.1.1} {Fin 1} (\lam _ => a.2) (\lam _ => a.3) = (\lam _ => x0)) = (\Sigma (a.2 = x0) (a.3 = x0)) =>
+    propExtEx
+        (\lam p q => set-pi {Or a.1.1 (Fin 1) -> A}
+            {Or.rec {a.1.1} {Fin 1} (\lam _ => a.2) (\lam _ => a.3)} {\lam _ => x0} {p} {q})
+        prop-isProp
+        (\lam p => (TruncP.rec prop-isProp (eltBSn a.1) (\lam x => pmap (__ (inl x)) p),
+                    pmap (__ (inr 0)) p))
+        (\lam p => ext (\case \elim __ \with {
+          | inl _ => p.1
+          | inr 0 => p.2
+        }))
+  -- Equivalence of propositions
+
+  \func repr : (\Sigma (s : SP3.step {A}) (T s)) = SP3.subspaceBS2 =>
+    inv (PushoutData.flattening T) *> pushout-equiv base= left= right= lmap rmap *> pushout-eqv-fun _ _ _ _ leftFun rightFun
+    \where {
+      \func baseT => \Sigma (p : \Sigma (BSn 2) A A)
+                            (Or.rec {p.1.1} {Fin 1} (\lam _ => p.2) (\lam _ => p.3) = (\lam _ => x0))
+      \func leftT => \Sigma (p : borelXn 3 A) (p.2 = (\lam _ => x0))
+      \func rightT => \Sigma (p : \Sigma A A) (\Sigma (p.1 = x0) (p.2 = x0))
+      \func lmap (p : baseT) : leftT => ((extendBSn 1 p.1.1,
+                                          Or.rec {p.1.1.1} {Fin 1} (\lam _ => p.1.2) (\lam _ => p.1.3)), p.2)
+      \func rmap (p : baseT) : rightT => ((p.1.2, p.1.3), transport T (PushoutData.ppglue p.1) p.2)
+
+      \func base= : baseT = BSn 2 => iso f g sec ret \where {
+        \func f (p : baseT) : BSn 2 => p.1.1
+        \func g (b : BSn 2) : baseT => ((b, x0, x0), inv (orConst x0))
+        \func triplePath (p : baseT) : (p.1.1, x0, x0) = p.1 =>
+          \let q => path-fun (T.glueEq p.1) p.2 \in ext (idp, inv q.1, inv q.2)
+        \func sec (p : baseT) : g (f p) = p =>
+          SigmaPath (triplePath p) set-pi
+        \func ret (b : BSn 2) : f (g b) = b => idp
+      }
+      \func left= : leftT = BSn 3 => iso f g sec ret \where {
+        \func f (p : leftT) : BSn 3 => p.1.1
+        \func g (b : BSn 3) : leftT => ((b, \lam (_ : b.1) => x0), idp)
+        \func pairPath (p : leftT) : (p.1.1, \lam (_ : p.1.1.1) => x0) = {borelXn 3 A} p.1 => ext (idp, inv p.2)
+        \func sec (p : leftT) : g (f p) = p => SigmaPath (pairPath p) set-pi
+        \func ret (b : BSn 3) : f (g b) = b => idp
+      }
+      \func right= : rightT = (\Sigma) => iso f g sec ret \where {
+        \func f (_ : rightT) : \Sigma => ()
+        \func g (_ : \Sigma) : rightT => ((x0, x0), (idp, idp))
+        \func pairPath (p : rightT) : (x0, x0) = p.1 => ext (inv p.2.1, inv p.2.2)
+        \func sec (p : rightT) : g (f p) = p => SigmaPath (pairPath p) prop-pi
+        \func ret (u : \Sigma) : f (g u) = u => idp
+      }
+
+      \sfunc leftFun : (\lam b => path-fun left= (lmap (path-fun (inv base=) b))) = extendBSn 1 => run {
+        unfold base=,
+        rewrite (path-fun.beta-inv base=.f base=.g base=.sec base=.ret),
+        unfold left=,
+        rewrite (path-fun.beta left=.f left=.g left=.sec left=.ret),
+        idp
+      }
+      \sfunc rightFun : (\lam b => path-fun right= (rmap (path-fun (inv base=) b))) = \lam _ => () => run {
+        unfold base=,
+        rewrite (path-fun.beta-inv base=.f base=.g base=.sec base=.ret),
+        unfold right=,
+        rewrite (path-fun.beta right=.f right=.g right=.sec right=.ret),
+        idp
+      }
+    }
+
+  \sfunc reprFlattenRightBeta :
+    path-fun (inv (PushoutData.flattening T)) (pinr (x0, x0), (idp, idp)) = pinr ((x0, x0), (idp, idp)) => run {
+    unfold PushoutData.flattening,
+    rewrite (pathFunInvComp (QEquiv-to-= flattenLeftEqv)
+        (path flattenMiddle *> QEquiv-to-= flattenRightEqv)
+        (pinr (x0, x0), (idp, idp))),
+    rewrite (pathFunInvComp (path flattenMiddle) (QEquiv-to-= flattenRightEqv)
+        (pinr (x0, x0), (idp, idp))),
+    rewrite (path-fun.beta-inv
+        (PushoutData.flattening.totalPushoutRight.LR {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T})
+        (PushoutData.flattening.totalPushoutRight.RL {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T})
+        (QEquiv.ret_f {flattenRightEqv})
+        (QEquiv.f_sec {flattenRightEqv})),
+    rewrite (path-fun.beta-inv
+        (PushoutData.flattening.totalPushoutLeft.LR {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T})
+        (PushoutData.flattening.totalPushoutLeft.RL {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T})
+        (QEquiv.ret_f {flattenLeftEqv})
+        (QEquiv.f_sec {flattenLeftEqv})),
+    rewrite flattenMiddleRightBeta,
+    idp
+  } \where {
+    \func flattenBase => \Sigma (BSn 2) A A
+    \func flattenLeft => \Sigma (X : BSn 3) (X.1 -> A)
+    \func flattenRight => \Sigma A A
+    \func flattenF : flattenBase -> flattenLeft => SP3.fatdiag
+    \func flattenG : flattenBase -> flattenRight => \lam x => (x.2, x.3)
+    \func flattenMiddle : I -> \Type => PushoutData.flattening.TotalPushout {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T {A} {x0}}
+    \func flattenLeftEqv => PushoutData.flattening.totalPushoutLeft {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T {A} {x0}}
+    \func flattenRightEqv => PushoutData.flattening.totalPushoutRight {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T {A} {x0}}
+    \func flattenMiddleRightPath :
+      Path (\lam i => flattenMiddle (invI i))
+          (PushoutData.flattening.TotalPushout.tinr {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T} {right}
+              (x0, x0) (idp, idp))
+          (PushoutData.flattening.TotalPushout.tinr {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T} {left}
+              (x0, x0) (idp, idp)) =>
+      path \lam i => PushoutData.flattening.TotalPushout.tinr {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T} {invI i}
+          (x0, x0) (idp, idp)
+    \func flattenMiddleRightBeta :
+      path-fun (inv (path flattenMiddle))
+          (PushoutData.flattening.TotalPushout.tinr {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T} {right}
+              (x0, x0) (idp, idp)) =
+      PushoutData.flattening.TotalPushout.tinr {flattenBase} {flattenLeft} {flattenRight} {flattenF} {flattenG} {T} {left}
+          (x0, x0) (idp, idp) => run {
+      unfold path-fun,
+      rewriteI (invI.betaP (path flattenMiddle)),
+      rewriteI (pathdEqCoe {I} {flattenMiddle} {right} {left} {path invI}),
+      flattenMiddleRightPath
+    }
+  }
+
+  \sfunc reprRightBeta : path-fun repr (pinr (x0, x0), (idp, idp)) = pinr () => run {
+    unfold repr,
+    rewrite (path-fun.beta-*> (inv (PushoutData.flattening T))
+        (pushout-equiv repr.base= repr.left= repr.right= repr.lmap repr.rmap *> pushout-eqv-fun _ _ _ _ repr.leftFun repr.rightFun)),
+    rewrite (path-fun.beta-*> (pushout-equiv repr.base= repr.left= repr.right= repr.lmap repr.rmap)
+        (pushout-eqv-fun _ _ _ _ repr.leftFun repr.rightFun)),
+    rewrite reprFlattenRightBeta,
+    rewrite (pushout-equiv.beta-pinr repr.base= repr.left= repr.right= repr.lmap repr.rmap ((x0, x0), (idp, idp))),
+    rewrite (pushout-eqv-fun.beta-pinr _ _ _ _ repr.leftFun repr.rightFun (path-fun repr.right= ((x0, x0), (idp, idp)))),
+    unfold repr.right=,
+    rewrite (path-fun.beta repr.right=.f repr.right=.g repr.right=.sec repr.right=.ret),
+    idp
+  }
+}

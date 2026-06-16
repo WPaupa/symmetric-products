@@ -1,0 +1,99 @@
+\import Equiv
+\import Equiv.Sigma
+\import Experiments.SP3.SpaceT
+\import Experiments.SP3.Utils
+\import Homotopy.Join
+\import Equiv.Univalence
+\import Homotopy.Pushout
+\import Logic
+\import Logic.Unique
+\import Meta
+\import Paths
+\import Paths.Meta
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import SymmetricProducts.SP3
+\import Utilities.PathFun
+\import Utilities.Pushout
+\import Utilities.Paths
+
+\func R {A : \Set \lp} {x0 x1 x2 : A} : \oo-Type (\suc \lp) => \Sigma (s : iUT) (joinT s) \where {
+  \func BS3 : \Type (\suc \lp) => \Sigma (X : \Set \lp) (TruncP (Equiv {X} {Fin 3}))
+  \func hUT : \Type (\suc \lp) => borelXn 3 A
+  \func iUT : \Type (\suc \lp) => SP3.step {A}
+  \func gUT : \Type (\suc \lp) => SP3 A
+  \func C : \Type (\suc \lp) => SP3.subspaceBS2
+
+  \func w0 : hUT => (BSnbase 3, recFin3 {\lam _ => A} x0 x1 x2)
+  \func y0 : iUT => pinl w0
+  \func z0 : gUT => pinl y0
+
+  \func P : \Prop => \Sigma (x0 = x1) (x1 = x2)
+
+  \func joinT (s : SP3.step {A}) : \Type (\suc \lp) => Join (y0 = s) (\Sigma P (T {A} {x0} s))
+
+  \func R' : \oo-Type (\suc \lp) => PushoutData {P} {\Sigma} {\Sigma C P} (\lam _ => ()) (\lam p => (pinr (), p))
+
+  \func Rchar : R = R' => pushout-sigma _ _ *> Rsum=Rctr *> Rctr=Rpf *> Rpf=R' \where {
+    \func Rsum => PushoutData {\Sigma (s : iUT) (\Sigma (y0 = s) (\Sigma P (T {A} {x0} s)))}
+        {\Sigma (s : iUT) (y0 = s)} {\Sigma (s : iUT) (\Sigma P (T {A} {x0} s))}
+        (\lam s => (s.1, s.2.1))
+        (\lam s => (s.1, s.2.2))
+    \func Rctr => PushoutData {\Sigma (s : iUT) (\Sigma (y0 = s) (\Sigma P (T {A} {x0} s)))}
+        {\Sigma} {\Sigma (s : iUT) (\Sigma P (T {A} {x0} s))}
+        (\lam _ => ())
+        (\lam s => (s.1, s.2.2))
+    \func Rsum=Rctr : Rsum = Rctr => pushout-contr (lsigma _) _ _
+    \func baseR : \oo-Type (\suc \lp) => \Sigma (s : iUT) (\Sigma (y0 = s) (\Sigma P (T {A} {x0} s)))
+    \func baseR=tail : baseR = (\Sigma P (T {A} {x0} y0)) =>
+      sigmaCommute *> Equiv-to-= (contr-left (lsigma y0) {\lam p => \Sigma P (T {A} {x0} p.1)})
+    \func baseR-isProp : isProp baseR => rewrite baseR=tail prop-isProp
+    \func base= : baseR = P => iso f g (\lam x => baseR-isProp (g (f x)) x) ret \where {
+      \func f (x : baseR) : P => x.2.2.1
+      \func w0Fatdiag (x : P) : w0 = SP3.fatdiag (BSnbase 2, x0, x0) =>
+        SigmaPath extendBSnBase (run {
+          rewrite (transportBSnFun extendBSnBase w0.2),
+          rewrite (path-fun.transport-fun w0.2 (pmap __.1 extendBSnBase)),
+          rewrite x.1,
+          rewrite x.2,
+          rewrite recFin3.eta,
+          orConst x2
+        })
+      \func y0Path (x : P) : y0 = pinr (x0, x0) =>
+        pmap pinl (w0Fatdiag x) *> path (pglue (BSnbase 2, x0, x0))
+      \func g (x : P) : baseR => (pinr (x0, x0), (y0Path x, (x, (idp, idp))))
+      \lemma ret (x : P) : f (g x) = x => prop-pi
+    }
+    \func rightR => \Sigma (s : iUT) (\Sigma P (T {A} {x0} s))
+    \func right= : rightR = (\Sigma C P) => iso f g sec ret \where {
+      \func f (x : rightR) : \Sigma C P => (path-fun T.repr (x.1, x.2.2), x.2.1)
+      \func g (x : \Sigma C P) : rightR => ((path-fun (inv T.repr) x.1).1,
+                                            (x.2, (path-fun (inv T.repr) x.1).2))
+      \func sec (x : rightR) : g (f x) = x =>
+        \let | q => pathFunInvId T.repr (x.1, x.2.2)
+             | qp => SigmaPathChar _ _ q
+        \in SigmaPath qp.1 (run {
+          rewrite coe_sigma,
+          SigmaPath prop-pi qp.2
+        })
+      \func ret (x : \Sigma C P) : f (g x) = x => ext (pathFunIdInv T.repr x.1)
+    }
+    \func Rpf => PushoutData {P} {\Sigma} {\Sigma C P} (\lam _ => ())
+        (\lam a' => path-fun right= ((path-fun (inv base=) a').1, (path-fun (inv base=) a').2.2))
+    \func Rctr=Rpf : Rctr = Rpf =>
+      pushout-equiv base= (idp {\Type} {\Sigma}) right= (\lam _ => ()) (\lam c => (c.1, c.2.2))
+
+    \sfunc Rpf-fun :
+      (\lam a' => path-fun right= ((path-fun (inv base=) a').1, (path-fun (inv base=) a').2.2)) = \lam p => (pinr (), p) => run {
+      unfold base=,
+      rewrite (path-fun.beta-inv base=.f base=.g (\lam x => baseR-isProp (base=.g (base=.f x)) x) base=.ret),
+      unfold right=,
+      rewrite (path-fun.beta right=.f right=.g right=.sec right=.ret),
+      unfold base=.g,
+      unfold right=.f,
+      rewrite T.reprRightBeta,
+      idp
+    }
+    \func Rpf=R' : Rpf = R' => pushout-eqv-fun _ _ _ _ idp Rpf-fun
+  }
+}

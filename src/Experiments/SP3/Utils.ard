@@ -1,0 +1,52 @@
+\import Equiv
+\import Equiv.Univalence
+\import Meta
+\import Paths
+\import Paths.Meta
+\import SymmetricProducts.BSn
+\import Utilities.Equiv
+\import Utilities.PathFun
+
+\func recFin3 {A : Fin 3 -> \Type} (a : A 0) (b : A 1) (c : A 2) (x : Fin 3) : A x \elim x
+  | 0 => a
+  | 1 => b
+  | 2 => c \where {
+  \func eta {A : \Type} (a : A) : recFin3 a a a = \lam _ => a => ext (\case \elim __ \with {
+    | 0 => idp
+    | 1 => idp
+    | 2 => idp
+  })
+}
+
+\func extendBSnBase : BSnbase 3 = extendBSn 1 (BSnbase 2) =>
+  BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) (symEquiv (extendBSn.extendFin {2} {1}))
+\func transportBSnFun {A : \Type} {b b' : BSn 3} (p : b = b') (f : b.1 -> A) :
+  transport (\lam a => a.1 -> A) p f = transport (\lam X => X -> A) (pmap __.1 p) f \elim p
+  | idp => idp
+\func pathFunInvId {X Y : \Type} (p : X = Y) (x : X) : path-fun (inv p) (path-fun p x) = x \elim p
+  | idp => idp
+\func pathFunIdInv {X Y : \Type} (p : X = Y) (y : Y) : path-fun p (path-fun (inv p) y) = y \elim p
+  | idp => idp
+\func pathFunInvComp {X Y Z : \Type} (p : X = Y) (q : Y = Z) (z : Z) :
+  path-fun (inv (p *> q)) z = path-fun (inv p) (path-fun (inv q) z) \elim p, q
+  | idp, idp => idp
+\func *>-inv-left {X : \Type} {x y z : X} (p : x = y) (q : x = z) :
+  p *> (inv p *> q) = q => run {
+  rewriteI (*>-assoc p (inv p) q),
+  rewrite *>_inv,
+  idp_*> q
+}
+\func pathFunQEquivInv {X Y : \Type} (e : QEquiv {X} {Y}) :
+  path-fun (inv (QEquiv-to-= e)) = e.ret =>
+  path-fun.beta-inv e.f e.ret e.ret_f e.f_sec
+
+\func sigmaCommute {A P : \Type} {F G : A -> \Type} :
+  (\Sigma (s : A) (\Sigma (F s) (\Sigma P (G s)))) =
+  (\Sigma (x : \Sigma (s : A) (F s)) (\Sigma P (G x.1))) => iso f g sec ret \where {
+  \func left => \Sigma (s : A) (\Sigma (F s) (\Sigma P (G s)))
+  \func right => \Sigma (x : \Sigma (s : A) (F s)) (\Sigma P (G x.1))
+  \func f (x : left) : right => ((x.1, x.2.1), x.2.2)
+  \func g (x : right) : left => (x.1.1, (x.1.2, x.2))
+  \func sec (x : left) : g (f x) = x => idp
+  \func ret (x : right) : f (g x) = x => idp
+}
