@@ -47,7 +47,34 @@
     | pinl s => joinT s
     | pinr x => \Sigma P (x = x0)
     | pglue a i => glueEq a i \where {
-    \func glueEq (a : \Sigma C A) : joinT (SP3.diag a) = (\Sigma P (a.2 = x0)) => {?}
+    \func TisProp (s : iUT) : isProp (T {A} {x0} s)
+      | pinl b => \lam _ _ => set-pi
+      | pinr c => prop-isProp
+    \func diagT (a : \Sigma C A) (_ : a.2 = x0) : T {A} {x0} (SP3.diag a)
+      | (pinl b, x), ax => ext (\lam _ => ax)
+      | (pinr (), x), ax => (ax, ax)
+      | (pglue b i, x), ax =>
+        pathOver
+          {\lam i => T {A} {x0} (SP3.diag (pglue b i, x))}
+          {ext (\lam _ => ax)}
+          {ax, ax}
+          (TisProp (SP3.diag (pinr (), x)) _ (ax, ax)) @ i
+    \func diagTToEq (a : \Sigma C A) (_ : T {A} {x0} (SP3.diag a)) : a.2 = x0
+      | (pinl b, x), t => TruncP.rec prop-isProp (eltBSn b) (\lam y => pmap (__ y) t)
+      | (pinr (), x), t => t.1
+    \func joinToRight (a : \Sigma C A) (j : joinT (SP3.diag a)) : \Sigma P (a.2 = x0) \elim j
+      | pinl p => diagonalLemma a p
+      | pinr t => (t.1, diagTToEq a t.2)
+    \func joinToTRight (a : \Sigma C A) (j : joinT (SP3.diag a)) : \Sigma P (T {A} {x0} (SP3.diag a))
+      => \let pe => joinToRight a j \in (pe.1, diagT a pe.2)
+    \func joinTRightIsProp (a : \Sigma C A) : isProp (\Sigma P (T {A} {x0} (SP3.diag a)))
+      => \lam _ _ => SigmaPath prop-pi (TisProp (SP3.diag a) _ _)
+    \func condCtrJoinDiag (a : \Sigma C A) (j : joinT (SP3.diag a)) : Contr (joinT (SP3.diag a))
+      => Join_Contr (y0 = SP3.diag a) (isProp=>isContr (joinTRightIsProp a) (joinToTRight a j))
+    \func glueEq (a : \Sigma C A) : joinT (SP3.diag a) = (\Sigma P (a.2 = x0)) =>
+      propExtEx (condCtrToProp (condCtrJoinDiag a)) prop-isProp
+        (joinToRight a)
+        (\lam pe => pinr (pe.1, diagT a pe.2))
     \func diagonalLemma (a : \Sigma C A) (p : y0 = SP3.diag a) : \Sigma P (a.2 = x0) => {?}
   }
 
