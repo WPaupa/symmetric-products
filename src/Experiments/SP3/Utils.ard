@@ -3,9 +3,12 @@
 \import Meta
 \import Paths
 \import Paths.Meta
+\import Logic
+\import Algebra.Group.Symmetric
 \import SymmetricProducts.BSn
 \import Utilities.Equiv
 \import Utilities.PathFun
+\import Function.Meta
 
 \func recFin3 {A : Fin 3 -> \Type} (a : A 0) (b : A 1) (c : A 2) (x : Fin 3) : A x \elim x
   | 0 => a
@@ -39,6 +42,84 @@
 \func pathFunQEquivInv {X Y : \Type} (e : QEquiv {X} {Y}) :
   path-fun (inv (QEquiv-to-= e)) = e.ret =>
   path-fun.beta-inv e.f e.ret e.ret_f e.f_sec
+
+\func fin3EquivSize : (EquivFin.equiv_fin {3} {3}).1 = 6 => pmap __.1 (\peval EquivFin.equiv_fin {3} {3})
+
+\func fin3Equiv : Equiv {Equiv {Fin 3} {Fin 3}} {Fin 6} =>
+  transport (\lam n => Equiv {Equiv {Fin 3} {Fin 3}} {Fin n}) fin3EquivSize (EquivFin.equiv_fin {3} {3}).2
+
+\func base3PathCode : (BSnbase 3 = BSnbase 3) = Fin 6 =>
+  inv (BSnPathChar (BSnbase 3) (BSnbase 3)) *> QEquiv-to-= (univalence {Fin 3} {Fin 3}) *> Equiv-to-= fin3Equiv
+
+\func base3Path (i : Fin 6) : BSnbase 3 = BSnbase 3 => path-fun (inv base3PathCode) i
+
+\data Fin3PermChar (e : Equiv {Fin 3} {Fin 3})
+  | fin3PermId (p : e = idEquiv)
+  | fin3PermTransposition (fixed : Fin 3)
+      (fixedPath : e fixed = fixed)
+      (moved : \Pi (i : Fin 3) -> i /= fixed -> e i /= i)
+  | fin3PermCycle (noFix : \Pi (i : Fin 3) -> e i /= i)
+      (cycle3 : e (e (e 0)) = 0)
+
+\func fin3PathEquiv (p : BSnbase 3 = BSnbase 3) : Equiv {Fin 3} {Fin 3}
+  => path-fun (inv (Equiv-to-= fin3Equiv)) (path-fun base3PathCode p)
+
+\private \func fin3_0_ne_1 : (0 : Fin 3) /= 1 => \case __
+\private \func fin3_0_ne_2 : (0 : Fin 3) /= 2 => \case __
+\private \func fin3_1_ne_0 : (1 : Fin 3) /= 0 => \case __
+\private \func fin3_1_ne_2 : (1 : Fin 3) /= 2 => \case __
+\private \func fin3_2_ne_0 : (2 : Fin 3) /= 0 => \case __
+\private \func fin3_2_ne_1 : (2 : Fin 3) /= 1 => \case __
+
+\private \func fin3SameImageAbsurd {e : Equiv {Fin 3} {Fin 3}} {i j k : Fin 3}
+                                   (i/=j : i /= j) (p : e i = k) (q : e j = k) : Empty =>
+  i/=j (e.isInj (p *> inv q))
+
+\func fin3EquivChar (e : Equiv {Fin 3} {Fin 3}) : Fin3PermChar e =>
+  cases (e 0 arg addPath, e 1 arg addPath, e 2 arg addPath) \with {
+    | 0, e0, 1, e1, 2, e2 => fin3PermId (Equiv.equals $ ext \case \elim __ \with {
+      | 0 => e0
+      | 1 => e1
+      | 2 => e2
+    })
+    | 0, e0, 2, e1, 1, e2 => fin3PermTransposition 0 e0 \case \elim __ \with {
+      | 0 => \lam i/=0 _ => absurd (i/=0 idp)
+      | 1 => \lam _ p => \case inv e1 *> p \with {}
+      | 2 => \lam _ p => \case inv e2 *> p \with {}
+    }
+    | 1, e0, 0, e1, 2, e2 => fin3PermTransposition 2 e2 \case \elim __ \with {
+      | 0 => \lam _ p => \case inv e0 *> p \with {}
+      | 1 => \lam _ p => \case inv e1 *> p \with {}
+      | 2 => \lam i/=2 _ => absurd (i/=2 idp)
+    }
+    | 2, e0, 1, e1, 0, e2 => fin3PermTransposition 1 e1 \case \elim __ \with {
+      | 0 => \lam _ p => \case inv e0 *> p \with {}
+      | 1 => \lam i/=1 _ => absurd (i/=1 idp)
+      | 2 => \lam _ p => \case inv e2 *> p \with {}
+    }
+    | 1, e0, 2, e1, 0, e2 => fin3PermCycle (\case \elim __ \with {
+      | 0 => \lam p => \case inv e0 *> p \with {}
+      | 1 => \lam p => \case inv e1 *> p \with {}
+      | 2 => \lam p => \case inv e2 *> p \with {}
+    }) (rewrite (e0, e1) e2)
+    | 2, e0, 0, e1, 1, e2 => fin3PermCycle (\case \elim __ \with {
+      | 0 => \lam p => \case inv e0 *> p \with {}
+      | 1 => \lam p => \case inv e1 *> p \with {}
+      | 2 => \lam p => \case inv e2 *> p \with {}
+    }) (rewrite (e0, e2) e1)
+    | 0, e0, 0, e1, _, _ => absurd (fin3SameImageAbsurd fin3_0_ne_1 e0 e1)
+    | 0, e0, _, _, 0, e2 => absurd (fin3SameImageAbsurd fin3_0_ne_2 e0 e2)
+    | _, _, 0, e1, 0, e2 => absurd (fin3SameImageAbsurd fin3_1_ne_2 e1 e2)
+    | 1, e0, 1, e1, _, _ => absurd (fin3SameImageAbsurd fin3_0_ne_1 e0 e1)
+    | 1, e0, _, _, 1, e2 => absurd (fin3SameImageAbsurd fin3_0_ne_2 e0 e2)
+    | _, _, 1, e1, 1, e2 => absurd (fin3SameImageAbsurd fin3_1_ne_2 e1 e2)
+    | 2, e0, 2, e1, _, _ => absurd (fin3SameImageAbsurd fin3_0_ne_1 e0 e1)
+    | 2, e0, _, _, 2, e2 => absurd (fin3SameImageAbsurd fin3_0_ne_2 e0 e2)
+    | _, _, 2, e1, 2, e2 => absurd (fin3SameImageAbsurd fin3_1_ne_2 e1 e2)
+  }
+
+\func base3PathChar (p : BSnbase 3 = BSnbase 3) : Fin3PermChar (fin3PathEquiv p) =>
+  fin3EquivChar (fin3PathEquiv p)
 
 \func sigmaCommute {A P : \Type} {F G : A -> \Type} :
   (\Sigma (s : A) (\Sigma (F s) (\Sigma P (G s)))) =
