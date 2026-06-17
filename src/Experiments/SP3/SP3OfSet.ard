@@ -5,6 +5,7 @@
 \import Function.Meta
 \import Meta
 \import SymmetricProducts.SP2
+\import SymmetricProducts.SP2OfSet
 \import Paths
 \import Paths.Meta
 \import Logic
@@ -28,7 +29,7 @@
 -- This file is a generalization of the proof in the file SP2OfSet.ard
 -- to SP3. We try to use the same notation
 
-\sfunc loopSpaceContr (A : \Set \lp) (x0 x1 x2 : A) : Contr (z0 = z0) => {?} \where {
+\sfunc sp3LoopSpaceContr (A : \Set \lp) (x0 x1 x2 : A) : Contr (z0 = z0) => rewrite z0Pathchar contrQz0 \where {
   \func BS3 : \Type (\suc \lp) => \Sigma (X : \Set \lp) (TruncP (Equiv {X} {Fin 3}))
   \func hUT : \Type (\suc \lp) => borelXn 3 A
   \func iUT : \Type (\suc \lp) => SP3.step {A}
@@ -103,7 +104,7 @@
 
   \func D' : \oo-Type (\suc \lp) => PushoutData {\Sigma C P} {P} {R'} __.2 pinr
 
-  \func Dflat=D' : D = D' => {?}
+  \func Dflat=D' : Dflat = D' => {?}
 
   \func RgluePath (p : P) : Path (\lam i => pinr (pglue p i) = {D'} pinr (pinl ())) idp
       (inv (path (pglue (pinr (), p))) *> path (pglue (pinr (), p)) *> pmap pinr (inv (path (pglue p))))
@@ -138,5 +139,9 @@
     | center => pinr (pinl ())
     | contraction a => inv (contractionD a)
 
-  -- Contractibility of Q(z0) left for later
+  \sfunc Qz0Eq (b : y0 = y0) : pinl idp = {Q z0} pinl b => {?}
+  \func contrQz0 : Contr (Q z0) => loopSpaceContr.joinEqLeft idp Qz0Eq
+  \func contrD : Contr D => rewrite (inv Dflat=D *> Dflat=D') contrD'
+
+  \func z0Pathchar : (z0 = z0) = Q z0 => fundamentalIP contrQz0.center contrD
 }
