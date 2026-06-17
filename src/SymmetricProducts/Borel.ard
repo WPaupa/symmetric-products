@@ -154,6 +154,10 @@
 \func transportConst {A B C : \Type} (p : B = C) (a : A) : transport (\lam X => X -> A) p (\lam _ => a) = \lam _ => a \elim p
   | idp => idp
 
+\func transportBorelFun {n : Nat} {A : \Type} {b b' : BSn n} (p : b = b') (f : b.1 -> A) :
+  transport (\lam a => a.1 -> A) p f = transport (\lam X => X -> A) (pmap __.1 p) f \elim p
+  | idp => idp
+
 -- If an element is equal to a diagonal element, then it itself is a diagonal element
 \func borelConstToEq {A : \Type} (x y z : A)
                      (diag : (BSnbase 2, \lam _ => x) = {borelXn 2 A} (BSnbase 2, elimBS2.recFin2 y z)) : y = z
@@ -185,3 +189,22 @@
                 pmap (__ fzero) p
               })
      \in pc diagp.1 diagp.2
+
+-- Constant triples connected in the Borel construction come from equal elements.
+\func borelConstEq3 {A : \Type} (x y : A)
+                    (diag : (BSnbase 3, \lam _ => x) = {borelXn 3 A} (BSnbase 3, \lam _ => y)) : x = y
+  => \let diagp => SigmaPathChar _ _ diag
+          | lp => inv (transportBorelFun {3} {A} {BSnbase 3} {BSnbase 3} diagp.1 (\lam _ => x)
+                       *> transportConst (pmap __.1 diagp.1) x) *> diagp.2
+     \in pmap (__ (0 : Fin 3)) lp
+
+-- A constant triple equal to an explicit triple forces all three entries to be equal.
+\func borelConstToEq3 {A : \Type} (x y z w : A)
+                      (diag : (BSnbase 3, \lam _ => x) = {borelXn 3 A}
+                        (BSnbase 3, \case \elim __ \with { | 0 => y | 1 => z | 2 => w }))
+  : \Sigma (y = z) (z = w) =>
+  \let diagp => SigmaPathChar _ _ diag
+      | lp => inv (transportBorelFun {3} {A} {BSnbase 3} {BSnbase 3} diagp.1 (\lam _ => x)
+                   *> transportConst (pmap __.1 diagp.1) x) *> diagp.2
+  \in (inv (pmap (__ (0 : Fin 3)) lp) *> pmap (__ (1 : Fin 3)) lp,
+       inv (pmap (__ (1 : Fin 3)) lp) *> pmap (__ (2 : Fin 3)) lp)
