@@ -12,6 +12,7 @@
 \import Utilities.PathFun
 \import Utilities.Paths
 \import Function.Meta
+\import Data.Or
 \import Set
 \import Homotopy.HLevel
 \import Utilities.Paths
@@ -242,6 +243,59 @@
 \func bsnPathCarrier {n : Nat} (a b : BSn n) (e : Equiv {a.1} {b.1}) :
   pmap (\lam t => t.1) (BSnPath a b e) = Equiv-to-= e => idp
 
+-- path-fun of an equivalence-induced path is the equivalence (and its inverse).
+\func pathFunEqTo {A B : \Type} (e : Equiv {A} {B}) : path-fun (Equiv-to-= e) = e.f => idp
+\func pathFunInvEqTo {A B : \Type} (e : Equiv {A} {B}) : path-fun (inv (Equiv-to-= e)) = e.ret =>
+  pathFunQEquivInv (QEquiv.fromEquiv e)
+
+-- path-fun commutes with the left-summand type constructor `Or _ K`.
+\func pathFunOrL {X Y K : \Type} (q : X = Y) (a : X) :
+  path-fun (pmap (\lam Z => Or Z K) q) (inl a) = {Or Y K} inl (path-fun q a) \elim q
+  | idp => idp
+\func pathFunOrR {X Y K : \Type} (q : X = Y) (b : K) :
+  path-fun (pmap (\lam Z => Or Z K) q) (inr b) = {Or Y K} inr b \elim q
+  | idp => idp
+
+-- The included BS2 flip loop, and the Or-level flip it induces through `extendBSn 1`.
+\func theta2 : BSnbase 2 = BSnbase 2 => BSnPath (BSnbase 2) (BSnbase 2) notBS2.notFin2Eq
+\func orFlip (o : Or (Fin 2) (Fin 1)) : Or (Fin 2) (Fin 1) \elim o
+  | inl a => inl (notBS2.notFin2 a)
+  | inr b => inr b
+
+\func pmapDist {A B : \Type} (f : A -> B) {x y z : A} (p : x = y) (q : y = z) :
+  pmap f (p *> q) = pmap f p *> pmap f q \elim q
+  | idp => idp
+\func pmapInvDist {A B : \Type} (f : A -> B) {x y : A} (p : x = y) :
+  pmap f (inv p) = inv (pmap f p) \elim p
+  | idp => idp
+
+-- The induced permutation of a base loop, evaluated as a function via path-fun.
+\func fin3PEval (p : BSnbase 3 = BSnbase 3) (i : Fin 3) :
+  fin3PathEquiv p i = path-fun (pmap (\lam t => t.1) p) i =>
+  pmap (\lam (e : Equiv {Fin 3} {Fin 3}) => e i) (fin3PathEquivBeta p)
+    *> pmap (\lam (g : Fin 3 -> Fin 3) => g i) (inv (path-fun.eta (pmap (\lam t => t.1) p)))
+
+-- The carrier of the BS2 flip pushed through extendBSn 1 is the Or-level flip.
+\func psiCarrier : pmap (\lam t => t.1) (pmap (extendBSn 1) theta2)
+  = pmap (\lam Z => Or Z (Fin 1)) (pmap (\lam t => t.1) theta2) =>
+  pmap-comp (extendBSn 1) (\lam t => t.1) theta2
+    *> inv (pmap-comp (\lam t => t.1) (\lam Z => Or Z (Fin 1)) theta2)
+
+\func psiAction (o : Or (Fin 2) (Fin 1)) :
+  path-fun (pmap (\lam t => t.1) (pmap (extendBSn 1) theta2)) o = orFlip o \elim o
+  | inl a => run {
+    rewrite psiCarrier,
+    rewrite (pathFunOrL (pmap (\lam t => t.1) theta2) a),
+    rewrite (bsnPathCarrier (BSnbase 2) (BSnbase 2) notBS2.notFin2Eq),
+    rewrite (pathFunEqTo notBS2.notFin2Eq),
+    idp
+  }
+  | inr b => run {
+    rewrite psiCarrier,
+    rewrite (pathFunOrR (pmap (\lam t => t.1) theta2) b),
+    idp
+  }
+
 -- The transposition of Fin 3 that fixes `fixed` and swaps the other two coordinates.
 \func swap3 (fixed x : Fin 3) : Fin 3 \elim fixed
   | 0 => recFin3 {\lam _ => Fin 3} 0 2 1 x
@@ -322,6 +376,108 @@
     rewriteI (pathFunInvId C p'),
     pmap (path-fun (inv C)) step
   }
+
+-- The conjugate base loop: route Fin 3 into Or (Fin 2) (Fin 1) via `someEq`, flip the BS2
+-- factor (through extendBSn 1), then route back.
+\func conjBase (someEq : Equiv {Fin 3} {Or (Fin 2) (Fin 1)}) : BSnbase 3 = BSnbase 3 =>
+  BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) someEq
+    *> pmap (extendBSn 1) theta2
+    *> inv (BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) someEq)
+
+-- The carrier of the conjugate base loop, with the BSnPaths resolved to equivalence paths.
+\func conjCarrier (someEq : Equiv {Fin 3} {Or (Fin 2) (Fin 1)}) :
+  pmap (\lam t => t.1) (conjBase someEq)
+  = Equiv-to-= someEq *> pmap (\lam t => t.1) (pmap (extendBSn 1) theta2) *> inv (Equiv-to-= someEq) =>
+  run {
+    unfold conjBase,
+    rewrite (pmapDist (\lam t => t.1) (BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) someEq)
+                      (pmap (extendBSn 1) theta2 *> inv (BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) someEq))),
+    rewrite (pmapDist (\lam t => t.1) (pmap (extendBSn 1) theta2)
+                      (inv (BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) someEq))),
+    rewrite (pmapInvDist (\lam t => t.1) (BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) someEq)),
+    rewrite (bsnPathCarrier (BSnbase 3) (extendBSn 1 (BSnbase 2)) someEq),
+    idp
+  }
+
+-- Evaluating path-fun on the resolved conjugate carrier, by explicit transitivity
+-- (rewriting under coe is fragile, so we apply the betas pointwise via pmap).
+\func evalConj (someEq : Equiv {Fin 3} {Or (Fin 2) (Fin 1)}) (i : Fin 3) :
+  path-fun (Equiv-to-= someEq *> pmap (\lam t => t.1) (pmap (extendBSn 1) theta2) *> inv (Equiv-to-= someEq)) i
+  = someEq.ret (orFlip (someEq.f i)) =>
+  pmap (\lam (f : Fin 3 -> Fin 3) => f i)
+       (path-fun.beta-*> (Equiv-to-= someEq)
+           (pmap (\lam t => t.1) (pmap (extendBSn 1) theta2) *> inv (Equiv-to-= someEq)))
+  *> pmap (\lam (f : Or (Fin 2) (Fin 1) -> Fin 3) => f (path-fun (Equiv-to-= someEq) i))
+          (path-fun.beta-*> (pmap (\lam t => t.1) (pmap (extendBSn 1) theta2)) (inv (Equiv-to-= someEq)))
+  *> pmap (\lam (v : Or (Fin 2) (Fin 1)) =>
+             path-fun (inv (Equiv-to-= someEq)) (path-fun (pmap (\lam t => t.1) (pmap (extendBSn 1) theta2)) v))
+          (pmap (\lam (g : Fin 3 -> Or (Fin 2) (Fin 1)) => g i) (pathFunEqTo someEq))
+  *> pmap (\lam (w : Or (Fin 2) (Fin 1)) => path-fun (inv (Equiv-to-= someEq)) w)
+          (psiAction (someEq.f i))
+  *> pmap (\lam (g : Or (Fin 2) (Fin 1) -> Fin 3) => g (orFlip (someEq.f i)))
+          (pathFunInvEqTo someEq)
+
+-- The induced permutation of the conjugate base loop is the conjugate of the Or flip.
+\func conjAction (someEq : Equiv {Fin 3} {Or (Fin 2) (Fin 1)}) (i : Fin 3) :
+  fin3PathEquiv (conjBase someEq) i = someEq.ret (orFlip (someEq.f i)) =>
+  fin3PEval (conjBase someEq) i
+  *> pmap (\lam (q : (BSnbase 3).1 = (BSnbase 3).1) => path-fun q i) (conjCarrier someEq)
+  *> evalConj someEq i
+
+-- The base component of a Sigma path built by SigmaPath.
+\func sigmaPathBase {A : \Type} {B : A -> \Type} {x y : \Sigma (a : A) (B a)}
+                    (p : x.1 = y.1) (q : transport B p x.2 = y.2) :
+  pmap (\lam t => t.1) (SigmaPath p q) = p => idp
+
+-- The routing equivalence Fin 3 ~ Or (Fin 2) (Fin 1) that sends `fixed` to the singleton
+-- factor and the other two coordinates to the pair factor.
+\func routeF (fixed x : Fin 3) : Or (Fin 2) (Fin 1) \elim fixed, x
+  | 0, 0 => inr 0 | 0, 1 => inl 0 | 0, 2 => inl 1
+  | 1, 0 => inl 0 | 1, 1 => inr 0 | 1, 2 => inl 1
+  | 2, 0 => inl 0 | 2, 1 => inl 1 | 2, 2 => inr 0
+\func routeR (fixed : Fin 3) (o : Or (Fin 2) (Fin 1)) : Fin 3 \elim fixed, o
+  | 0, inl 0 => 1 | 0, inl 1 => 2 | 0, inr b => 0
+  | 1, inl 0 => 0 | 1, inl 1 => 2 | 1, inr b => 1
+  | 2, inl 0 => 0 | 2, inl 1 => 1 | 2, inr b => 2
+\func routeInvFR (fixed x : Fin 3) : routeR fixed (routeF fixed x) = x \elim fixed, x
+  | 0, 0 => idp | 0, 1 => idp | 0, 2 => idp
+  | 1, 0 => idp | 1, 1 => idp | 1, 2 => idp
+  | 2, 0 => idp | 2, 1 => idp | 2, 2 => idp
+\func routeInvRF (fixed : Fin 3) (o : Or (Fin 2) (Fin 1)) : routeF fixed (routeR fixed o) = o \elim fixed, o
+  | 0, inl 0 => idp | 0, inl 1 => idp | 0, inr 0 => idp
+  | 1, inl 0 => idp | 1, inl 1 => idp | 1, inr 0 => idp
+  | 2, inl 0 => idp | 2, inl 1 => idp | 2, inr 0 => idp
+
+\func routeEq (fixed : Fin 3) : Equiv {Fin 3} {Or (Fin 2) (Fin 1)} \cowith
+  | f => routeF fixed
+  | ret => routeR fixed
+  | ret_f => routeInvFR fixed
+  | sec => routeR fixed
+  | f_sec => routeInvRF fixed
+
+-- The conjugate of the Or flip through this routing is exactly `swap3 fixed`.
+\func conjSwapVal (fixed i : Fin 3) :
+  (routeEq fixed).ret (orFlip ((routeEq fixed).f i)) = swap3 fixed i \elim fixed, i
+  | 0, 0 => idp | 0, 1 => idp | 0, 2 => idp
+  | 1, 0 => idp | 1, 1 => idp | 1, 2 => idp
+  | 2, 0 => idp | 2, 1 => idp | 2, 2 => idp
+
+\func conjSwap (fixed : Fin 3) : fin3PathEquiv (conjBase (routeEq fixed)) = swap3Equiv fixed =>
+  Equiv.equals $ ext (\lam i => conjAction (routeEq fixed) i *> conjSwapVal fixed i)
+
+-- swap3 maps one moved coordinate to the other.
+\func swapMovedEq (fixed : Fin 3) : swap3 fixed (routeR fixed (inl 1)) = routeR fixed (inl 0) \elim fixed
+  | 0 => idp | 1 => idp | 2 => idp
+
+-- Transporting a tuple along the routing base path is precomposition with the routing inverse.
+\func transportRouteTuple {A : \Type} (someEq : Equiv {Fin 3} {Or (Fin 2) (Fin 1)}) (f : Fin 3 -> A) :
+  transport (\lam a => a.1 -> A) (BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) someEq) f
+  = (\lam o => f (someEq.ret o)) => run {
+  rewrite (transportBSnFun (BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) someEq) f),
+  rewrite (path-fun.transport-fun f (pmap (\lam t => t.1) (BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) someEq))),
+  rewrite (pathFunInvEqTo someEq),
+  idp
+}
 
 \func sigmaCommute {A P : \Type} {F G : A -> \Type} :
   (\Sigma (s : A) (\Sigma (F s) (\Sigma P (G s)))) =
