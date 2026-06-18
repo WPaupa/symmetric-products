@@ -1,5 +1,6 @@
 \import Equiv
 \import Equiv.Univalence
+\import Logic.Unique
 \import Meta
 \import Paths
 \import Paths.Meta
@@ -11,6 +12,8 @@
 \import Utilities.PathFun
 \import Utilities.Paths
 \import Function.Meta
+\import Set
+\import Homotopy.HLevel
 \import Utilities.Paths
 
 \func recFin3 {A : Fin 3 -> \Type} (a : A 0) (b : A 1) (c : A 2) (x : Fin 3) : A x \elim x
@@ -225,6 +228,101 @@
   idp
 }
 
+-- =-to-Equiv is functorial: it sends path composition to equivalence composition
+-- and inversion to the symmetric equivalence.
+\func =-to-Equiv-*> {A B C : \Type} (p : A = B) (q : B = C) :
+  =-to-Equiv (p *> q) = transEquiv (=-to-Equiv p) (=-to-Equiv q) \elim p, q
+  | idp, idp => Equiv.equals idp
+
+\func =-to-Equiv-inv {A B : \Type} (p : A = B) :
+  =-to-Equiv (inv p) = symEquiv (=-to-Equiv p) \elim p
+  | idp => Equiv.equals idp
+
+-- The carrier component of a BSnPath is the underlying equivalence-induced path.
+\func bsnPathCarrier {n : Nat} (a b : BSn n) (e : Equiv {a.1} {b.1}) :
+  pmap (\lam t => t.1) (BSnPath a b e) = Equiv-to-= e => idp
+
+-- The transposition of Fin 3 that fixes `fixed` and swaps the other two coordinates.
+\func swap3 (fixed x : Fin 3) : Fin 3 \elim fixed
+  | 0 => recFin3 {\lam _ => Fin 3} 0 2 1 x
+  | 1 => recFin3 {\lam _ => Fin 3} 2 1 0 x
+  | 2 => recFin3 {\lam _ => Fin 3} 1 0 2 x
+
+\func swap3Inv (fixed x : Fin 3) : swap3 fixed (swap3 fixed x) = x \elim fixed, x
+  | 0, 0 => idp | 0, 1 => idp | 0, 2 => idp
+  | 1, 0 => idp | 1, 1 => idp | 1, 2 => idp
+  | 2, 0 => idp | 2, 1 => idp | 2, 2 => idp
+
+\func swap3Equiv (fixed : Fin 3) : Equiv {Fin 3} {Fin 3} \cowith
+  | f => swap3 fixed
+  | ret => swap3 fixed
+  | ret_f => swap3Inv fixed
+  | sec => swap3 fixed
+  | f_sec => swap3Inv fixed
+
+\func swap3Fix (fixed : Fin 3) : swap3 fixed fixed = fixed \elim fixed
+  | 0 => idp | 1 => idp | 2 => idp
+
+-- Any element distinct from both `x` and `fixed` (with `x /= fixed`) is `swap3 fixed x`.
+\func thirdIs (fixed x v : Fin 3) (xf : x /= fixed) (vx : v /= x) (vf : v /= fixed) : v = swap3 fixed x =>
+  \case \elim fixed, \elim x, \elim v, xf, vx, vf \with {
+    | 0, 0, _, xf, _, _ => absurd (xf idp)
+    | 0, 1, 0, _, _, vf => absurd (vf idp)
+    | 0, 1, 1, _, vx, _ => absurd (vx idp)
+    | 0, 1, 2, _, _, _ => idp
+    | 0, 2, 0, _, _, vf => absurd (vf idp)
+    | 0, 2, 1, _, _, _ => idp
+    | 0, 2, 2, _, vx, _ => absurd (vx idp)
+    | 1, 0, 0, _, vx, _ => absurd (vx idp)
+    | 1, 0, 1, _, _, vf => absurd (vf idp)
+    | 1, 0, 2, _, _, _ => idp
+    | 1, 1, _, xf, _, _ => absurd (xf idp)
+    | 1, 2, 0, _, _, _ => idp
+    | 1, 2, 1, _, _, vf => absurd (vf idp)
+    | 1, 2, 2, _, vx, _ => absurd (vx idp)
+    | 2, 0, 0, _, vx, _ => absurd (vx idp)
+    | 2, 0, 1, _, _, _ => idp
+    | 2, 0, 2, _, _, vf => absurd (vf idp)
+    | 2, 1, 0, _, _, _ => idp
+    | 2, 1, 1, _, vx, _ => absurd (vx idp)
+    | 2, 1, 2, _, _, vf => absurd (vf idp)
+    | 2, 2, _, xf, _, _ => absurd (xf idp)
+  }
+
+-- Normal form for a transposition: an equivalence of Fin 3 that fixes `fixed` and moves the
+-- other two coordinates is the explicit swap. Hence such an equivalence is determined by `fixed`.
+\func transNFval (e : Equiv {Fin 3} {Fin 3}) (fixed : Fin 3) (ef : e fixed = fixed)
+                 (em : \Pi (i : Fin 3) -> i /= fixed -> e i /= i) (x : Fin 3) : e x = swap3 fixed x =>
+  \case decBSn.decFin x fixed \with {
+    | yes x=f => rewrite x=f (ef *> inv (swap3Fix fixed))
+    | no xf => thirdIs fixed x (e x) xf (em x xf) (\lam p => xf (e.isInj (p *> inv ef)))
+  }
+
+\func transNF (e : Equiv {Fin 3} {Fin 3}) (fixed : Fin 3) (ef : e fixed = fixed)
+              (em : \Pi (i : Fin 3) -> i /= fixed -> e i /= i) : e = swap3Equiv fixed =>
+  Equiv.equals $ ext (\lam x => transNFval e fixed ef em x)
+
+\func fin3TranspDet (e e' : Equiv {Fin 3} {Fin 3}) (fixed : Fin 3)
+                    (ef : e fixed = fixed) (em : \Pi (i : Fin 3) -> i /= fixed -> e i /= i)
+                    (ef' : e' fixed = fixed) (em' : \Pi (i : Fin 3) -> i /= fixed -> e' i /= i)
+  : e = e' => transNF e fixed ef em *> inv (transNF e' fixed ef' em')
+
+-- The encoding of base loops as permutations is injective, since it is path-fun of an
+-- equivalence of types. Hence base loops are determined by their induced permutation.
+\func fin3PathEquivInj {p p' : BSnbase 3 = BSnbase 3} (e : fin3PathEquiv p = fin3PathEquiv p') : p = p' =>
+  \let | E => Equiv-to-= fin3Equiv
+       | C => base3PathCode
+       | step : path-fun C p = path-fun C p' => run {
+           rewriteI (pathFunIdInv E (path-fun C p)),
+           rewriteI (pathFunIdInv E (path-fun C p')),
+           pmap (path-fun E) e
+         }
+  \in run {
+    rewriteI (pathFunInvId C p),
+    rewriteI (pathFunInvId C p'),
+    pmap (path-fun (inv C)) step
+  }
+
 \func sigmaCommute {A P : \Type} {F G : A -> \Type} :
   (\Sigma (s : A) (\Sigma (F s) (\Sigma P (G s)))) =
   (\Sigma (x : \Sigma (s : A) (F s)) (\Sigma P (G x.1))) => iso f g sec ret \where {
@@ -235,3 +333,20 @@
   \func sec (x : left) : g (f x) = x => idp
   \func ret (x : right) : f (g x) = x => idp
 }
+
+-- The first component of the characterization of a Sigma-path is its base component.
+\func scFst {A : \Type} {B : A -> \Type} {x y : \Sigma (a : A) (B a)} (p : x = y) :
+  (SigmaPathChar x y p).1 = pmap (\lam t => t.1) p \elim p
+  | idp => idp
+
+-- In a Sigma over a type with set fibers, two paths with the same base component are equal.
+-- In particular, loops in a Borel construction over a set are determined by their base.
+\func sigmaLoopDet {A : \Type} {B : A -> \Type} (setB : \Pi (a : A) -> isSet (B a))
+                   {x y : \Sigma (a : A) (B a)} (p q : x = y)
+                   (h : pmap (\lam t => t.1) p = pmap (\lam t => t.1) q) : p = q =>
+  \let | baseEq : (SigmaPathChar x y p).1 = (SigmaPathChar x y q).1 => scFst p *> h *> inv (scFst q)
+       | fibEq : Path (\lam i => transport B (baseEq i) x.2 = y.2) (SigmaPathChar x y p).2 (SigmaPathChar x y q).2
+           => pathOver (setB y.1 _ _ _ _)
+  \in SigmaPathChar.eq p
+    *> SigmaPathBeta (SigmaPathChar x y p).1 (SigmaPathChar x y q).1 (SigmaPathChar x y p).2 (SigmaPathChar x y q).2 baseEq fibEq
+    *> inv (SigmaPathChar.eq q)
