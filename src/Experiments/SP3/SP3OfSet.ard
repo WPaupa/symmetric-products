@@ -25,6 +25,31 @@
 \import Experiments.SP3.Utils
 \import Experiments.SP3.SpaceT
 \import Experiments.SP3.SpaceR
+\import Experiments.SP3.SpaceS
+
+-- Join of two propositions is a proposition (the `isProp`-argument form of `Join.levelProp`).
+\lemma joinPropIsProp {A B : \Type} (pa : isProp A) (pb : isProp B) : isProp (Join A B) =>
+  isContr'=>isProp {Join A B} (\case \elim __ \with {
+    | pinl a => transport (Contr __) (QEquiv-to-= (Join-sym B A)) (Join_Contr B (isProp=>isContr pa a))
+    | pinr b => Join_Contr A (isProp=>isContr pb b)
+  })
+
+-- `joinEqLeft` with the right factor given as `isProp B` rather than `B : \Prop`.
+\func joinEqLeftP {A B : \Type} (bP : isProp B) (ca : A)
+                  (pa : \Pi (a : A) -> pinl ca = {Join A B} pinl a) : Contr (Join A B) \cowith
+  | center => pinl ca
+  | contraction => \case \elim __ \with {
+    | pinl b => pa b
+    | pinr c => path (pglue (ca, c))
+    | pglue a i => joinEqLeftP.glueEqP bP ca pa a i
+  } \where {
+  \func glueEqP {A B : \Type} (bP : isProp B) (ca : A)
+                (pa : \Pi (a : A) -> pinl ca = {Join A B} pinl a) (a : \Sigma A B)
+    : Path (\lam i => pinl ca = pglue a i) (pa a.1) (path (pglue (ca, a.2))) => run {
+    pathOver,
+    isProp.=>isSet (isContr=>isProp (Join_Contr A (isProp=>isContr bP a.2))) _ _ _ _
+  }
+}
 
 -- This file is a generalization of the proof in the file SP2OfSet.ard
 -- to SP3. We try to use the same notation
@@ -139,7 +164,7 @@
     | center => pinr (pinl ())
     | contraction a => inv (contractionD a)
 
-  \sfunc Qz0Eq (b : y0 = y0) : pinl idp = {Q z0} pinl b => {?} \where {
+  \sfunc contrQz0 : Contr (Q z0) => contrJoinT \where {
     \func q2InvEq (q1 : BSnbase 3 = BSnbase 3)
                   (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
                   (i : Fin 3) : w0.2 ((fin3PathEquiv q1).ret i) = w0.2 i =>
@@ -266,8 +291,81 @@
         | fin3PermCycle noFix cycle3 => ifCycle bp.1 bp.2 noFix cycle3
       }
     }
+
+    -- ========================================================================
+    -- Reduction of an arbitrary loop  b : y0 = y0  in the pushout S^3_2 to a
+    -- Borel loop, via the SpaceS encode-decode `S.pathChar` and join algebra.
+    -- The right join factor B'col absorbs the transposition (its loop is a
+    -- collision) and the three-cycle (P holds), so the contraction reduces to
+    -- the identity case for Borel loops.
+    -- ========================================================================
+
+    -- The right factor of the reassociated join: "w0 is a collision, or P holds".
+    \func B'col : \Type (\suc \lp) => Join (S.colBoth {A} {x0} {x1} {x2} w0) (\Sigma P (T {A} {x0} y0))
+    \lemma B'isProp : isProp B'col =>
+      joinPropIsProp prop-isProp (\lam _ _ => SigmaPath prop-pi (Q.TisProp y0 _ _))
+
+    -- joinT y0  =  Join (w0=w0) B'col,  via `S.pathChar y0` and join associativity.
+    \func joinTassoc : joinT y0 = Join (w0 = w0) B'col =>
+      pmap (\lam X => Join X (\Sigma P (T {A} {x0} y0))) (S.pathChar {A} {x0} {x1} {x2} y0)
+      *> QEquiv-to-= (Join-assoc (w0 = w0) (S.colBoth {A} {x0} {x1} {x2} w0) (\Sigma P (T {A} {x0} y0)))
+
+    -- A Borel transposition loop puts w0 on the collision stratum.
+    \func colBothTrans (q1 : BSnbase 3 = BSnbase 3) (fixed : Fin 3)
+                       (fixedPath : fin3PathEquiv q1 fixed = fixed)
+                       (moved : \Pi (i : Fin 3) -> i /= fixed -> fin3PathEquiv q1 i /= i)
+                       (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
+      : S.colBoth {A} {x0} {x1} {x2} w0 =>
+      \let | rt => routeEq fixed
+           | base_r => BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) rt
+           | va => w0.2 (routeR fixed (inl 0))
+           | vb => w0.2 (routeR fixed (inr 0))
+           | fpq1 => transNF (fin3PathEquiv q1) fixed fixedPath moved
+           | movedEq : w0.2 (routeR fixed (inl 1)) = w0.2 (routeR fixed (inl 0)) =>
+               q2Eq q1 q2 (routeR fixed (inl 1))
+                 *> pmap w0.2 (pmap (\lam (e : Equiv {Fin 3} {Fin 3}) => e (routeR fixed (inl 1))) fpq1 *> swapMovedEq fixed)
+           | tupleEq : transport (\lam a => a.1 -> A) base_r w0.2 = (SP3.fatdiag (BSnbase 2, va, vb)).2 => run {
+               rewrite (transportRouteTuple rt w0.2),
+               ext (\case \elim __ \with { | inl 0 => idp | inl 1 => movedEq | inr 0 => idp })
+             }
+           | r : w0 = S.collision {A} va vb => SigmaPath base_r tupleEq
+      \in inP (va, vb, (r, r))
+
+    -- A Borel three-cycle loop forces total diagonality, giving the right join factor.
+    \func cycleWitness (q1 : BSnbase 3 = BSnbase 3)
+                       (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
+                       (noFix : \Pi (i : Fin 3) -> fin3PathEquiv q1 i /= i) : \Sigma P (T {A} {x0} y0) =>
+      \let p => cycleP q1 q2 noFix \in (p, Ty0FromP p)
+
+    -- If the right factor B'col is inhabited, both endpoints connect through it.
+    \func brVia (b' : B'col) (loop : w0 = w0) : pinl idp = {Join (w0 = w0) B'col} pinl loop =>
+      path (pglue ((idp : w0 = w0), b')) *> inv (path (pglue (loop, b')))
+
+    -- The identity Borel loop is trivial because A is a set.
+    \func brIdp (q1 : BSnbase 3 = BSnbase 3) (p : q1 = idp)
+                (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
+      : pinl idp = {Join (w0 = w0) B'col} pinl (SigmaPath q1 q2) \elim p
+      | idp => run {
+        rewrite (set-pi {Fin 3 -> A} {w0.2} {w0.2} {q2} {idp}),
+        pmap pinl,
+        idp
+      }
+
+    -- Every Borel loop maps to the basepoint in Join (w0=w0) B'col.
+    \func borelReduce (h : w0 = w0) : pinl idp = {Join (w0 = w0) B'col} pinl h => run {
+      rewrite (SigmaPathChar.eq h),
+      \let bp => SigmaPathChar _ _ h,
+      \case base3PathChar bp.1 \with {
+        | fin3PermId p => brIdp bp.1 (base3PathId bp.1 p) bp.2
+        | fin3PermTransposition fixed fixedPath moved =>
+          brVia (pinl (colBothTrans bp.1 fixed fixedPath moved bp.2)) (SigmaPath bp.1 bp.2)
+        | fin3PermCycle noFix cycle3 => brVia (pinr (cycleWitness bp.1 bp.2 noFix)) (SigmaPath bp.1 bp.2)
+      }
+    }
+
+    \func contrJoinT : Contr (joinT y0) => rewrite joinTassoc (joinEqLeftP B'isProp idp borelReduce)
   }
-  \func contrQz0 : Contr (Q z0) => loopSpaceContr.joinEqLeft idp Qz0Eq
+
   \func contrD : Contr D => rewrite (inv Dflat=D *> Dflat=D') contrD'
 
   \func z0Pathchar : (z0 = z0) = Q z0 => fundamentalIP contrQz0.center contrD

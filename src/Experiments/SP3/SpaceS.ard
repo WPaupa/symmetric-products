@@ -1,0 +1,121 @@
+\import Data.Or
+\import Data.Fin
+\import Equiv
+\import Equiv.Sigma
+\import Equiv.Univalence
+\import Function.Meta
+\import Homotopy.Join
+\import Homotopy.Pushout
+\import Logic
+\import Logic.Unique
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Set
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import SymmetricProducts.SP3
+\import Utilities.Equiv
+\import Utilities.PathFun
+\import Utilities.Paths
+\import Utilities.Pushout
+\import Experiments.SP3.Utils
+
+-- ============================================================================
+-- Encode-decode for the FIRST pushout  iUT = S^3_2 = PushoutData fatdiag g.
+--
+-- Goal: characterize paths  y0 = -  in S^3_2 well enough to reduce an
+-- arbitrary loop  b : y0 = y0  to a Borel loop (handled by `Qz0EqBorel`),
+-- closing the top-level `Qz0Eq` in SP3OfSet.ard.
+--
+-- This mirrors `SpaceT.ard`/`SpaceR.ard` and the single-pushout template
+-- `SP2OfSet.ard`, specialized to the binary-collision stratum [x,x,y].
+--
+-- Everything is wrapped in `S {A} {x0 x1 x2}` with the model data in `\where`,
+-- exactly as `SpaceR.ard` wraps `R`.
+-- ============================================================================
+
+\func S {A : \Set \lp} {x0 x1 x2 : A} : \oo-Type (\suc \lp) => \Sigma (s : iUT) (E s) \where {
+  \func hUT : \Type (\suc \lp) => borelXn 3 A
+  \func iUT : \Type (\suc \lp) => SP3.step {A}
+
+  -- A21: the binary-collision parameter space (domain of fatdiag).
+  \func A21 : \Type (\suc \lp) => \Sigma (b : BSn 2) (x y : A)
+
+  -- The Borel model point and its image in S^3_2.
+  \func w0 : hUT => (BSnbase 3, recFin3 {\lam _ => A} x0 x1 x2)
+  \func y0 : iUT => pinl w0
+
+  -- The strict collision representative [x,x,y]. Because Borel paths permute
+  -- the three coordinates, `w0 = collision x y` already means "(x0,x1,x2) is a
+  -- binary collision with doubled value x and single value y".
+  \func collision (x y : A) : hUT => SP3.fatdiag (BSnbase 2, x, y)
+
+  -- The collision conditions, as propositions (truncating the Borel symmetry).
+  -- `colAt c`  : w0 is the collision with values c (used on the pinr side).
+  -- `colBoth bv` : w0 and bv are the same collision (used on the pinl side).
+  \func colAt (c : \Sigma A A) : \Prop => TruncP (w0 = collision c.1 c.2)
+  \func colBoth (bv : hUT) : \Prop =>
+    TruncP (\Sigma (x y : A) (\Sigma (w0 = collision x y) (bv = collision x y)))
+
+  -- The path code for  y0 = -  on S^3_2.  The join's left summand is a *Borel*
+  -- path (so the diagonal-detection lemma is a groupoid fact, not circular).
+  \func E (s : iUT) : \oo-Type (\suc \lp) \elim s
+    | pinl bv => Join (w0 = bv) (colBoth bv)
+    | pinr c => colAt c
+    | pglue a i => glueEq a i \where {
+
+    -- fatdiag a is the strict collision with values (a.2, a.3), up to the merely
+    -- available identification of its BS2 coordinate with the base.
+    \func fatToCol (a : A21) : TruncP (SP3.fatdiag a = collision a.2 a.3) =>
+      TruncP.map ((connBSn 2).isConn0 a.1 (BSnbase 2))
+          (\lam q => pmap (\lam (L : BSn 2) => SP3.fatdiag (L, a.2, a.3)) q)
+
+    -- Diagonal detection: a Borel path from w0 to the collision point fatdiag a
+    -- forces w0 to be the collision with values (a.2, a.3).
+    \func colDetect (a : A21) (p : w0 = SP3.fatdiag a) : colAt (a.2, a.3) =>
+      TruncP.map (fatToCol a) (\lam fc => p *> fc)
+
+    -- Any inhabitant of the pinl-code at a collision point produces the right
+    -- summand, hence the code there is contractible (mirrors `condCtrJoinCst`).
+    \func jToColBoth (a : A21) (j : Join (w0 = SP3.fatdiag a) (colBoth (SP3.fatdiag a)))
+      : colBoth (SP3.fatdiag a) \elim j
+      | pinl p => TruncP.map (fatToCol a) (\lam fc => (a.2, a.3, (p *> fc, fc)))
+      | pinr c => c
+
+    \func condCtr (a : A21) (j : Join (w0 = SP3.fatdiag a) (colBoth (SP3.fatdiag a)))
+      : Contr (Join (w0 = SP3.fatdiag a) (colBoth (SP3.fatdiag a))) =>
+      Join_Contr (w0 = SP3.fatdiag a) (isProp=>isContr prop-isProp (jToColBoth a j))
+
+    \func glueEq (a : A21) : Join (w0 = SP3.fatdiag a) (colBoth (SP3.fatdiag a)) = colAt (a.2, a.3) =>
+      propExtEx (condCtrToProp (condCtr a)) prop-isProp
+          (\lam j => TruncP.rec prop-isProp (jToColBoth a j)
+              (\lam s => TruncP.map (fatToCol a) (\lam fc => s.3.1 *> inv s.3.2 *> fc)))
+          (\lam ca => pinr (TruncP.rec {_} {colBoth (SP3.fatdiag a)} prop-isProp ca
+              (\lam wc => TruncP.map (fatToCol a) (\lam fc => (a.2, a.3, (wc, fc))))))
+  }
+
+  -- The center of the code at the basepoint: the honest reflexivity path.
+  \func r0 : E y0 => pinl idp
+
+  -- The total space of the code, as the flattening of the first pushout.
+  \func Sflat : \oo-Type (\suc \lp) => PushoutData
+      {\Sigma (a : A21) (E (pinl (SP3.fatdiag a)))}
+      {\Sigma (bv : hUT) (E (pinl bv))}
+      {\Sigma (c : \Sigma A A) (E (pinr c))}
+      (\lam p => (SP3.fatdiag p.1, p.2))
+      (\lam p => ((p.1.2, p.1.3), transport E (PushoutData.ppglue p.1) p.2))
+
+  \func Sflat=S : Sflat = S => PushoutData.flattening E
+
+  -- Contractibility of the flattened total space (the remaining step; the analogue of
+  -- `Rchar` + `Dflat=D'` + `contrD'` for the FIRST pushout). The center is the honest
+  -- reflexivity point `pinl (w0, pinl idp)`.
+  \func contrSflat : Contr Sflat => {?}
+
+  -- Total space contractibility, transported back along the flattening.
+  \func contrS : Contr (\Sigma (s : iUT) (E s)) => transport Contr Sflat=S contrSflat
+
+  -- The fundamental theorem of identity types: paths out of y0 are classified by E.
+  \func pathChar (s : iUT) : (y0 = s) = E s => fundamentalIP r0 contrS
+}
