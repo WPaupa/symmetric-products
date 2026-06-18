@@ -139,7 +139,88 @@
     | center => pinr (pinl ())
     | contraction a => inv (contractionD a)
 
-  \sfunc Qz0Eq (b : y0 = y0) : pinl idp = {Q z0} pinl b => {?}
+  \sfunc Qz0Eq (b : y0 = y0) : pinl idp = {Q z0} pinl b => {?} \where {
+    \func q2InvEq (q1 : BSnbase 3 = BSnbase 3)
+                  (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
+                  (i : Fin 3) : w0.2 ((fin3PathEquiv q1).ret i) = w0.2 i =>
+      \let | q2' : (\lam x => w0.2 (path-fun (inv (pmap __.1 q1)) x)) = w0.2 =>
+               rewrite (path-fun.transport-fun w0.2 (pmap __.1 q1)) in q2
+      \in run {
+      rewrite (fin3PathEquivBeta q1),
+      rewriteI (path-fun.inv-p (pmap __.1 q1)),
+      pmap (__ i) q2'
+    }
+
+    \func q2Eq (q1 : BSnbase 3 = BSnbase 3)
+               (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
+               (i : Fin 3) : w0.2 i = w0.2 ((fin3PathEquiv q1) i) =>
+      inv (pmap w0.2 ((fin3PathEquiv q1).ret_f i)) *> q2InvEq q1 q2 ((fin3PathEquiv q1) i)
+
+    \func cycleP (q1 : BSnbase 3 = BSnbase 3)
+                 (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
+                 (noFix : \Pi (i : Fin 3) -> fin3PathEquiv q1 i /= i) : P =>
+      cases ((fin3PathEquiv q1) 0 arg addPath, (fin3PathEquiv q1) 1 arg addPath, (fin3PathEquiv q1) 2 arg addPath) \with {
+        | 0, e0, 1, e1, 2, e2 => absurd (noFix 0 e0)
+        | 0, e0, 2, e1, 1, e2 => absurd (noFix 0 e0)
+        | 1, e0, 0, e1, 2, e2 => absurd (noFix 2 e2)
+        | 2, e0, 1, e1, 0, e2 => absurd (noFix 1 e1)
+        | 1, e0, 2, e1, 0, e2 => (q2Eq q1 q2 0 *> pmap w0.2 e0,
+                                   q2Eq q1 q2 1 *> pmap w0.2 e1)
+        | 2, e0, 0, e1, 1, e2 =>
+          \let | x0=x2 => q2Eq q1 q2 0 *> pmap w0.2 e0
+               | x2=x1 => q2Eq q1 q2 2 *> pmap w0.2 e2
+          \in (x0=x2 *> x2=x1, inv x2=x1)
+        | 0, e0, 0, e1, _, _ => absurd (fin3SameImageAbsurd fin3_0_ne_1 e0 e1)
+        | 0, e0, _, _, 0, e2 => absurd (fin3SameImageAbsurd fin3_0_ne_2 e0 e2)
+        | _, _, 0, e1, 0, e2 => absurd (fin3SameImageAbsurd fin3_1_ne_2 e1 e2)
+        | 1, e0, 1, e1, _, _ => absurd (fin3SameImageAbsurd fin3_0_ne_1 e0 e1)
+        | 1, e0, _, _, 1, e2 => absurd (fin3SameImageAbsurd fin3_0_ne_2 e0 e2)
+        | _, _, 1, e1, 1, e2 => absurd (fin3SameImageAbsurd fin3_1_ne_2 e1 e2)
+        | 2, e0, 2, e1, _, _ => absurd (fin3SameImageAbsurd fin3_0_ne_1 e0 e1)
+        | 2, e0, _, _, 2, e2 => absurd (fin3SameImageAbsurd fin3_0_ne_2 e0 e2)
+        | _, _, 2, e1, 2, e2 => absurd (fin3SameImageAbsurd fin3_1_ne_2 e1 e2)
+      }
+
+    \func Ty0FromP (p : P) : T {A} {x0} y0 => ext \case \elim __ \with {
+      | 0 => idp
+      | 1 => inv p.1
+      | 2 => inv (p.1 *> p.2)
+    }
+
+    \func ifIdp (q1 : BSnbase 3 = BSnbase 3) (p : q1 = idp)
+                 (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2) :
+      pinl idp = {Q z0} pinl (pmap pinl (SigmaPath q1 q2)) \elim p
+      | idp => run {
+        rewrite (set-pi {Fin 3 -> A} {w0.2} {w0.2} {q2} {idp}),
+        pmap pinl,
+        idp
+      }
+
+    \func ifCycle (q1 : BSnbase 3 = BSnbase 3)
+                  (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
+                  (noFix : \Pi (i : Fin 3) -> fin3PathEquiv q1 i /= i)
+                  (_ : fin3PathEquiv q1 (fin3PathEquiv q1 (fin3PathEquiv q1 0)) = 0) :
+      pinl idp = {Q z0} pinl (pmap pinl (SigmaPath q1 q2)) =>
+      \let | p => cycleP q1 q2 noFix
+      \in isContr=>isProp (Join_Contr (y0 = y0) (isProp=>isContr prop-isProp (p, Ty0FromP p))) _ _
+
+    \func ifTransposition (q1 : BSnbase 3 = BSnbase 3)
+                          (fixed : Fin 3)
+                          (_ : fin3PathEquiv q1 fixed = fixed)
+                          (_ : \Pi (i : Fin 3) -> i /= fixed -> fin3PathEquiv q1 i /= i)
+                          (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2) :
+      pinl idp = {Q z0} pinl (pmap pinl (SigmaPath q1 q2)) => {?}
+
+    \func Qz0EqBorel (h : w0 = w0) : pinl idp = {Q z0} pinl (pmap pinl h) => run {
+      rewrite (SigmaPathChar.eq h),
+      \let bp => SigmaPathChar _ _ h,
+      \case base3PathChar bp.1 \with {
+        | fin3PermId p => ifIdp bp.1 (base3PathId bp.1 p) bp.2
+        | fin3PermTransposition fixed fixedPath moved => ifTransposition bp.1 fixed fixedPath moved bp.2
+        | fin3PermCycle noFix cycle3 => ifCycle bp.1 bp.2 noFix cycle3
+      }
+    }
+  }
   \func contrQz0 : Contr (Q z0) => loopSpaceContr.joinEqLeft idp Qz0Eq
   \func contrD : Contr D => rewrite (inv Dflat=D *> Dflat=D') contrD'
 

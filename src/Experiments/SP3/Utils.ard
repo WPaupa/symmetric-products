@@ -4,11 +4,14 @@
 \import Paths
 \import Paths.Meta
 \import Logic
+\import Homotopy.Pushout
 \import Algebra.Group.Symmetric
 \import SymmetricProducts.BSn
 \import Utilities.Equiv
 \import Utilities.PathFun
+\import Utilities.Paths
 \import Function.Meta
+\import Utilities.Paths
 
 \func recFin3 {A : Fin 3 -> \Type} (a : A 0) (b : A 1) (c : A 2) (x : Fin 3) : A x \elim x
   | 0 => a
@@ -39,6 +42,39 @@
   rewrite *>_inv,
   idp_*> q
 }
+\func pmap-comp {A B C : \Type} (f : A -> B) (g : B -> C) {x y : A} (p : x = y) :
+  pmap g (pmap f p) = pmap (\lam a => g (f a)) p \elim p
+  | idp => idp
+\func pglue-nat {A B C : \Type} {f : A -> B} {g : A -> C} {a a' : A} (p : a = a') :
+  pmap (\lam x => pinl {A} {B} {C} {f} {g} (f x)) p *> path (pglue a') =
+  path (pglue a) *> pmap (\lam x => pinr {A} {B} {C} {f} {g} (g x)) p
+  \elim p
+  | idp => idp_*> _
+
+\func pglue-nat-conj {A B C : \Type} {f : A -> B} {g : A -> C} {a : A} (p : a = a) :
+  pmap (\lam x => pinl {A} {B} {C} {f} {g} (f x)) p =
+  path (pglue a) *> pmap (\lam x => pinr {A} {B} {C} {f} {g} (g x)) p *> inv (path (pglue a))
+  => \let | ploop => pmap (\lam x => pinl {A} {B} {C} {f} {g} (f x)) p
+          | rloop => pmap (\lam x => pinr {A} {B} {C} {f} {g} (g x)) p
+          | pg => path (pglue a)
+          | nat : ploop *> pg = pg *> rloop => pglue-nat p
+     \in pmap (ploop *>) (inv (*>_inv pg))
+        *> inv (*>-assoc ploop pg (inv pg))
+        *> pmap (__ *> inv pg) nat
+        *> *>-assoc pg rloop (inv pg)
+
+\func pushout-kill-conj {A B C : \Type} {f : A -> B} {g : A -> C} {a : A} {b : B}
+                        (r : b = f a) (p : a = a) (gp : pmap g p = idp) :
+  pmap (\lam x => pinl {A} {B} {C} {f} {g} x) (r *> pmap f p *> inv r) = idp \elim r
+  | idp => run {
+    rewrite idp_*>,
+    rewrite (pmap-comp f (\lam x => pinl {A} {B} {C} {f} {g} x) p),
+    rewrite (pglue-nat-conj p),
+    rewriteI (pmap-comp g (\lam x => pinr {A} {B} {C} {f} {g} x) p),
+    rewrite gp,
+    rewrite idp_*>,
+    *>_inv _
+  }
 \func pathFunQEquivInv {X Y : \Type} (e : QEquiv {X} {Y}) :
   path-fun (inv (QEquiv-to-= e)) = e.ret =>
   path-fun.beta-inv e.f e.ret e.ret_f e.f_sec
@@ -64,14 +100,14 @@
 \func fin3PathEquiv (p : BSnbase 3 = BSnbase 3) : Equiv {Fin 3} {Fin 3}
   => path-fun (inv (Equiv-to-= fin3Equiv)) (path-fun base3PathCode p)
 
-\private \func fin3_0_ne_1 : (0 : Fin 3) /= 1 => \case __
-\private \func fin3_0_ne_2 : (0 : Fin 3) /= 2 => \case __
-\private \func fin3_1_ne_0 : (1 : Fin 3) /= 0 => \case __
-\private \func fin3_1_ne_2 : (1 : Fin 3) /= 2 => \case __
-\private \func fin3_2_ne_0 : (2 : Fin 3) /= 0 => \case __
-\private \func fin3_2_ne_1 : (2 : Fin 3) /= 1 => \case __
+\func fin3_0_ne_1 : (0 : Fin 3) /= 1 => \case __
+\func fin3_0_ne_2 : (0 : Fin 3) /= 2 => \case __
+\func fin3_1_ne_0 : (1 : Fin 3) /= 0 => \case __
+\func fin3_1_ne_2 : (1 : Fin 3) /= 2 => \case __
+\func fin3_2_ne_0 : (2 : Fin 3) /= 0 => \case __
+\func fin3_2_ne_1 : (2 : Fin 3) /= 1 => \case __
 
-\private \func fin3SameImageAbsurd {e : Equiv {Fin 3} {Fin 3}} {i j k : Fin 3}
+\func fin3SameImageAbsurd {e : Equiv {Fin 3} {Fin 3}} {i j k : Fin 3}
                                    (i/=j : i /= j) (p : e i = k) (q : e j = k) : Empty =>
   i/=j (e.isInj (p *> inv q))
 
@@ -120,6 +156,74 @@
 
 \func base3PathChar (p : BSnbase 3 = BSnbase 3) : Fin3PermChar (fin3PathEquiv p) =>
   fin3EquivChar (fin3PathEquiv p)
+
+\func BSnPathChar-idp3 : path-fun (BSnPathChar (BSnbase 3) (BSnbase 3)) idp = idp => run {
+  unfold BSnPathChar,
+  rewrite (path-fun.beta
+      (\lam eq => BSnPath (BSnbase 3) (BSnbase 3) (=-to-Equiv eq))
+      (pmap __.1)
+      (\lam eq => (univalence {Fin 3} {Fin 3}).ret_f eq)
+      (\lam y => \let main => (univalence {Fin 3} {Fin 3}).ret_f (pmap __.1 y)
+                    | defs => pmap (SigmaPropPath {\Set} {\lam x => TruncP (Equiv {x} {Fin 3})}
+                    (\lam a x y i => truncP {Equiv {a} {Fin 3}} x y i) {BSnbase 3} {BSnbase 3} __) main
+                    | final => rewrite (SigmaPropPathBeta (\lam a x y i => truncP {Equiv {a} {Fin 3}} x y i) y) defs \in final)),
+  BSnPathBeta (BSnbase 3)
+}
+
+\func BSnPathChar-inv-idp3 : path-fun (inv (BSnPathChar (BSnbase 3) (BSnbase 3))) idp = idp => run {
+  rewriteI BSnPathChar-idp3,
+  pathFunInvId (BSnPathChar (BSnbase 3) (BSnbase 3)) idp
+}
+
+\func BSnPathChar-inv3 (p : BSnbase 3 = BSnbase 3) :
+  path-fun (inv (BSnPathChar (BSnbase 3) (BSnbase 3))) p = pmap __.1 p => run {
+  unfold BSnPathChar,
+  rewrite (path-fun.beta-inv
+      (\lam eq => BSnPath (BSnbase 3) (BSnbase 3) (=-to-Equiv eq))
+      (pmap __.1)
+      (\lam eq => (univalence {Fin 3} {Fin 3}).ret_f eq)
+      (\lam y => \let main => (univalence {Fin 3} {Fin 3}).ret_f (pmap __.1 y)
+                    | defs => pmap (SigmaPropPath {\Set} {\lam x => TruncP (Equiv {x} {Fin 3})}
+                    (\lam a x y i => truncP {Equiv {a} {Fin 3}} x y i) {BSnbase 3} {BSnbase 3} __) main
+                    | final => rewrite (SigmaPropPathBeta (\lam a x y i => truncP {Equiv {a} {Fin 3}} x y i) y) defs \in final)),
+  idp
+}
+
+\func base3PathCode-idp : path-fun base3PathCode idp = path-fun (Equiv-to-= fin3Equiv) idEquiv => run {
+  unfold base3PathCode,
+  rewrite (path-fun.beta-*> (inv (BSnPathChar (BSnbase 3) (BSnbase 3)))
+      (QEquiv-to-= (univalence {Fin 3} {Fin 3}) *> Equiv-to-= fin3Equiv)),
+  rewrite (path-fun.beta-*> (QEquiv-to-= (univalence {Fin 3} {Fin 3})) (Equiv-to-= fin3Equiv)),
+  rewrite BSnPathChar-inv-idp3,
+  rewrite (path-fun.beta =-to-Equiv Equiv-to-= (univalence {Fin 3} {Fin 3}).ret_f (univalence {Fin 3} {Fin 3}).f_sec),
+  idp
+}
+
+\func base3PathId (p : BSnbase 3 = BSnbase 3) (e : fin3PathEquiv p = idEquiv) : p = idp =>
+  \let | equivCode => Equiv-to-= fin3Equiv
+       | codep => path-fun base3PathCode p
+       | codeEq : codep = path-fun base3PathCode idp => run {
+           rewrite base3PathCode-idp,
+           rewriteI (pathFunIdInv equivCode codep),
+           pmap (path-fun equivCode) e
+         }
+  \in inv (pathFunInvId base3PathCode p)
+     *> pmap (path-fun (inv base3PathCode)) codeEq
+     *> pathFunInvId base3PathCode idp
+
+\func fin3PathEquivBeta (p : BSnbase 3 = BSnbase 3) : fin3PathEquiv p = =-to-Equiv (pmap __.1 p) => run {
+  unfold fin3PathEquiv,
+  unfold base3PathCode,
+  rewrite (path-fun.beta-*> (inv (BSnPathChar (BSnbase 3) (BSnbase 3)))
+      (QEquiv-to-= (univalence {Fin 3} {Fin 3}) *> Equiv-to-= fin3Equiv)),
+  rewrite (path-fun.beta-*> (QEquiv-to-= (univalence {Fin 3} {Fin 3})) (Equiv-to-= fin3Equiv)),
+  rewrite (pathFunInvId (Equiv-to-= fin3Equiv)
+      (path-fun (QEquiv-to-= (univalence {Fin 3} {Fin 3}))
+        (path-fun (inv (BSnPathChar (BSnbase 3) (BSnbase 3))) p))),
+  rewrite (BSnPathChar-inv3 p),
+  rewrite (path-fun.beta =-to-Equiv Equiv-to-= (univalence {Fin 3} {Fin 3}).ret_f (univalence {Fin 3} {Fin 3}).f_sec),
+  idp
+}
 
 \func sigmaCommute {A P : \Type} {F G : A -> \Type} :
   (\Sigma (s : A) (\Sigma (F s) (\Sigma P (G s)))) =
