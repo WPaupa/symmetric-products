@@ -206,10 +206,56 @@
 
     \func ifTransposition (q1 : BSnbase 3 = BSnbase 3)
                           (fixed : Fin 3)
-                          (_ : fin3PathEquiv q1 fixed = fixed)
-                          (_ : \Pi (i : Fin 3) -> i /= fixed -> fin3PathEquiv q1 i /= i)
+                          (fixedPath : fin3PathEquiv q1 fixed = fixed)
+                          (moved : \Pi (i : Fin 3) -> i /= fixed -> fin3PathEquiv q1 i /= i)
                           (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2) :
-      pinl idp = {Q z0} pinl (pmap pinl (SigmaPath q1 q2)) => {?}
+      pinl idp = {Q z0} pinl (pmap pinl (SigmaPath q1 q2)) =>
+      \let
+        | rt : Equiv {Fin 3} {Or (Fin 2) (Fin 1)} => routeEq fixed
+        | base_r : BSnbase 3 = extendBSn 1 (BSnbase 2) => BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) rt
+        | va : A => w0.2 (routeR fixed (inl 0))
+        | vb : A => w0.2 (routeR fixed (inr 0))
+        | a0 : \Sigma (b : BSn 2) (x y : A) => (BSnbase 2, va, vb)
+        | fpq1 : fin3PathEquiv q1 = swap3Equiv fixed => transNF (fin3PathEquiv q1) fixed fixedPath moved
+        | movedEq : w0.2 (routeR fixed (inl 1)) = w0.2 (routeR fixed (inl 0)) =>
+            q2Eq q1 q2 (routeR fixed (inl 1))
+              *> pmap w0.2 (pmap (\lam (e : Equiv {Fin 3} {Fin 3}) => e (routeR fixed (inl 1))) fpq1 *> swapMovedEq fixed)
+        | tupleEq : transport (\lam a => a.1 -> A) base_r w0.2 = (SP3.fatdiag a0).2 => run {
+            rewrite (transportRouteTuple rt w0.2),
+            ext (\case \elim __ \with {
+              | inl 0 => idp
+              | inl 1 => movedEq
+              | inr 0 => idp
+            })
+          }
+        | r : w0 = SP3.fatdiag a0 => SigmaPath base_r tupleEq
+        | thetaHat : a0 = a0 => pmap (\lam (L : BSn 2) => (L, va, vb)) theta2
+        | gp : pmap (\lam (x : \Sigma (b : BSn 2) (x y : A)) => (x.2, x.3)) thetaHat = idp =>
+            pmap-comp (\lam (L : BSn 2) => (L, va, vb)) (\lam (x : \Sigma (b : BSn 2) (x y : A)) => (x.2, x.3)) theta2
+        | killed : pmap (\lam (x : hUT) => pinl x) (r *> pmap SP3.fatdiag thetaHat *> inv r) = idp =>
+            pushout-kill-conj {_} {_} {_} {SP3.fatdiag} {\lam (x : \Sigma (b : BSn 2) (x y : A)) => (x.2, x.3)} {a0} {w0}
+                r thetaHat gp
+        | fatBase : pmap (\lam t => t.1) (pmap SP3.fatdiag thetaHat) = pmap (extendBSn 1) theta2 =>
+            pmap-comp SP3.fatdiag (\lam t => t.1) thetaHat
+              *> pmap-comp (\lam (L : BSn 2) => (L, va, vb)) (\lam (a : \Sigma (b : BSn 2) (x y : A)) => (SP3.fatdiag a).1) theta2
+        | baseL' : pmap (\lam t => t.1) (r *> pmap SP3.fatdiag thetaHat *> inv r) = conjBase rt => run {
+            rewrite (pmapDist (\lam t => t.1) r (pmap SP3.fatdiag thetaHat *> inv r)),
+            rewrite (pmapDist (\lam t => t.1) (pmap SP3.fatdiag thetaHat) (inv r)),
+            rewrite (pmapInvDist (\lam t => t.1) r),
+            rewrite (sigmaPathBase base_r tupleEq),
+            rewrite fatBase,
+            idp
+          }
+        | theLoop : w0 = w0 => SigmaPath q1 q2
+        | q1conj : q1 = conjBase rt => fin3PathEquivInj (fpq1 *> inv (conjSwap fixed))
+        | baseEq : pmap (\lam t => t.1) theLoop = pmap (\lam t => t.1) (r *> pmap SP3.fatdiag thetaHat *> inv r) =>
+            sigmaPathBase {BSn 3} {\lam (X : BSn 3) => X.1 -> A} {w0} {w0} q1 q2 *> q1conj *> inv baseL'
+        | loopEq : theLoop = r *> pmap SP3.fatdiag thetaHat *> inv r =>
+            sigmaLoopDet (\lam (X : BSn 3) (f g : X.1 -> A) (p q : f = g) => set-pi)
+                theLoop (r *> pmap SP3.fatdiag thetaHat *> inv r) baseEq
+        | nullL : pmap (\lam (x : hUT) => pinl x) theLoop = idp =>
+            pmap (\lam (l : w0 = w0) => pmap (\lam (x : hUT) => pinl x) l) loopEq *> killed
+      \in pmap pinl (inv nullL)
 
     \func Qz0EqBorel (h : w0 = w0) : pinl idp = {Q z0} pinl (pmap pinl h) => run {
       rewrite (SigmaPathChar.eq h),
