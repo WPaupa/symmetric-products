@@ -159,7 +159,7 @@
   | idp => idp
 
 -- If an element is equal to a diagonal element, then it itself is a diagonal element
-\func borelConstToEq {A : \Type} (x y z : A)
+\func borelConstToEq2 {A : \Type} (x y z : A)
                      (diag : (BSnbase 2, \lam _ => x) = {borelXn 2 A} (BSnbase 2, elimBS2.recFin2 y z)) : y = z
   => \let diagp => SigmaPathChar _ _ diag
           | pc => base2PathChar
@@ -174,37 +174,20 @@
               })
      \in pc diagp.1 diagp.2
 
--- Two diagonal elements connected by a path in borelXn 2 A come from the same element
-\func borelConstEq {A : \Type} (x y : A)
-                   (diag : (BSnbase 2, \lam _ => x) = {borelXn 2 A} (BSnbase 2, \lam _ => y)) : x = y
-  => \let diagp => SigmaPathChar _ _ diag
-          | pc => base2PathChar
-              (\lam q => transport (\lam a => a -> A) (pmap __.1 q) (\lam _ => x) = (\lam _ => y) -> x = y)
-              (\lam lp => pmap (__ fzero) lp)
-              (run {
-                unfold BSnPath,
-                rewrite (SigmaPropPathBeta2 (\lam A x y => path (truncP {Equiv {A} {Fin 2}} x y)) (Equiv-to-= notBS2.notFin2Eq)),
-                rewrite transportConst,
-                \lam p,
-                pmap (__ fzero) p
-              })
-     \in pc diagp.1 diagp.2
-
--- Constant triples connected in the Borel construction come from equal elements.
-\func borelConstEq3 {A : \Type} (x y : A)
-                    (diag : (BSnbase 3, \lam _ => x) = {borelXn 3 A} (BSnbase 3, \lam _ => y)) : x = y
-  => \let diagp => SigmaPathChar _ _ diag
-          | lp => inv (transportBorelFun {3} {A} {BSnbase 3} {BSnbase 3} diagp.1 (\lam _ => x)
-                       *> transportConst (pmap __.1 diagp.1) x) *> diagp.2
-     \in pmap (__ (0 : Fin 3)) lp
-
--- A constant triple equal to an explicit triple forces all three entries to be equal.
 \func borelConstToEq3 {A : \Type} (x y z w : A)
                       (diag : (BSnbase 3, \lam _ => x) = {borelXn 3 A}
-                        (BSnbase 3, \case \elim __ \with { | 0 => y | 1 => z | 2 => w }))
+                      (BSnbase 3, \case \elim __ \with { | 0 => y | 1 => z | 2 => w }))
   : \Sigma (y = z) (z = w) =>
   \let diagp => SigmaPathChar _ _ diag
-      | lp => inv (transportBorelFun {3} {A} {BSnbase 3} {BSnbase 3} diagp.1 (\lam _ => x)
-                   *> transportConst (pmap __.1 diagp.1) x) *> diagp.2
-  \in (inv (pmap (__ (0 : Fin 3)) lp) *> pmap (__ (1 : Fin 3)) lp,
-       inv (pmap (__ (1 : Fin 3)) lp) *> pmap (__ (2 : Fin 3)) lp)
+       | lp => inv (transportBorelFun {3} {A} {BSnbase 3} {BSnbase 3} diagp.1 (\lam _ => x)
+         *> transportConst (pmap __.1 diagp.1) x) *> diagp.2
+  \in (inv (pmap (__ 0) lp) *> pmap (__ 1) lp,
+       inv (pmap (__ 1) lp) *> pmap (__ 2) lp)
+
+-- Two diagonal elements connected by a path in borelXn come from the same element
+\func borelConstEq {n : Nat} {A : \Type} (x y : A)
+                    (diag : (BSnbase (suc n), \lam _ => x) = {borelXn (suc n) A} (BSnbase (suc n), \lam _ => y)) : x = y
+  => \let diagp => SigmaPathChar _ _ diag
+          | lp => inv (transportBorelFun diagp.1 (\lam _ => x)
+                       *> transportConst (pmap __.1 diagp.1) x) *> diagp.2
+     \in pmap (__ fzero) lp

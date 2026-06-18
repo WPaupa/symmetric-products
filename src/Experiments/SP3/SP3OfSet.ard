@@ -251,7 +251,7 @@
         | baseEq : pmap (\lam t => t.1) theLoop = pmap (\lam t => t.1) (r *> pmap SP3.fatdiag thetaHat *> inv r) =>
             sigmaPathBase {BSn 3} {\lam (X : BSn 3) => X.1 -> A} {w0} {w0} q1 q2 *> q1conj *> inv baseL'
         | loopEq : theLoop = r *> pmap SP3.fatdiag thetaHat *> inv r =>
-            sigmaLoopDet (\lam (X : BSn 3) (f g : X.1 -> A) (p q : f = g) => set-pi)
+            sigmaLoopDet (\lam (X : BSn 3) (f g : X.1 -> A) (_ _ : f = g) => set-pi)
                 theLoop (r *> pmap SP3.fatdiag thetaHat *> inv r) baseEq
         | nullL : pmap (\lam (x : hUT) => pinl x) theLoop = idp =>
             pmap (\lam (l : w0 = w0) => pmap (\lam (x : hUT) => pinl x) l) loopEq *> killed

@@ -47,13 +47,13 @@
   \func condIsPropCst (x : A) (K : BS2) (a : joinT (K, \lam _ => x)) : \Sigma P ((\lam _ => x) = {K.1 -> A} (\lam _ => x0)) \elim a
     | pinl b =>\let | bK : BSnbase 2 = K => pmap __.1 b
                      | bW : w0 = (BSnbase 2, \lam _ => x) => rewrite bK b
-                     | x01 : P => borelConstToEq x x0 x1 (inv bW)
+                     | x01 : P => borelConstToEq2 x x0 x1 (inv bW)
                      | bW1 : (BSnbase 2, \lam _ => x0) = {borelXn 2 A} (BSnbase 2, \lam _ => x) => run {
                        rewriteI (elimBS2.recFin2Eta x0),
                        rewrite {2} x01,
                        bW
                      }
-                     | x0x => borelConstEq x0 x bW1 \in (x01, inv (pmap (\lam y _ => y) x0x))
+                     | x0x => borelConstEq {1} x0 x bW1 \in (x01, inv (pmap (\lam y _ => y) x0x))
     | pinr c => c
   -- Since this other type in the definition of Q is a Prop, an element of it gives us contractibility
   \func condCtrJoinCst (x : A) (K : BS2) (a : joinT (K, \lam _ => x)) : Contr (joinT (K, \lam _ => x))
