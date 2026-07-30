@@ -119,11 +119,11 @@
 
     -- The two collision certificates translate into each other, by composing through
     -- `fatdiag a` (so the collision values are never compared directly).
-    \func toColAt (a : A21) (cb : colBoth (SP3.fatdiag a)) : colAt (a.2, a.3) =>
+    \lemma toColAt (a : A21) (cb : colBoth (SP3.fatdiag a)) : colAt (a.2, a.3) =>
       TruncP.rec prop-isProp cb
           (\lam s => TruncP.map (fatToCol a) (\lam fc => s.3.1 *> inv s.3.2 *> fc))
 
-    \func fromColAt (a : A21) (ca : colAt (a.2, a.3)) : colBoth (SP3.fatdiag a) =>
+    \lemma fromColAt (a : A21) (ca : colAt (a.2, a.3)) : colBoth (SP3.fatdiag a) =>
       TruncP.rec {_} {colBoth (SP3.fatdiag a)} prop-isProp ca
           (\lam wc => TruncP.map (fatToCol a) (\lam fc => (a.2, a.3, (wc, fc))))
 
@@ -284,7 +284,7 @@
     \func rightFun :
       (\lam cp => path-fun rightCorner=
           (\let p => path-fun (inv baseCorner=) cp \in (p.1.2, transport Qhat (PushoutData.ppglue p.1) p.2)))
-      = (\lam (cp : \Sigma C P) => cp.2) => ext (\lam _ => prop-pi)
+      = (\lam (cp : \Sigma C P) => cp.2) => ext
   }
 
   -- --------------------------------------------------------------------------
