@@ -342,34 +342,191 @@
   }
 
   -- ==========================================================================
-  -- The total space of the code.  THIS IS THE REMAINING GAP (Section 5 of
-  -- SP3-Qz0-report.md); it subsumes the old `Dflat = D'` hole.
+  -- The total space of the code (Section 5 of SP3-Qz0-report.md), split into the
+  -- stages of the report. It subsumes the old `Dflat = D'` hole.
   --
-  -- The staged plan, each stage imitating `SpaceR.Rchar` / `SpaceT.repr`:
-  --  1. `PushoutData.flattening Qhat` presents it as a pushout with corners
-  --     L := \Sigma (s : iUT) (Ehat s),  \Sigma (x : A) (\Sigma P (x = x0)) ~ P,
-  --     and \Sigma ((c,x) : C \times A) (Ehat (SP3.diag (c,x))) ~ C \times P
-  --     (rewrite the fiber along `outerGlue` with `pushout-equiv`, then contract
-  --     `x = x0` as in `Rchar.baseR=tail`).
-  --  2. `PushoutData.flattening Ehat` presents L as a pushout with corners
-  --     \Sigma (bv : hUT) (Join (w0 = bv) (J bv)), \Sigma (c : \Sigma A A) (Ehat (pinr c)),
-  --     \Sigma (a : A21) (Ehat (pinl (SP3.fatdiag a))).
-  --  3. `pushout-sigma` + `pushout-contr (lsigma w0)` peel the honest spine
-  --     \Sigma (bv) (w0 = bv) ~ 1 off the first corner.
-  --  4. `pushout-sigma` splits the remaining corners; identify
-  --     \Sigma (bv) (\Sigma P (T (pinl bv))) ~ P \times BSn 3 by `T.repr.left=`,
-  --     \Sigma (c) (\Sigma P (T (pinr c))) ~ P by `T.repr.right=`, and
-  --     \Sigma (c) (colAt c) =: ColR, a proposition by `Col.colValsDet`.
-  --  5. Index the collision stratum by the proposition ColR (using `Col.colAtDiag`
-  --     for its diagonal part) and flatten once more. The goal `Contr _` is then a
-  --     proposition, so the truncation in ColR may be opened: assume an actual path
-  --     w0 = collision x y and contract explicitly, as `contractionD` does below.
-  --
-  -- Stage 5 is the only genuinely new pushout engineering; stages 1-4 are mechanical.
+  -- Stage 1 (the outer flattening and its corners) is complete, so the total
+  -- space is the small pushout `Qsmall = P <- C x P -> L`. Stages 2-4 simplify
+  -- the remaining corner `L`; their corner identifications below are complete,
+  -- and assembling them (`pushout-equiv` + `pushout-eqv-fun`, as in the
+  -- commented-out `SpaceR.Rchar`) together with the final explicit contraction
+  -- is stage 5 -- the single remaining goal, `contrQsmall`.
   -- ==========================================================================
-  \func contrQhat : Contr (\Sigma (z : gUT) (Qhat z)) => {?}
+
+  -- The inner total space: the left corner of the outer flattening.
+  \func L : \oo-Type (\suc \lp) => \Sigma (s : iUT) (Ehat s)
+
+  -- --------------------------------------------------------------------------
+  -- Stage 1: the outer flattening.
+  -- --------------------------------------------------------------------------
+  \func Qflat : \oo-Type (\suc \lp) => PushoutData
+      {\Sigma (a : \Sigma C A) (Ehat (SP3.diag a))}
+      {L}
+      {\Sigma (x : A) (\Sigma P (x = x0))}
+      (\lam p => (SP3.diag p.1, p.2))
+      (\lam p => (p.1.2, transport Qhat (PushoutData.ppglue p.1) p.2))
+
+  \func Qflat=Q : Qflat = (\Sigma (z : gUT) (Qhat z)) => PushoutData.flattening Qhat
+
+  -- The right corner is P: the fiber `x = x0` is contractible.
+  \lemma rightCornerIsProp : isProp (\Sigma (x : A) (\Sigma P (x = x0))) =>
+    \lam u v => SigmaPropPath {A} {\lam (x : A) => \Sigma P (x = x0)} (\lam _ => prop-isProp) (u.2.2 *> inv v.2.2)
+
+  \func rightCorner= : (\Sigma (x : A) (\Sigma P (x = x0))) = P => iso f g sec ret \where {
+    \func f (u : \Sigma (x : A) (\Sigma P (x = x0))) : P => u.2.1
+    \func g (p : P) : \Sigma (x : A) (\Sigma P (x = x0)) => (x0, (p, idp))
+    \sfunc sec (u : \Sigma (x : A) (\Sigma P (x = x0))) : g (f u) = u => rightCornerIsProp _ _
+    \lemma ret (p : P) : f (g p) = p => prop-pi
+  }
+
+  -- The base corner is C x P: at a diagonal point the code IS the certificate
+  -- (that is `outerGlue`, here in the `iso` form that computes under `path-fun`).
+  \func baseCorner= : (\Sigma (a : \Sigma C A) (Ehat (SP3.diag a))) = (\Sigma C P) =>
+    iso f g sec ret \where {
+    \func f (u : \Sigma (a : \Sigma C A) (Ehat (SP3.diag a))) : \Sigma C P =>
+      (u.1.1, (Qhat.diagToEq u.1 u.2).1)
+    \func g (cp : \Sigma C P) : \Sigma (a : \Sigma C A) (Ehat (SP3.diag a)) =>
+      ((cp.1, x0), (Qhat.diagCtr (cp.1, x0) (cp.2, idp)).center)
+    \sfunc sec (u : \Sigma (a : \Sigma C A) (Ehat (SP3.diag a))) : g (f u) = u =>
+      SigmaPath (ext (idp, inv (Qhat.diagToEq u.1 u.2).2))
+          (isContr=>isProp (Qhat.diagCtr u.1 (Qhat.diagToEq u.1 u.2)) _ _)
+    \func ret (cp : \Sigma C P) : f (g cp) = cp => SigmaPropPath {C} {\lam _ => P} (\lam _ => prop-isProp) idp
+  }
+
+  -- The base-to-left map of the small model: the canonical diagonal point of L.
+  \func diagPoint (cp : \Sigma C P) : L =>
+    (SP3.diag (cp.1, x0), (Qhat.diagCtr (cp.1, x0) (cp.2, idp)).center)
+
+  \func Qsmall : \oo-Type (\suc \lp) => PushoutData {\Sigma C P} {L} {P} diagPoint __.2
+
+  \func Qflat=Qsmall : Qflat = Qsmall =>
+    pushout-equiv baseCorner= (idp : L = L) rightCorner= _ _
+      *> pushout-eqv-fun _ _ _ _ leftFun rightFun \where {
+    \sfunc leftFun :
+      (\lam cp => path-fun (idp : L = L)
+          (\let p => path-fun (inv baseCorner=) cp \in (SP3.diag p.1, p.2))) = diagPoint => run {
+      unfold baseCorner=,
+      rewrite (path-fun.beta-inv baseCorner=.f baseCorner=.g baseCorner=.sec baseCorner=.ret),
+      idp
+    }
+    -- Both sides land in the proposition P.
+    \func rightFun :
+      (\lam cp => path-fun rightCorner=
+          (\let p => path-fun (inv baseCorner=) cp \in (p.1.2, transport Qhat (PushoutData.ppglue p.1) p.2)))
+      = (\lam (cp : \Sigma C P) => cp.2) => ext (\lam _ => prop-pi)
+  }
+
+  \func contrQhat : Contr (\Sigma (z : gUT) (Qhat z)) =>
+    transport Contr Qflat=Q (transport Contr (inv Qflat=Qsmall) contrQsmall)
 
   \func z0Pathchar : (z0 = z0) = Qhat z0 => fundamentalIP {gUT} {z0} {z0} {Qhat} (pinl idp) contrQhat
+
+  -- --------------------------------------------------------------------------
+  -- Stage 2: the inner flattening of L.
+  -- --------------------------------------------------------------------------
+  \func Lflat : \oo-Type (\suc \lp) => PushoutData
+      {\Sigma (a : A21) (Ehat (pinl (SP3.fatdiag a)))}
+      {\Sigma (bv : hUT) (Ehat (pinl bv))}
+      {\Sigma (c : \Sigma A A) (Ehat (pinr c))}
+      (\lam p => (SP3.fatdiag p.1, p.2))
+      (\lam p => ((p.1.2, p.1.3), transport Ehat (PushoutData.ppglue p.1) p.2))
+
+  \func Lflat=L : Lflat = L => PushoutData.flattening Ehat
+
+  -- --------------------------------------------------------------------------
+  -- Stage 3: peel the honest spine off the Borel corner of Lflat. The corner
+  -- `\Sigma (bv) (w0 = bv)` is contractible, so it collapses to a point.
+  -- --------------------------------------------------------------------------
+  \func leftSum : \oo-Type (\suc \lp) => PushoutData
+      {\Sigma (bv : hUT) (\Sigma (w0 = bv) (J bv))}
+      {\Sigma (bv : hUT) (w0 = bv)}
+      {\Sigma (bv : hUT) (J bv)}
+      (\lam b => (b.1, b.2.1)) (\lam b => (b.1, b.2.2))
+
+  \func left=leftSum : (\Sigma (bv : hUT) (Ehat (pinl bv))) = leftSum => pushout-sigma _ _
+
+  \func leftCtr : \oo-Type (\suc \lp) => PushoutData
+      {\Sigma (bv : hUT) (\Sigma (w0 = bv) (J bv))}
+      {\Sigma}
+      {\Sigma (bv : hUT) (J bv)}
+      (\lam _ => ()) (\lam b => (b.1, b.2.2))
+
+  \func leftSum=leftCtr : leftSum = leftCtr => pushout-contr (lsigma w0) _ _
+
+  -- --------------------------------------------------------------------------
+  -- Stage 4: split the remaining corners and identify the pieces.
+  -- --------------------------------------------------------------------------
+  -- The collision stratum and the diagonal stratum of the Borel corner.
+  \func JSplit : \oo-Type (\suc \lp) => PushoutData
+      {\Sigma (bv : hUT) (\Sigma (colBoth bv) (\Sigma P (T {A} {x0} (pinl bv))))}
+      {\Sigma (bv : hUT) (colBoth bv)}
+      {\Sigma (bv : hUT) (\Sigma P (T {A} {x0} (pinl bv)))}
+      (\lam b => (b.1, b.2.1)) (\lam b => (b.1, b.2.2))
+
+  \func JSum= : (\Sigma (bv : hUT) (J bv)) = JSplit => pushout-sigma _ _
+
+  -- The diagonal stratum is P x BSn 3, by the `left=` corner of `T.repr`.
+  \func Delta= : (\Sigma (bv : hUT) (\Sigma P (T {A} {x0} (pinl bv)))) = (\Sigma P (BSn 3)) =>
+    DeltaRegroup *> pmap (\lam (X : \Type (\suc \lp)) => \Sigma P X) (T.repr.left= {A} {x0}) \where {
+    \func DeltaRegroup
+      : (\Sigma (bv : hUT) (\Sigma P (T {A} {x0} (pinl bv)))) = (\Sigma P (T.repr.leftT {A} {x0})) =>
+      iso to fro (\lam _ => idp) (\lam _ => idp)
+    \func to (u : \Sigma (bv : hUT) (\Sigma P (T {A} {x0} (pinl bv)))) : \Sigma P (T.repr.leftT {A} {x0})
+      => (u.2.1, (u.1, u.2.2))
+    \func fro (u : \Sigma P (T.repr.leftT {A} {x0})) : \Sigma (bv : hUT) (\Sigma P (T {A} {x0} (pinl bv)))
+      => (u.2.1, (u.1, u.2.2))
+  }
+
+  -- The right corner of Lflat splits into the collision proposition ColR and P.
+  \func ColR : \oo-Type \lp => \Sigma (c : \Sigma A A) (colAt c)
+
+  \func rightSplit : \oo-Type (\suc \lp) => PushoutData
+      {\Sigma (c : \Sigma A A) (\Sigma (colAt c) (\Sigma P (T {A} {x0} (pinr c))))}
+      {ColR}
+      {\Sigma (c : \Sigma A A) (\Sigma P (T {A} {x0} (pinr c)))}
+      (\lam b => (b.1, b.2.1)) (\lam b => (b.1, b.2.2))
+
+  \func rightSum= : (\Sigma (c : \Sigma A A) (Ehat (pinr c))) = rightSplit => pushout-sigma _ _
+
+  \func rightT= : (\Sigma (c : \Sigma A A) (\Sigma P (T {A} {x0} (pinr c)))) = P =>
+    rightTRegroup *> pmap (\lam (X : \Type \lp) => \Sigma P X) (T.repr.right= {A} {x0}) *> unitRight \where {
+    \func rightTRegroup
+      : (\Sigma (c : \Sigma A A) (\Sigma P (T {A} {x0} (pinr c)))) = (\Sigma P (T.repr.rightT {A} {x0})) =>
+      iso to fro (\lam _ => idp) (\lam _ => idp)
+    \func to (u : \Sigma (c : \Sigma A A) (\Sigma P (T {A} {x0} (pinr c)))) : \Sigma P (T.repr.rightT {A} {x0})
+      => (u.2.1, (u.1, u.2.2))
+    \func fro (u : \Sigma P (T.repr.rightT {A} {x0})) : \Sigma (c : \Sigma A A) (\Sigma P (T {A} {x0} (pinr c)))
+      => (u.2.1, (u.1, u.2.2))
+    \func unitRight : (\Sigma P (\Sigma)) = P =>
+      iso (\lam u => u.1) (\lam p => (p, ())) (\lam _ => idp) (\lam _ => idp)
+  }
+
+  -- The collision stratum of the right corner is a proposition: two collision
+  -- presentations of w0 have equal values (`Col.colValsDet`).
+  \lemma ColRisProp : isProp ColR =>
+    \lam u v => SigmaPropPath {\Sigma A A} {\lam c => colAt c} (\lam _ => prop-isProp) (valsEq u v) \where {
+    \lemma valsEq (u v : ColR) : u.1 = v.1 =>
+      TruncP.rec prop-isProp u.2 (\lam wu => TruncP.rec prop-isProp v.2
+          (\lam wv => ext (Col.colValsDet {A} (inv wu *> wv))))
+  }
+
+  -- The base corner of Lflat, with its fiber rewritten along the inner glue.
+  \func baseFib= : (\Sigma (a : A21) (Ehat (pinl (SP3.fatdiag a))))
+                 = (\Sigma (a : A21) (Ehat (pinr (a.2, a.3)))) =>
+    path (\lam i => \Sigma (a : A21) (Ehat.innerGlue a i))
+
+  -- --------------------------------------------------------------------------
+  -- Stage 5: THE REMAINING GAP. Assemble stages 2-4 into a small model of `L`
+  -- (`pushout-equiv` along `left=leftSum *> leftSum=leftCtr`, `rightSum=`,
+  -- `baseFib=`, then `pushout-eqv-fun` for the induced maps, as in the
+  -- commented-out `SpaceR.Rchar`), index the collision stratum by the
+  -- proposition `ColR` (with `Col.colAtDiag` for its diagonal part) and flatten
+  -- once more. At that point the goal is still `Contr _`, a proposition, so the
+  -- truncation inside `ColR` may be opened: assume an actual path
+  -- w0 = collision x y and contract explicitly, as the commented-out
+  -- `contractionD` below does for the old small model.
+  -- --------------------------------------------------------------------------
+  \func contrQsmall : Contr Qsmall => {?}
 
   -- unused: the small model of the total space of the OLD code, kept as the template
   -- for the explicit contraction of stage 5 above. `D'` is a pushout of `P <- P -> C x P`

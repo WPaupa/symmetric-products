@@ -30,11 +30,6 @@
           | inl _ => p.1
           | inr 0 => p.2
         }))
-  -- unused: `T.repr` (the equivalence (Sigma (s : SP3.step) (T s)) = C) and its beta laws.
-  -- Needed again in stage 4 of the plan in `SP3OfSet.ard` (to identify the corners
-  -- Sigma (bv) (Sigma P (T (pinl bv))) and Sigma (c) (Sigma P (T (pinr c)))); only `T`
-  -- itself and its glue are used by the live code.
-  {-
   -- Equivalence of propositions
 
   \func repr : (\Sigma (s : SP3.step {A}) (T s)) = SP3.subspaceBS2 =>
@@ -88,6 +83,10 @@
       }
     }
 
+  -- unused: the beta laws of `T.repr` for the right corner. Needed again when the
+  -- stage-1 / stage-4 corner identifications of `SP3OfSet.ard` have to be computed
+  -- through `repr` (the `Rpf-fun` idiom of the commented-out `SpaceR`).
+  {-
   \sfunc reprFlattenRightBeta :
     path-fun (inv (PushoutData.flattening T)) (pinr (x0, x0), (idp, idp)) = pinr ((x0, x0), (idp, idp)) => run {
     unfold PushoutData.flattening,

@@ -33,11 +33,12 @@
 -- by the code `Ehat`/`Qhat` of `SP3OfSet.ard`.
 -- ============================================================================
 
--- unused: helpers of `colValsDet` below
+-- unused: `pathFunInj` (only its dual `pathFunInvInj` below is needed).
 {-
 -- path-fun of an equality of types is injective, in both directions.
 \func pathFunInj {X Y : \Type} (c : X = Y) {x x' : X} (h : path-fun c x = path-fun c x') : x = x' =>
   inv (pathFunInvId c x) *> pmap (path-fun (inv c)) h *> pathFunInvId c x'
+-}
 
 \func pathFunInvInj {X Y : \Type} (c : X = Y) {y y' : Y} (h : path-fun (inv c) y = path-fun (inv c) y') : y = y' =>
   inv (pathFunIdInv c y) *> pmap (path-fun c) h *> pathFunIdInv c y'
@@ -48,7 +49,6 @@
 \func notFin2Neq (k : Fin 2) : notBS2.notFin2 k /= k \elim k
   | 0 => \case __
   | 1 => \case __
--}
 
 \func Col {A : \Set \lp} {x0 x1 x2 : A} : \oo-Type (\suc \lp) => \Sigma (bv : hUT) (colBoth bv) \where {
   \func hUT : \Type (\suc \lp) => borelXn 3 A
@@ -105,10 +105,6 @@
   \func diagonalPinr (x : A) (p : w0 = collision x x) : \Sigma P (x = x0) =>
     constTupleP x p (inv (orConst x))
 
-  -- unused: the two lemmas of section 4.3 of the report. `colValsDet` is needed in
-  -- stage 5 (to see that ColR := Sigma (c) (colAt c) is a proposition) and `colAtDiag`
-  -- in stage 4 (for the diagonal part of the collision stratum).
-  {-
   -- ----------------------------------------------------------------------------
   -- The two lemmas needed to index the collision stratum of the total space by a
   -- proposition (Section 5 of the report).
@@ -164,6 +160,8 @@
         }
     }
 
+  -- unused: needed in stage 4 (the diagonal part of the collision stratum).
+  {-
   -- Being merely the diagonal collision at x0 is the same proposition as P.
   -- The direction P -> colAt (x0,x0) is `SpaceR`'s `w0Fatdiag`; the other direction
   -- is tuple evaluation into the propositional target P.
