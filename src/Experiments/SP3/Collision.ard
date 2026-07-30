@@ -1,0 +1,175 @@
+\import Data.Fin
+\import Data.Or
+\import Equiv
+\import Equiv.Univalence
+\import Function.Meta
+\import Homotopy.Pushout
+\import Logic
+\import Logic.Unique
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Set
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import SymmetricProducts.SP3
+\import Utilities.PathFun
+\import Utilities.Paths
+\import Experiments.SP3.SpaceR
+\import Experiments.SP3.Utils
+
+-- ============================================================================
+-- The collision stratum of SP3 of a set.
+--
+-- The model tuple is w0 = [x0, x1, x2] (as a point of the Borel construction
+-- borelXn 3 A). It sits on the binary-collision stratum exactly when it is
+-- (Borel-)equal to a strict collision `collision x y = [x, x, y]`; it sits on
+-- the total diagonal exactly when P holds.
+--
+-- This vocabulary used to live in `SpaceS.ard`, which implemented an
+-- encode-decode for the first pushout S^3_2 = SP3.step. That approach is
+-- provably impossible (see the header of `SP3OfSet.ard`), and `SpaceS.ard` is
+-- gone; the definitions below are the part of it that survives, and are used
+-- by the code `Ehat`/`Qhat` of `SP3OfSet.ard`.
+-- ============================================================================
+
+-- unused: helpers of `colValsDet` below
+{-
+-- path-fun of an equality of types is injective, in both directions.
+\func pathFunInj {X Y : \Type} (c : X = Y) {x x' : X} (h : path-fun c x = path-fun c x') : x = x' =>
+  inv (pathFunInvId c x) *> pmap (path-fun (inv c)) h *> pathFunInvId c x'
+
+\func pathFunInvInj {X Y : \Type} (c : X = Y) {y y' : Y} (h : path-fun (inv c) y = path-fun (inv c) y') : y = y' =>
+  inv (pathFunIdInv c y) *> pmap (path-fun c) h *> pathFunIdInv c y'
+
+\func inlInj {X Y : \Type} {a a' : X} (p : inl {X} {Y} a = inl a') : a = a' =>
+  pmap (\lam (o : Or X Y) => \case o \with { | inl v => v | inr _ => a }) p
+
+\func notFin2Neq (k : Fin 2) : notBS2.notFin2 k /= k \elim k
+  | 0 => \case __
+  | 1 => \case __
+-}
+
+\func Col {A : \Set \lp} {x0 x1 x2 : A} : \oo-Type (\suc \lp) => \Sigma (bv : hUT) (colBoth bv) \where {
+  \func hUT : \Type (\suc \lp) => borelXn 3 A
+  -- unused
+  {-
+  \func iUT : \Type (\suc \lp) => SP3.step {A}
+  -}
+
+  -- A21: the binary-collision parameter space (the domain of fatdiag).
+  \func A21 : \Type (\suc \lp) => \Sigma (b : BSn 2) (x y : A)
+
+  \func w0 : hUT => (BSnbase 3, recFin3 {\lam _ => A} x0 x1 x2)
+  \func P : \Prop => \Sigma (x0 = x1) (x1 = x2)
+
+  -- The strict collision representative [x,x,y]. Because Borel paths permute the
+  -- three coordinates, `w0 = collision x y` already means "(x0,x1,x2) is a binary
+  -- collision with doubled value x and single value y".
+  \func collision (x y : A) : hUT => SP3.fatdiag (BSnbase 2, x, y)
+
+  -- The collision conditions, as propositions (truncating the Borel symmetry).
+  -- `colAt c`    : w0 is the collision with values c.
+  -- `colBoth bv` : w0 and bv are the same collision.
+  \func colAt (c : \Sigma A A) : \Prop => TruncP (w0 = collision c.1 c.2)
+  \func colBoth (bv : hUT) : \Prop =>
+    TruncP (\Sigma (x y : A) (\Sigma (w0 = collision x y) (bv = collision x y)))
+
+  -- fatdiag a is the strict collision with values (a.2, a.3), up to the merely
+  -- available identification of its BS2 coordinate with the base.
+  \func fatToCol (a : A21) : TruncP (SP3.fatdiag a = collision a.2 a.3) =>
+    TruncP.map ((connBSn 2).isConn0 a.1 (BSnbase 2))
+        (\lam q => pmap (\lam (L : BSn 2) => SP3.fatdiag (L, a.2, a.3)) q)
+
+  -- A Borel path from w0 to a collision point forces w0 to be that collision.
+  \func colDetect (a : A21) (p : w0 = SP3.fatdiag a) : colAt (a.2, a.3) =>
+    TruncP.map (fatToCol a) (\lam fc => p *> fc)
+
+  -- ----------------------------------------------------------------------------
+  -- Diagonal detection, in the Borel form: a Borel path from w0 to a point whose
+  -- tuple is constant forces P (and identifies the constant with x0).
+  -- ----------------------------------------------------------------------------
+  \func recFin3ConstToEq (x : A) (p : recFin3 {\lam _ => A} x0 x1 x2 = \lam _ => x) : \Sigma P (x = x0)
+    => ((pmap (__ 0) p *> inv (pmap (__ 1) p),
+         pmap (__ 1) p *> inv (pmap (__ 2) p)),
+        inv (pmap (__ 0) p))
+
+  \func constTupleP {bv : hUT} (x : A) (p : w0 = bv) (t : bv.2 = (\lam _ => x)) : \Sigma P (x = x0) =>
+    recFin3ConstToEq x (transport (\lam (u : hUT) => u.2 = (\lam (_ : u.1.1) => x)) (inv p) t)
+
+  -- The Borel variants of the diagonal-detection lemmas: the pinl one takes a Borel
+  -- path (rather than a path in SP3.step), the pinr one a path to a diagonal collision.
+  \func diagonalPinl (b : BSn 3) (x : A) (p : w0 = (b, \lam _ => x)) : \Sigma P (x = x0) =>
+    constTupleP x p idp
+
+  \func diagonalPinr (x : A) (p : w0 = collision x x) : \Sigma P (x = x0) =>
+    constTupleP x p (inv (orConst x))
+
+  -- unused: the two lemmas of section 4.3 of the report. `colValsDet` is needed in
+  -- stage 5 (to see that ColR := Sigma (c) (colAt c) is a proposition) and `colAtDiag`
+  -- in stage 4 (for the diagonal part of the collision stratum).
+  {-
+  -- ----------------------------------------------------------------------------
+  -- The two lemmas needed to index the collision stratum of the total space by a
+  -- proposition (Section 5 of the report).
+  -- ----------------------------------------------------------------------------
+
+  -- Collision values are determined by the collision point. Only positions in the
+  -- finite type Or (Fin 2) (Fin 1) are ever case-split on; no equality in A is decided.
+  \func colValsDet {x y x' y' : A} (p : collision x y = collision x' y') : \Sigma (x = x') (y = y') =>
+    \let | bp => SigmaPathChar (collision x y) (collision x' y') p
+         | c : Or (Fin 2) (Fin 1) = Or (Fin 2) (Fin 1) => pmap __.1 bp.1
+         | h : (\lam (o : Or (Fin 2) (Fin 1)) =>
+                   Or.rec {Fin 2} {Fin 1} (\lam _ => x) (\lam _ => y) (path-fun (inv c) o))
+             = Or.rec {Fin 2} {Fin 1} (\lam _ => x') (\lam _ => y')
+           => inv (transportBorelFun {3} bp.1 (collision x y).2
+                   *> path-fun.transport-fun (collision x y).2 c) *> bp.2
+    \in colValsFromPerm x y x' y' (path-fun (inv c)) (path-fun c)
+        (pathFunInvId c) (\lam _ _ => pathFunInvInj c) (\lam o => pmap (__ o) h)
+
+  -- The combinatorial core of `colValsDet`: `r` is a self-bijection of the three
+  -- positions of a collision tuple compatible with the two labellings.
+  \func colValsFromPerm (x y x' y' : A)
+                        (r s : Or (Fin 2) (Fin 1) -> Or (Fin 2) (Fin 1))
+                        (rs : \Pi (o : Or (Fin 2) (Fin 1)) -> r (s o) = o)
+                        (rinj : \Pi (o o' : Or (Fin 2) (Fin 1)) -> r o = r o' -> o = o')
+                        (hv : \Pi (o : Or (Fin 2) (Fin 1)) ->
+                            Or.rec {Fin 2} {Fin 1} (\lam _ => x) (\lam _ => y) (r o)
+                            = Or.rec {Fin 2} {Fin 1} (\lam _ => x') (\lam _ => y') o)
+    : \Sigma (x = x') (y = y') =>
+    \let f : Or (Fin 2) (Fin 1) -> A => Or.rec {Fin 2} {Fin 1} (\lam _ => x) (\lam _ => y)
+    \in \case r (inr 0) \as ro, idp : r (inr 0) = ro \with {
+      -- the single slot stays single: the values match up slotwise
+      | inr 0, e =>
+        \let yy' : y = y' => inv (pmap f e) *> hv (inr 0)
+        \in \case r (inl 0) \as ro0, idp : r (inl 0) = ro0 \with {
+          | inl a, e0 => (inv (pmap f e0) *> hv (inl 0), yy')
+          | inr 0, e0 => \case rinj (inl 0) (inr 0) (e0 *> inv e) \with {}
+        }
+      -- the single slot moves into the pair: then all three values coincide
+      | inl b, e =>
+        \let xy' : x = y' => inv (pmap f e) *> hv (inr 0)
+        \in \case s (inr 0) \as so, idp : s (inr 0) = so \with {
+          | inr 0, e1 => \case inv e *> pmap r (inv e1) *> rs (inr 0) \with {}
+          | inl k, e1 =>
+            \let | rk : r (inl k) = inr 0 => pmap r (inv e1) *> rs (inr 0)
+                 | yx' : y = x' => inv (pmap f rk) *> hv (inl k)
+            \in \case r (inl (notBS2.notFin2 k)) \as rk', idp : r (inl (notBS2.notFin2 k)) = rk' \with {
+              | inl b2, e2 =>
+                \let xx' : x = x' => inv (pmap f e2) *> hv (inl (notBS2.notFin2 k))
+                \in (xx', yx' *> inv xx' *> xy')
+              | inr 0, e2 =>
+                absurd (notFin2Neq k (inlInj (rinj (inl (notBS2.notFin2 k)) (inl k) (e2 *> inv rk))))
+            }
+        }
+    }
+
+  -- Being merely the diagonal collision at x0 is the same proposition as P.
+  -- The direction P -> colAt (x0,x0) is `SpaceR`'s `w0Fatdiag`; the other direction
+  -- is tuple evaluation into the propositional target P.
+  \func colAtDiag : colAt (x0, x0) = P =>
+    propExtEx prop-isProp prop-isProp
+        (\lam ca => TruncP.rec {_} {P} prop-isProp ca (\lam w => (diagonalPinr x0 w).1))
+        (\lam p => inP (R.Rchar.base=.w0Fatdiag {A} {x0} {x1} {x2} p))
+  -}
+}

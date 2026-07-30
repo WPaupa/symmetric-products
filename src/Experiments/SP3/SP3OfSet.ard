@@ -25,7 +25,7 @@
 \import Experiments.SP3.Utils
 \import Experiments.SP3.SpaceT
 \import Experiments.SP3.SpaceR
-\import Experiments.SP3.SpaceS
+\import Experiments.SP3.Collision
 
 -- Join of two propositions is a proposition (the `isProp`-argument form of `Join.levelProp`).
 \lemma joinPropIsProp {A B : \Type} (pa : isProp A) (pb : isProp B) : isProp (Join A B) =>
@@ -53,13 +53,27 @@
 
 -- This file is a generalization of the proof in the file SP2OfSet.ard
 -- to SP3. We try to use the same notation
+--
+-- The code `Qhat` below is defined by recursion on BOTH pushouts of
+-- SP3 A = (S^3_2(A)) \cup_{C \times A} A,  S^3_2(A) = (A^3//S_3) \cup_{A21} (A \times A),
+-- and its join's left factor at a Borel point is the BOREL path type  w0 = bv.
+--
+-- It is essential that the left factor is the Borel path type and not `y0 = s`:
+-- a code for the path type of the FIRST pushout alone cannot exist. Indeed, for
+-- A = 1 the fibers of any such propositional-join code are contractible, so its
+-- total space is S^3_2(1), which is `SP3.subspaceBS2 = B\Sigma_3 \cup_{B\Sigma_2} 1`
+-- (this is `SP3ContrIsContr.equivDiag`), and that space is NOT contractible:
+-- it is simply connected with H_3 = Z/3, so pi_3 = Z/3 by Hurewicz. Hence the
+-- encode-decode has to be run once, over the whole of SP3 A, which is what
+-- `Qhat` does. (The abandoned attempt lived in `SpaceS.ard`.)
 
 \sfunc sp3LoopSpaceContr (A : \Set \lp) (x0 x1 x2 : A) : Contr (z0 = z0) => rewrite z0Pathchar contrQz0 \where {
-  \func BS3 : \Type (\suc \lp) => \Sigma (X : \Set \lp) (TruncP (Equiv {X} {Fin 3}))
   \func hUT : \Type (\suc \lp) => borelXn 3 A
   \func iUT : \Type (\suc \lp) => SP3.step {A}
   \func gUT : \Type (\suc \lp) => SP3 A
   \func C : \Type (\suc \lp) => SP3.subspaceBS2
+  -- the binary-collision parameter space, the domain of `SP3.fatdiag`
+  \func A21 : \Type (\suc \lp) => \Sigma (b : BSn 2) (x y : A)
 
   \func w0 : hUT => (BSnbase 3, recFin3 {\lam _ => A} x0 x1 x2)
   \func y0 : iUT => pinl w0
@@ -67,104 +81,161 @@
 
   \func P : \Prop => \Sigma (x0 = x1) (x1 = x2)
 
-  \func joinT (s : iUT) : \Type (\suc \lp) => Join (y0 = s) (\Sigma P (T {A} {x0} s))
+  -- The collision vocabulary of `Collision.ard`, specialized to the ambient parameters.
+  \func collision (x y : A) : hUT => Col.collision {A} x y
+  \func colAt (c : \Sigma A A) : \Prop => Col.colAt {A} {x0} {x1} {x2} c
+  \func colBoth (bv : hUT) : \Prop => Col.colBoth {A} {x0} {x1} {x2} bv
+  \func fatToCol (a : A21) : TruncP (SP3.fatdiag a = collision a.2 a.3) => Col.fatToCol {A} a
+  \func colDetect (a : A21) (p : w0 = SP3.fatdiag a) : colAt (a.2, a.3) =>
+    Col.colDetect {A} {x0} {x1} {x2} a p
+  \func diagonalPinl (b : BSn 3) (x : A) (p : w0 = (b, \lam _ => x)) : \Sigma P (x = x0) =>
+    Col.diagonalPinl {A} {x0} {x1} {x2} b x p
+  \func diagonalPinr (x : A) (p : w0 = collision x x) : \Sigma P (x = x0) =>
+    Col.diagonalPinr {A} {x0} {x1} {x2} x p
 
-  \func Q (_ : gUT) : \oo-Type (\suc \lp)
-    | pinl s => joinT s
+  -- ==========================================================================
+  -- The total-diagonal certificate `T` (from SpaceT.ard) and its bookkeeping.
+  -- ==========================================================================
+  \func TisPropAt (x : A) (s : iUT) : isProp (T {A} {x} s) \elim s
+    | pinl b => \lam _ _ => set-pi
+    | pinr c => prop-isProp
+  \func TisProp (s : iUT) : isProp (T {A} {x0} s) => TisPropAt x0 s
+
+  \func diagT (a : \Sigma C A) (_ : a.2 = x0) : T {A} {x0} (SP3.diag a)
+    | (pinl b, x), ax => ext (\lam _ => ax)
+    | (pinr (), x), ax => (ax, ax)
+    | (pglue b i, x), ax =>
+      pathOver
+        {\lam i => T {A} {x0} (SP3.diag (pglue b i, x))}
+        {ext (\lam _ => ax)}
+        {ax, ax}
+        (TisProp (SP3.diag (pinr (), x)) _ (ax, ax)) @ i
+  \func diagTToEq (a : \Sigma C A) (_ : T {A} {x0} (SP3.diag a)) : a.2 = x0
+    | (pinl b, x), t => TruncP.rec prop-isProp (eltBSn b) (\lam y => pmap (__ y) t)
+    | (pinr (), x), t => t.1
+
+  -- ==========================================================================
+  -- The code.  `J bv` is the propositional right factor at a Borel point:
+  -- "w0 and bv are the same collision, or (P holds and bv is totally diagonal)".
+  -- ==========================================================================
+  \func J (bv : hUT) : \oo-Type (\suc \lp) => Join (colBoth bv) (\Sigma P (T {A} {x0} (pinl bv)))
+
+  \lemma JisProp (bv : hUT) : isProp (J bv) =>
+    joinPropIsProp prop-isProp (\lam _ _ => SigmaPath prop-pi (TisProp (pinl bv) _ _))
+
+  \lemma colCodeIsProp (c : \Sigma A A) : isProp (Join (colAt c) (\Sigma P (T {A} {x0} (pinr c)))) =>
+    joinPropIsProp prop-isProp (\lam _ _ => SigmaPath prop-pi (TisProp (pinr c) _ _))
+
+  \func Ehat (s : iUT) : \oo-Type (\suc \lp) \elim s
+    | pinl bv => Join (w0 = bv) (J bv)
+    | pinr c => Join (colAt c) (\Sigma P (T {A} {x0} (pinr c)))
+    | pglue a i => innerGlue a i \where {
+
+    -- A Borel path to a collision point already inhabits the right factor.
+    \func pathToJ (a : A21) (p : w0 = SP3.fatdiag a) : J (SP3.fatdiag a) =>
+      pinl (TruncP.map (fatToCol a) (\lam fc => (a.2, a.3, (p *> fc, fc))))
+
+    -- Hence any inhabitant of the code at a collision point inhabits the right
+    -- factor, and the code there is contractible (`condCtr`).
+    \func jToJ (a : A21) (j : Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a))) : J (SP3.fatdiag a) \elim j
+      | pinl p => pathToJ a p
+      | pinr q => q
+      | pglue (p, q) i => JisProp (SP3.fatdiag a) (pathToJ a p) q i
+
+    \func condCtr (a : A21) (j : Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a)))
+      : Contr (Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a))) =>
+      Join_Contr (w0 = SP3.fatdiag a) (isProp=>isContr (JisProp (SP3.fatdiag a)) (jToJ a j))
+
+    -- The two collision certificates translate into each other, by composing through
+    -- `fatdiag a` (so the collision values are never compared directly).
+    \func toColAt (a : A21) (cb : colBoth (SP3.fatdiag a)) : colAt (a.2, a.3) =>
+      TruncP.rec prop-isProp cb
+          (\lam s => TruncP.map (fatToCol a) (\lam fc => s.3.1 *> inv s.3.2 *> fc))
+
+    \func fromColAt (a : A21) (ca : colAt (a.2, a.3)) : colBoth (SP3.fatdiag a) =>
+      TruncP.rec {_} {colBoth (SP3.fatdiag a)} prop-isProp ca
+          (\lam wc => TruncP.map (fatToCol a) (\lam fc => (a.2, a.3, (wc, fc))))
+
+    -- ... and so do the total-diagonal certificates, by transport along the glue.
+    \func tGlue (a : A21) (t : T {A} {x0} (pinl (SP3.fatdiag a))) : T {A} {x0} (pinr (a.2, a.3)) =>
+      transport (T {A} {x0}) (PushoutData.ppglue a) t
+    \func tGlueInv (a : A21) (t : T {A} {x0} (pinr (a.2, a.3))) : T {A} {x0} (pinl (SP3.fatdiag a)) =>
+      transport (T {A} {x0}) (inv (PushoutData.ppglue a)) t
+
+    \func fwdJ (a : A21) (q : J (SP3.fatdiag a))
+      : Join (colAt (a.2, a.3)) (\Sigma P (T {A} {x0} (pinr (a.2, a.3)))) \elim q
+      | pinl cb => pinl (toColAt a cb)
+      | pinr pt => pinr (pt.1, tGlue a pt.2)
+      | pglue (cb, pt) i => colCodeIsProp (a.2, a.3) (pinl (toColAt a cb)) (pinr (pt.1, tGlue a pt.2)) i
+
+    \func fwd (a : A21) (j : Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a)))
+      : Join (colAt (a.2, a.3)) (\Sigma P (T {A} {x0} (pinr (a.2, a.3)))) \elim j
+      | pinl p => pinl (colDetect a p)
+      | pinr q => fwdJ a q
+      | pglue (p, q) i =>
+        colCodeIsProp (a.2, a.3) (pinl (colDetect a p)) (fwdJ a q) i
+
+    -- Backwards we never produce a Borel path (that would need eliminating a
+    -- truncation into a non-proposition): we land in the right factor instead.
+    \func bwd (a : A21) (q : Join (colAt (a.2, a.3)) (\Sigma P (T {A} {x0} (pinr (a.2, a.3)))))
+      : Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a)) \elim q
+      | pinl ca => pinr (pinl (fromColAt a ca))
+      | pinr pt => pinr (pinr (pt.1, tGlueInv a pt.2))
+      | pglue (ca, pt) i => condCtrToProp (condCtr a)
+          (pinr (pinl (fromColAt a ca))) (pinr (pinr (pt.1, tGlueInv a pt.2))) i
+
+    \func innerGlue (a : A21)
+      : Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a))
+      = Join (colAt (a.2, a.3)) (\Sigma P (T {A} {x0} (pinr (a.2, a.3)))) =>
+      propExtEx (condCtrToProp (condCtr a)) (colCodeIsProp (a.2, a.3)) (fwd a) (bwd a)
+  }
+
+  \func Qhat (_ : gUT) : \oo-Type (\suc \lp)
+    | pinl s => Ehat s
     | pinr x => \Sigma P (x = x0)
-    | pglue a i => glueEq a i \where {
-    \func TisPropAt (x : A) (s : iUT) : isProp (T {A} {x} s) \elim s
-      | pinl b => \lam _ _ => set-pi
-      | pinr c => prop-isProp
-    \func TisProp (s : iUT) : isProp (T {A} {x0} s) => TisPropAt x0 s
-    \func recFin3ConstToEq (x : A) (p : recFin3 {\lam _ => A} x0 x1 x2 = \lam _ => x) : \Sigma P (x = x0)
-      => ((pmap (__ 0) p *> inv (pmap (__ 1) p),
-           pmap (__ 1) p *> inv (pmap (__ 2) p)),
-          inv (pmap (__ 0) p))
-    \func diagonalPinl (b : BS3) (x : A) (p : y0 = SP3.diag (pinl b, x)) : \Sigma P (x = x0) =>
-      recFin3ConstToEq x (transport (\lam s => T {A} {x} s) (inv p) idp)
-    \func diagonalPinr (x : A) (p : y0 = SP3.diag (pinr (), x)) : \Sigma P (x = x0) =>
-      recFin3ConstToEq x (transport (\lam s => T {A} {x} s) (inv p) (idp, idp))
-    \func diagT (a : \Sigma C A) (_ : a.2 = x0) : T {A} {x0} (SP3.diag a)
-      | (pinl b, x), ax => ext (\lam _ => ax)
-      | (pinr (), x), ax => (ax, ax)
-      | (pglue b i, x), ax =>
-        pathOver
-          {\lam i => T {A} {x0} (SP3.diag (pglue b i, x))}
-          {ext (\lam _ => ax)}
-          {ax, ax}
-          (TisProp (SP3.diag (pinr (), x)) _ (ax, ax)) @ i
-    \func diagTToEq (a : \Sigma C A) (_ : T {A} {x0} (SP3.diag a)) : a.2 = x0
-      | (pinl b, x), t => TruncP.rec prop-isProp (eltBSn b) (\lam y => pmap (__ y) t)
-      | (pinr (), x), t => t.1
-    \func joinToRight (a : \Sigma C A) (j : joinT (SP3.diag a)) : \Sigma P (a.2 = x0) \elim j
-      | pinl p => diagonalLemma a p
-      | pinr t => (t.1, diagTToEq a t.2)
-    \func joinToTRight (a : \Sigma C A) (j : joinT (SP3.diag a)) : \Sigma P (T {A} {x0} (SP3.diag a))
-      => \let pe => joinToRight a j \in (pe.1, diagT a pe.2)
-    \func joinTRightIsProp (a : \Sigma C A) : isProp (\Sigma P (T {A} {x0} (SP3.diag a)))
-      => \lam _ _ => SigmaPath prop-pi (TisProp (SP3.diag a) _ _)
-    \func condCtrJoinDiag (a : \Sigma C A) (j : joinT (SP3.diag a)) : Contr (joinT (SP3.diag a))
-      => Join_Contr (y0 = SP3.diag a) (isProp=>isContr (joinTRightIsProp a) (joinToTRight a j))
-    \func glueEq (a : \Sigma C A) : joinT (SP3.diag a) = (\Sigma P (a.2 = x0)) =>
-      propExtEx (condCtrToProp (condCtrJoinDiag a)) prop-isProp
-        (joinToRight a)
-        (\lam pe => pinr (pe.1, diagT a pe.2))
-    \func diagonalLemma (a : \Sigma C A) (_ : y0 = SP3.diag a) : \Sigma P (a.2 = x0)
-      | (pinl b, x), p => diagonalPinl b x p
-      | (pinr (), x), p => diagonalPinr x p
+    | pglue a i => outerGlue a i \where {
+
+    -- Reading the code at a diagonal point. The target is a proposition, so only the
+    -- point constructors of C (and of the joins) need to be treated.
+    \func diagToEq (a : \Sigma C A) (e : Ehat (SP3.diag a)) : \Sigma P (a.2 = x0) \elim a
+      | (pinl b, x) => \case \elim e \with {
+        | pinl p => diagonalPinl b x p
+        | pinr q => \case \elim q \with {
+          | pinl cb => TruncP.rec prop-isProp cb
+              (\lam s => diagonalPinl b x (s.3.1 *> inv s.3.2))
+          | pinr pt => (pt.1, diagTToEq (pinl b, x) pt.2)
+        }
+      }
+      | (pinr (), x) => \case \elim e \with {
+        | pinl ca => TruncP.rec prop-isProp ca (\lam w => diagonalPinr x w)
+        | pinr pt => (pt.1, diagTToEq (pinr (), x) pt.2)
+      }
+
+    -- Conversely the certificate makes the code at a diagonal point contractible.
+    -- `Contr` is a proposition, so the glue case of C is automatic.
+    \func diagCtrL (b : BSn 3) (x : A) (pe : \Sigma P (x = x0)) : Contr (Ehat (pinl (b, \lam _ => x))) =>
+      Join_Contr (w0 = (b, \lam _ => x))
+          (isProp=>isContr (JisProp (b, \lam _ => x)) (pinr (pe.1, diagT (pinl b, x) pe.2)))
+    \func diagCtrR (x : A) (pe : \Sigma P (x = x0)) : Contr (Ehat (pinr (x, x))) =>
+      isProp=>isContr (colCodeIsProp (x, x)) (pinr (pe.1, diagT (pinr (), x) pe.2))
+
+    \func diagCtr (a : \Sigma C A) (pe : \Sigma P (a.2 = x0)) : Contr (Ehat (SP3.diag a)) \elim a
+      | (pinl b, x) => diagCtrL b x pe
+      | (pinr (), x) => diagCtrR x pe
+
+    \func outerGlue (a : \Sigma C A) : Ehat (SP3.diag a) = (\Sigma P (a.2 = x0)) =>
+      propExtEx (condCtrToProp (\lam e => diagCtr a (diagToEq a e))) prop-isProp
+          (diagToEq a) (\lam pe => (diagCtr a pe).center)
   }
 
-  \func D : \oo-Type (\suc \lp) => \Sigma (z : gUT) (Q z)
-
-  \func R' : \oo-Type (\suc \lp) => R.R' {A} {x0} {x1} {x2}
-
-  \func Dflat : \oo-Type (\suc \lp) => PushoutData {\Sigma (x : \Sigma C A) (joinT (SP3.diag x))}
-      {\Sigma (y : iUT) (joinT y)}
-      {\Sigma (z : A) (\Sigma P (z = x0))}
-      (\lam p => (SP3.diag p.1, p.2))
-      (\lam p => (p.1.2, transport Q (PushoutData.ppglue p.1) p.2))
-
-  \func Dflat=D : Dflat = D => PushoutData.flattening Q
-
-  \func D' : \oo-Type (\suc \lp) => PushoutData {\Sigma C P} {P} {R'} __.2 pinr
-
-  \func Dflat=D' : Dflat = D' => {?}
-
-  \func RgluePath (p : P) : Path (\lam i => pinr (pglue p i) = {D'} pinr (pinl ())) idp
-      (inv (path (pglue (pinr (), p))) *> path (pglue (pinr (), p)) *> pmap pinr (inv (path (pglue p))))
-    => run {
-      pathOver,
-      *> (coe_path (\lam i => pinr (pglue p i)) idp idp),
-      rewriteI *>-assoc,
-      rewrite inv_*>,
-      rewrite idp_*>,
-      inv,
-      pmap_inv-comm pinr (path (pglue p))
-    }
-  \func DgluePath (c : C) (p : P) : Path (\lam i => pglue (c, p) i = {D'} pinr (pinl ()))
-      (path (pglue (pinr (), p)) *> inv (pmap pinr (path (pglue p))))
-      (inv (path (pglue (c, p))) *> path (pglue (pinr (), p)) *> pmap pinr (inv (path (pglue p)))) => run {
-    pathOver,
-    *> (coe_path (\lam i => pglue (c, p) i) _ idp),
-    pmap (inv (path (pglue (c, p))) *>),
-    pmap (path (pglue (pinr (), p)) *>),
-    inv,
-    pmap_inv-comm pinr (path (pglue p))
-  }
-
-  \func contractionD (d : D') : d = pinr (pinl ())
-    | pinl p => path (pglue (pinr (), p)) *> inv (pmap pinr (path (pglue p)))
-    | pinr (pinl ()) => idp
-    | pinr (pinr (c, p)) => inv (path (pglue (c, p))) *> path (pglue (pinr (), p)) *> pmap pinr (inv (path (pglue p)))
-    | pinr (pglue p i) => RgluePath p i
-    | pglue (c, p) i => DgluePath c p i
-
-  \func contrD' : Contr D' \cowith
-    | center => pinr (pinl ())
-    | contraction a => inv (contractionD a)
-
-  \sfunc contrQz0 : Contr (Q z0) => contrJoinT \where {
+  -- ==========================================================================
+  -- The fiber of the code at the basepoint is contractible.
+  --
+  -- Qhat z0 = Join (w0 = w0) (J w0), and every Borel loop is killed: the identity
+  -- because A is a set, a transposition because it exhibits w0 as a collision, and
+  -- a three-cycle because it forces P. The latter two go through the right factor.
+  -- ==========================================================================
+  \sfunc contrQz0 : Contr (Qhat z0) => joinEqLeftP B'isProp idp borelReduce \where {
     \func q2InvEq (q1 : BSnbase 3 = BSnbase 3)
                   (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
                   (i : Fin 3) : w0.2 ((fin3PathEquiv q1).ret i) = w0.2 i =>
@@ -212,110 +283,16 @@
       | 2 => inv (p.1 *> p.2)
     }
 
-    \func ifIdp (q1 : BSnbase 3 = BSnbase 3) (p : q1 = idp)
-                 (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2) :
-      pinl idp = {Q z0} pinl (pmap pinl (SigmaPath q1 q2)) \elim p
-      | idp => run {
-        rewrite (set-pi {Fin 3 -> A} {w0.2} {w0.2} {q2} {idp}),
-        pmap pinl,
-        idp
-      }
-
-    \func ifCycle (q1 : BSnbase 3 = BSnbase 3)
-                  (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
-                  (noFix : \Pi (i : Fin 3) -> fin3PathEquiv q1 i /= i)
-                  (_ : fin3PathEquiv q1 (fin3PathEquiv q1 (fin3PathEquiv q1 0)) = 0) :
-      pinl idp = {Q z0} pinl (pmap pinl (SigmaPath q1 q2)) =>
-      \let | p => cycleP q1 q2 noFix
-      \in isContr=>isProp (Join_Contr (y0 = y0) (isProp=>isContr prop-isProp (p, Ty0FromP p))) _ _
-
-    \func ifTransposition (q1 : BSnbase 3 = BSnbase 3)
-                          (fixed : Fin 3)
-                          (fixedPath : fin3PathEquiv q1 fixed = fixed)
-                          (moved : \Pi (i : Fin 3) -> i /= fixed -> fin3PathEquiv q1 i /= i)
-                          (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2) :
-      pinl idp = {Q z0} pinl (pmap pinl (SigmaPath q1 q2)) =>
-      \let
-        | rt : Equiv {Fin 3} {Or (Fin 2) (Fin 1)} => routeEq fixed
-        | base_r : BSnbase 3 = extendBSn 1 (BSnbase 2) => BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) rt
-        | va : A => w0.2 (routeR fixed (inl 0))
-        | vb : A => w0.2 (routeR fixed (inr 0))
-        | a0 : \Sigma (b : BSn 2) (x y : A) => (BSnbase 2, va, vb)
-        | fpq1 : fin3PathEquiv q1 = swap3Equiv fixed => transNF (fin3PathEquiv q1) fixed fixedPath moved
-        | movedEq : w0.2 (routeR fixed (inl 1)) = w0.2 (routeR fixed (inl 0)) =>
-            q2Eq q1 q2 (routeR fixed (inl 1))
-              *> pmap w0.2 (pmap (\lam (e : Equiv {Fin 3} {Fin 3}) => e (routeR fixed (inl 1))) fpq1 *> swapMovedEq fixed)
-        | tupleEq : transport (\lam a => a.1 -> A) base_r w0.2 = (SP3.fatdiag a0).2 => run {
-            rewrite (transportRouteTuple rt w0.2),
-            ext (\case \elim __ \with {
-              | inl 0 => idp
-              | inl 1 => movedEq
-              | inr 0 => idp
-            })
-          }
-        | r : w0 = SP3.fatdiag a0 => SigmaPath base_r tupleEq
-        | thetaHat : a0 = a0 => pmap (\lam (L : BSn 2) => (L, va, vb)) theta2
-        | gp : pmap (\lam (x : \Sigma (b : BSn 2) (x y : A)) => (x.2, x.3)) thetaHat = idp =>
-            pmap-comp (\lam (L : BSn 2) => (L, va, vb)) (\lam (x : \Sigma (b : BSn 2) (x y : A)) => (x.2, x.3)) theta2
-        | killed : pmap (\lam (x : hUT) => pinl x) (r *> pmap SP3.fatdiag thetaHat *> inv r) = idp =>
-            pushout-kill-conj {_} {_} {_} {SP3.fatdiag} {\lam (x : \Sigma (b : BSn 2) (x y : A)) => (x.2, x.3)} {a0} {w0}
-                r thetaHat gp
-        | fatBase : pmap (\lam t => t.1) (pmap SP3.fatdiag thetaHat) = pmap (extendBSn 1) theta2 =>
-            pmap-comp SP3.fatdiag (\lam t => t.1) thetaHat
-              *> pmap-comp (\lam (L : BSn 2) => (L, va, vb)) (\lam (a : \Sigma (b : BSn 2) (x y : A)) => (SP3.fatdiag a).1) theta2
-        | baseL' : pmap (\lam t => t.1) (r *> pmap SP3.fatdiag thetaHat *> inv r) = conjBase rt => run {
-            rewrite (pmapDist (\lam t => t.1) r (pmap SP3.fatdiag thetaHat *> inv r)),
-            rewrite (pmapDist (\lam t => t.1) (pmap SP3.fatdiag thetaHat) (inv r)),
-            rewrite (pmapInvDist (\lam t => t.1) r),
-            rewrite (sigmaPathBase base_r tupleEq),
-            rewrite fatBase,
-            idp
-          }
-        | theLoop : w0 = w0 => SigmaPath q1 q2
-        | q1conj : q1 = conjBase rt => fin3PathEquivInj (fpq1 *> inv (conjSwap fixed))
-        | baseEq : pmap (\lam t => t.1) theLoop = pmap (\lam t => t.1) (r *> pmap SP3.fatdiag thetaHat *> inv r) =>
-            sigmaPathBase {BSn 3} {\lam (X : BSn 3) => X.1 -> A} {w0} {w0} q1 q2 *> q1conj *> inv baseL'
-        | loopEq : theLoop = r *> pmap SP3.fatdiag thetaHat *> inv r =>
-            sigmaLoopDet (\lam (X : BSn 3) (f g : X.1 -> A) (_ _ : f = g) => set-pi)
-                theLoop (r *> pmap SP3.fatdiag thetaHat *> inv r) baseEq
-        | nullL : pmap (\lam (x : hUT) => pinl x) theLoop = idp =>
-            pmap (\lam (l : w0 = w0) => pmap (\lam (x : hUT) => pinl x) l) loopEq *> killed
-      \in pmap pinl (inv nullL)
-
-    \func Qz0EqBorel (h : w0 = w0) : pinl idp = {Q z0} pinl (pmap pinl h) => run {
-      rewrite (SigmaPathChar.eq h),
-      \let bp => SigmaPathChar _ _ h,
-      \case base3PathChar bp.1 \with {
-        | fin3PermId p => ifIdp bp.1 (base3PathId bp.1 p) bp.2
-        | fin3PermTransposition fixed fixedPath moved => ifTransposition bp.1 fixed fixedPath moved bp.2
-        | fin3PermCycle noFix cycle3 => ifCycle bp.1 bp.2 noFix cycle3
-      }
-    }
-
-    -- ========================================================================
-    -- Reduction of an arbitrary loop  b : y0 = y0  in the pushout S^3_2 to a
-    -- Borel loop, via the SpaceS encode-decode `S.pathChar` and join algebra.
-    -- The right join factor B'col absorbs the transposition (its loop is a
-    -- collision) and the three-cycle (P holds), so the contraction reduces to
-    -- the identity case for Borel loops.
-    -- ========================================================================
-
-    -- The right factor of the reassociated join: "w0 is a collision, or P holds".
-    \func B'col : \Type (\suc \lp) => Join (S.colBoth {A} {x0} {x1} {x2} w0) (\Sigma P (T {A} {x0} y0))
-    \lemma B'isProp : isProp B'col =>
-      joinPropIsProp prop-isProp (\lam _ _ => SigmaPath prop-pi (Q.TisProp y0 _ _))
-
-    -- joinT y0  =  Join (w0=w0) B'col,  via `S.pathChar y0` and join associativity.
-    \func joinTassoc : joinT y0 = Join (w0 = w0) B'col =>
-      pmap (\lam X => Join X (\Sigma P (T {A} {x0} y0))) (S.pathChar {A} {x0} {x1} {x2} y0)
-      *> QEquiv-to-= (Join-assoc (w0 = w0) (S.colBoth {A} {x0} {x1} {x2} w0) (\Sigma P (T {A} {x0} y0)))
+    -- The right factor of the code at the basepoint: "w0 is a collision, or P holds".
+    \func B'col : \oo-Type (\suc \lp) => J w0
+    \lemma B'isProp : isProp B'col => JisProp w0
 
     -- A Borel transposition loop puts w0 on the collision stratum.
     \func colBothTrans (q1 : BSnbase 3 = BSnbase 3) (fixed : Fin 3)
                        (fixedPath : fin3PathEquiv q1 fixed = fixed)
                        (moved : \Pi (i : Fin 3) -> i /= fixed -> fin3PathEquiv q1 i /= i)
                        (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
-      : S.colBoth {A} {x0} {x1} {x2} w0 =>
+      : colBoth w0 =>
       \let | rt => routeEq fixed
            | base_r => BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) rt
            | va => w0.2 (routeR fixed (inl 0))
@@ -328,7 +305,7 @@
                rewrite (transportRouteTuple rt w0.2),
                ext (\case \elim __ \with { | inl 0 => idp | inl 1 => movedEq | inr 0 => idp })
              }
-           | r : w0 = S.collision {A} va vb => SigmaPath base_r tupleEq
+           | r : w0 = collision va vb => SigmaPath base_r tupleEq
       \in inP (va, vb, (r, r))
 
     -- A Borel three-cycle loop forces total diagonality, giving the right join factor.
@@ -362,11 +339,78 @@
         | fin3PermCycle noFix cycle3 => brVia (pinr (cycleWitness bp.1 bp.2 noFix)) (SigmaPath bp.1 bp.2)
       }
     }
-
-    \func contrJoinT : Contr (joinT y0) => rewrite joinTassoc (joinEqLeftP B'isProp idp borelReduce)
   }
 
-  \func contrD : Contr D => rewrite (inv Dflat=D *> Dflat=D') contrD'
+  -- ==========================================================================
+  -- The total space of the code.  THIS IS THE REMAINING GAP (Section 5 of
+  -- SP3-Qz0-report.md); it subsumes the old `Dflat = D'` hole.
+  --
+  -- The staged plan, each stage imitating `SpaceR.Rchar` / `SpaceT.repr`:
+  --  1. `PushoutData.flattening Qhat` presents it as a pushout with corners
+  --     L := \Sigma (s : iUT) (Ehat s),  \Sigma (x : A) (\Sigma P (x = x0)) ~ P,
+  --     and \Sigma ((c,x) : C \times A) (Ehat (SP3.diag (c,x))) ~ C \times P
+  --     (rewrite the fiber along `outerGlue` with `pushout-equiv`, then contract
+  --     `x = x0` as in `Rchar.baseR=tail`).
+  --  2. `PushoutData.flattening Ehat` presents L as a pushout with corners
+  --     \Sigma (bv : hUT) (Join (w0 = bv) (J bv)), \Sigma (c : \Sigma A A) (Ehat (pinr c)),
+  --     \Sigma (a : A21) (Ehat (pinl (SP3.fatdiag a))).
+  --  3. `pushout-sigma` + `pushout-contr (lsigma w0)` peel the honest spine
+  --     \Sigma (bv) (w0 = bv) ~ 1 off the first corner.
+  --  4. `pushout-sigma` splits the remaining corners; identify
+  --     \Sigma (bv) (\Sigma P (T (pinl bv))) ~ P \times BSn 3 by `T.repr.left=`,
+  --     \Sigma (c) (\Sigma P (T (pinr c))) ~ P by `T.repr.right=`, and
+  --     \Sigma (c) (colAt c) =: ColR, a proposition by `Col.colValsDet`.
+  --  5. Index the collision stratum by the proposition ColR (using `Col.colAtDiag`
+  --     for its diagonal part) and flatten once more. The goal `Contr _` is then a
+  --     proposition, so the truncation in ColR may be opened: assume an actual path
+  --     w0 = collision x y and contract explicitly, as `contractionD` does below.
+  --
+  -- Stage 5 is the only genuinely new pushout engineering; stages 1-4 are mechanical.
+  -- ==========================================================================
+  \func contrQhat : Contr (\Sigma (z : gUT) (Qhat z)) => {?}
 
-  \func z0Pathchar : (z0 = z0) = Q z0 => fundamentalIP contrQz0.center contrD
+  \func z0Pathchar : (z0 = z0) = Qhat z0 => fundamentalIP {gUT} {z0} {z0} {Qhat} (pinl idp) contrQhat
+
+  -- unused: the small model of the total space of the OLD code, kept as the template
+  -- for the explicit contraction of stage 5 above. `D'` is a pushout of `P <- P -> C x P`
+  -- and `contractionD` contracts it by pushout induction, with `RgluePath` and
+  -- `DgluePath` as the two glue coherences.
+  {-
+  \func R' : \oo-Type (\suc \lp) => R.R' {A} {x0} {x1} {x2}
+
+  \func D' : \oo-Type (\suc \lp) => PushoutData {\Sigma C P} {P} {R'} __.2 pinr
+
+  \func RgluePath (p : P) : Path (\lam i => pinr (pglue p i) = {D'} pinr (pinl ())) idp
+      (inv (path (pglue (pinr (), p))) *> path (pglue (pinr (), p)) *> pmap pinr (inv (path (pglue p))))
+    => run {
+      pathOver,
+      *> (coe_path (\lam i => pinr (pglue p i)) idp idp),
+      rewriteI *>-assoc,
+      rewrite inv_*>,
+      rewrite idp_*>,
+      inv,
+      pmap_inv-comm pinr (path (pglue p))
+    }
+  \func DgluePath (c : C) (p : P) : Path (\lam i => pglue (c, p) i = {D'} pinr (pinl ()))
+      (path (pglue (pinr (), p)) *> inv (pmap pinr (path (pglue p))))
+      (inv (path (pglue (c, p))) *> path (pglue (pinr (), p)) *> pmap pinr (inv (path (pglue p)))) => run {
+    pathOver,
+    *> (coe_path (\lam i => pglue (c, p) i) _ idp),
+    pmap (inv (path (pglue (c, p))) *>),
+    pmap (path (pglue (pinr (), p)) *>),
+    inv,
+    pmap_inv-comm pinr (path (pglue p))
+  }
+
+  \func contractionD (d : D') : d = pinr (pinl ())
+    | pinl p => path (pglue (pinr (), p)) *> inv (pmap pinr (path (pglue p)))
+    | pinr (pinl ()) => idp
+    | pinr (pinr (c, p)) => inv (path (pglue (c, p))) *> path (pglue (pinr (), p)) *> pmap pinr (inv (path (pglue p)))
+    | pinr (pglue p i) => RgluePath p i
+    | pglue (c, p) i => DgluePath c p i
+
+  \func contrD' : Contr D' \cowith
+    | center => pinr (pinl ())
+    | contraction a => inv (contractionD a)
+  -}
 }

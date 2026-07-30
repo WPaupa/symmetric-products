@@ -17,6 +17,12 @@
 \import Utilities.Pushout
 \import Utilities.Paths
 
+-- unused in its entirety: `Rchar` characterizes the total space of the OLD code
+-- over the first pushout. Kept as the template for stages 1-4 of the plan in
+-- `SP3OfSet.ard`: the chain `pushout-sigma`, `pushout-contr`, corner isomorphisms
+-- through `T.repr`, `pushout-equiv`, `pushout-eqv-fun`, and the `Rpf-fun` idiom for
+-- discharging the function-equality side conditions.
+{-
 \func R {A : \Set \lp} {x0 x1 x2 : A} : \oo-Type (\suc \lp) => \Sigma (s : iUT) (joinT s) \where {
   \func BS3 : \Type (\suc \lp) => \Sigma (X : \Set \lp) (TruncP (Equiv {X} {Fin 3}))
   \func hUT : \Type (\suc \lp) => borelXn 3 A
@@ -98,3 +104,4 @@
     \func Rpf=R' : Rpf = R' => pushout-eqv-fun _ _ _ _ idp Rpf-fun
   }
 }
+-}
