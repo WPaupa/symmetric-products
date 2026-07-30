@@ -3,6 +3,7 @@
 \import Equiv
 \import Equiv.Univalence
 \import Function.Meta
+\import Homotopy.Join
 \import Homotopy.Pushout
 \import Logic
 \import Logic.Unique
@@ -16,6 +17,7 @@
 \import Utilities.PathFun
 \import Utilities.Paths
 \import Experiments.SP3.SpaceR
+\import Experiments.SP3.SpaceT
 \import Experiments.SP3.Utils
 
 -- ============================================================================
@@ -84,6 +86,13 @@
   -- A Borel path from w0 to a collision point forces w0 to be that collision.
   \func colDetect (a : A21) (p : w0 = SP3.fatdiag a) : colAt (a.2, a.3) =>
     TruncP.map (fatToCol a) (\lam fc => p *> fc)
+
+  -- The propositional certificate carried by the code at a Borel point: "w0 and bv
+  -- are the same collision, or (P holds and bv is totally diagonal)".
+  \func J (bv : hUT) : \oo-Type (\suc \lp) => Join (colBoth bv) (\Sigma P (T {A} {x0} (pinl bv)))
+
+  \lemma JisProp (bv : hUT) : isProp (J bv) =>
+    joinPropIsProp prop-isProp (\lam _ _ => SigmaPath prop-pi (TisProp {A} {x0} (pinl bv) _ _))
 
   -- ----------------------------------------------------------------------------
   -- Diagonal detection, in the Borel form: a Borel path from w0 to a point whose

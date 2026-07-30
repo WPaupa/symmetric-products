@@ -1,0 +1,159 @@
+\import Data.Fin
+\import Data.Or
+\import Equiv
+\import Function.Meta
+\import Homotopy.Join
+\import Homotopy.Pushout
+\import Logic
+\import Logic.Unique
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Set
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import SymmetricProducts.SP3
+\import Utilities.PathFun
+\import Utilities.Paths
+\import Experiments.SP3.Collision
+\import Experiments.SP3.SpaceT
+\import Experiments.SP3.Utils
+
+-- ============================================================================
+-- The fiber of the code at the basepoint.
+--
+-- `Qhat z0` (see `SP3OfSet.ard`) computes to `Join (w0 = w0) (J w0)`, so the
+-- contraction of the fiber is a statement about BOREL loops only. Every Borel
+-- loop is killed: the identity because A is a set (`brIdp`), a transposition
+-- because it exhibits w0 as a collision (`colBothTrans`), and a three-cycle
+-- because it forces P (`cycleWitness`). The latter two go through the right
+-- join factor, which is a proposition (`brVia`).
+--
+-- This is the formalization of section 7.1 of `setsToSets.md`, and it is the
+-- part of the proof that dictated the shape of the code: nothing here would
+-- work for a loop of `y0` in the pushout `SP3.step`.
+-- ============================================================================
+
+\func Qz0 {A : \Set \lp} {x0 x1 x2 : A} : \oo-Type (\suc \lp) => Join (w0 = w0) (J w0) \where {
+  \func hUT : \Type (\suc \lp) => borelXn 3 A
+  \func iUT : \Type (\suc \lp) => SP3.step {A}
+  \func w0 : hUT => Col.w0 {A} {x0} {x1} {x2}
+  \func y0 : iUT => pinl w0
+  \func P : \Prop => Col.P {A} {x0} {x1} {x2}
+  \func collision (x y : A) : hUT => Col.collision {A} x y
+  \func colBoth (bv : hUT) : \Prop => Col.colBoth {A} {x0} {x1} {x2} bv
+
+  -- The right factor of the code at the basepoint.
+  \func J (bv : hUT) : \oo-Type (\suc \lp) => Col.J {A} {x0} {x1} {x2} bv
+  \lemma JisProp (bv : hUT) : isProp (J bv) => Col.JisProp {A} {x0} {x1} {x2} bv
+
+  -- --------------------------------------------------------------------------
+  -- Reading a Borel loop as a permutation of the three coordinates.
+  -- --------------------------------------------------------------------------
+  \func q2InvEq (q1 : BSnbase 3 = BSnbase 3)
+                (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
+                (i : Fin 3) : w0.2 ((fin3PathEquiv q1).ret i) = w0.2 i =>
+    \let | q2' : (\lam x => w0.2 (path-fun (inv (pmap __.1 q1)) x)) = w0.2 =>
+             rewrite (path-fun.transport-fun w0.2 (pmap __.1 q1)) in q2
+    \in run {
+    rewrite (fin3PathEquivBeta q1),
+    rewriteI (path-fun.inv-p (pmap __.1 q1)),
+    pmap (__ i) q2'
+  }
+
+  \func q2Eq (q1 : BSnbase 3 = BSnbase 3)
+             (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
+             (i : Fin 3) : w0.2 i = w0.2 ((fin3PathEquiv q1) i) =>
+    inv (pmap w0.2 ((fin3PathEquiv q1).ret_f i)) *> q2InvEq q1 q2 ((fin3PathEquiv q1) i)
+
+  -- A fixed-point-free permutation of the coordinates forces all three to agree.
+  \func cycleP (q1 : BSnbase 3 = BSnbase 3)
+               (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
+               (noFix : \Pi (i : Fin 3) -> fin3PathEquiv q1 i /= i) : P =>
+    cases ((fin3PathEquiv q1) 0 arg addPath, (fin3PathEquiv q1) 1 arg addPath, (fin3PathEquiv q1) 2 arg addPath) \with {
+      | 0, e0, 1, e1, 2, e2 => absurd (noFix 0 e0)
+      | 0, e0, 2, e1, 1, e2 => absurd (noFix 0 e0)
+      | 1, e0, 0, e1, 2, e2 => absurd (noFix 2 e2)
+      | 2, e0, 1, e1, 0, e2 => absurd (noFix 1 e1)
+      | 1, e0, 2, e1, 0, e2 => (q2Eq q1 q2 0 *> pmap w0.2 e0,
+                                 q2Eq q1 q2 1 *> pmap w0.2 e1)
+      | 2, e0, 0, e1, 1, e2 =>
+        \let | x0=x2 => q2Eq q1 q2 0 *> pmap w0.2 e0
+             | x2=x1 => q2Eq q1 q2 2 *> pmap w0.2 e2
+        \in (x0=x2 *> x2=x1, inv x2=x1)
+      | 0, e0, 0, e1, _, _ => absurd (fin3SameImageAbsurd fin3_0_ne_1 e0 e1)
+      | 0, e0, _, _, 0, e2 => absurd (fin3SameImageAbsurd fin3_0_ne_2 e0 e2)
+      | _, _, 0, e1, 0, e2 => absurd (fin3SameImageAbsurd fin3_1_ne_2 e1 e2)
+      | 1, e0, 1, e1, _, _ => absurd (fin3SameImageAbsurd fin3_0_ne_1 e0 e1)
+      | 1, e0, _, _, 1, e2 => absurd (fin3SameImageAbsurd fin3_0_ne_2 e0 e2)
+      | _, _, 1, e1, 1, e2 => absurd (fin3SameImageAbsurd fin3_1_ne_2 e1 e2)
+      | 2, e0, 2, e1, _, _ => absurd (fin3SameImageAbsurd fin3_0_ne_1 e0 e1)
+      | 2, e0, _, _, 2, e2 => absurd (fin3SameImageAbsurd fin3_0_ne_2 e0 e2)
+      | _, _, 2, e1, 2, e2 => absurd (fin3SameImageAbsurd fin3_1_ne_2 e1 e2)
+    }
+
+  \func Ty0FromP (p : P) : T {A} {x0} y0 => ext \case \elim __ \with {
+    | 0 => idp
+    | 1 => inv p.1
+    | 2 => inv (p.1 *> p.2)
+  }
+
+  -- --------------------------------------------------------------------------
+  -- The three cases of a Borel loop.
+  -- --------------------------------------------------------------------------
+  -- A Borel transposition loop puts w0 on the collision stratum.
+  \func colBothTrans (q1 : BSnbase 3 = BSnbase 3) (fixed : Fin 3)
+                     (fixedPath : fin3PathEquiv q1 fixed = fixed)
+                     (moved : \Pi (i : Fin 3) -> i /= fixed -> fin3PathEquiv q1 i /= i)
+                     (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
+    : colBoth w0 =>
+    \let | rt => routeEq fixed
+         | base_r => BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) rt
+         | va => w0.2 (routeR fixed (inl 0))
+         | vb => w0.2 (routeR fixed (inr 0))
+         | fpq1 => transNF (fin3PathEquiv q1) fixed fixedPath moved
+         | movedEq : w0.2 (routeR fixed (inl 1)) = w0.2 (routeR fixed (inl 0)) =>
+             q2Eq q1 q2 (routeR fixed (inl 1))
+               *> pmap w0.2 (pmap (\lam (e : Equiv {Fin 3} {Fin 3}) => e (routeR fixed (inl 1))) fpq1 *> swapMovedEq fixed)
+         | tupleEq : transport (\lam a => a.1 -> A) base_r w0.2 = (SP3.fatdiag (BSnbase 2, va, vb)).2 => run {
+             rewrite (transportRouteTuple rt w0.2),
+             ext (\case \elim __ \with { | inl 0 => idp | inl 1 => movedEq | inr 0 => idp })
+           }
+         | r : w0 = collision va vb => SigmaPath base_r tupleEq
+    \in inP (va, vb, (r, r))
+
+  -- A Borel three-cycle loop forces total diagonality, giving the right join factor.
+  \func cycleWitness (q1 : BSnbase 3 = BSnbase 3)
+                     (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
+                     (noFix : \Pi (i : Fin 3) -> fin3PathEquiv q1 i /= i) : \Sigma P (T {A} {x0} y0) =>
+    \let p => cycleP q1 q2 noFix \in (p, Ty0FromP p)
+
+  -- If the right factor is inhabited, both endpoints connect through it.
+  \func brVia (b' : J w0) (loop : w0 = w0) : pinl idp = {Qz0 {A} {x0} {x1} {x2}} pinl loop =>
+    path (pglue ((idp : w0 = w0), b')) *> inv (path (pglue (loop, b')))
+
+  -- The identity Borel loop is trivial because A is a set.
+  \func brIdp (q1 : BSnbase 3 = BSnbase 3) (p : q1 = idp)
+              (q2 : transport (\lam a => a -> A) (pmap __.1 q1) w0.2 = w0.2)
+    : pinl idp = {Qz0 {A} {x0} {x1} {x2}} pinl (SigmaPath q1 q2) \elim p
+    | idp => run {
+      rewrite (set-pi {Fin 3 -> A} {w0.2} {w0.2} {q2} {idp}),
+      pmap pinl,
+      idp
+    }
+
+  -- Every Borel loop maps to the basepoint.
+  \func borelReduce (h : w0 = w0) : pinl idp = {Qz0 {A} {x0} {x1} {x2}} pinl h => run {
+    rewrite (SigmaPathChar.eq h),
+    \let bp => SigmaPathChar _ _ h,
+    \case base3PathChar bp.1 \with {
+      | fin3PermId p => brIdp bp.1 (base3PathId bp.1 p) bp.2
+      | fin3PermTransposition fixed fixedPath moved =>
+        brVia (pinl (colBothTrans bp.1 fixed fixedPath moved bp.2)) (SigmaPath bp.1 bp.2)
+      | fin3PermCycle noFix cycle3 => brVia (pinr (cycleWitness bp.1 bp.2 noFix)) (SigmaPath bp.1 bp.2)
+    }
+  }
+
+  -- The fiber of the code at the basepoint is contractible.
+  \func contr : Contr (Qz0 {A} {x0} {x1} {x2}) => joinEqLeftP (JisProp w0) idp borelReduce
+}

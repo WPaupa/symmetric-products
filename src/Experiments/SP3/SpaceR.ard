@@ -103,5 +103,47 @@
     }
     \func Rpf=R' : Rpf = R' => pushout-eqv-fun _ _ _ _ idp Rpf-fun
   }
+
+  -- The small model of the total space of the OLD code, and its explicit
+  -- contraction. `D'` is the pushout  P <- C x P -> R'  and `contractionD`
+  -- contracts it by pushout induction, with `RgluePath` and `DgluePath` as the
+  -- two glue coherences. This is the template for the final contraction of
+  -- stage 5 in `SP3OfSet.ard`.
+  \func D' : \oo-Type (\suc \lp) => PushoutData {\Sigma C P} {P} {R'} __.2 pinr
+
+  \func RgluePath (p : P) : Path (\lam i => pinr (pglue p i) = {D'} pinr (pinl ())) idp
+      (inv (path (pglue (pinr (), p))) *> path (pglue (pinr (), p)) *> pmap pinr (inv (path (pglue p))))
+    => run {
+      pathOver,
+      *> (coe_path (\lam i => pinr (pglue p i)) idp idp),
+      rewriteI *>-assoc,
+      rewrite inv_*>,
+      rewrite idp_*>,
+      inv,
+      pmap_inv-comm pinr (path (pglue p))
+    }
+
+  \func DgluePath (c : C) (p : P) : Path (\lam i => pglue (c, p) i = {D'} pinr (pinl ()))
+      (path (pglue (pinr (), p)) *> inv (pmap pinr (path (pglue p))))
+      (inv (path (pglue (c, p))) *> path (pglue (pinr (), p)) *> pmap pinr (inv (path (pglue p)))) => run {
+    pathOver,
+    *> (coe_path (\lam i => pglue (c, p) i) _ idp),
+    pmap (inv (path (pglue (c, p))) *>),
+    pmap (path (pglue (pinr (), p)) *>),
+    inv,
+    pmap_inv-comm pinr (path (pglue p))
+  }
+
+  \func contractionD (d : D') : d = pinr (pinl ())
+    | pinl p => path (pglue (pinr (), p)) *> inv (pmap pinr (path (pglue p)))
+    | pinr (pinl ()) => idp
+    | pinr (pinr (c, p)) => inv (path (pglue (c, p))) *> path (pglue (pinr (), p)) *> pmap pinr (inv (path (pglue p)))
+    | pinr (pglue p i) => RgluePath p i
+    | pglue (c, p) i => DgluePath c p i
+
+  \func contrD' : Contr D' \cowith
+    | center => pinr (pinl ())
+    | contraction a => inv (contractionD a)
+
 }
 -}

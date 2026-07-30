@@ -3,6 +3,8 @@
 \import Experiments.SP3.Utils
 \import Homotopy.Pushout
 \import Logic
+\import Logic.Unique
+\import Set
 \import Meta
 \import Paths
 \import Paths.Meta
@@ -152,3 +154,8 @@
   }
   -}
 }
+-- The total-diagonal certificate is a proposition: over a Borel point it is an
+-- equality of tuples in the set A, over a collision point a pair of equalities.
+\lemma TisProp {A : \Set \lp} {x : A} (s : SP3.step {A}) : isProp (T {A} {x} s) \elim s
+  | pinl b => \lam _ _ => set-pi
+  | pinr c => prop-isProp

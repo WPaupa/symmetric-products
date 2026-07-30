@@ -1,5 +1,6 @@
 \import Equiv
 \import Equiv.Univalence
+\import Homotopy.Join
 \import Logic.Unique
 \import Meta
 \import Paths
@@ -547,3 +548,33 @@
     *> SigmaPathBeta (SigmaPathChar x y p).1 (SigmaPathChar x y q).1 (SigmaPathChar x y p).2 (SigmaPathChar x y q).2 baseEq fibEq
     *> inv (SigmaPathChar.eq q)
 -}
+
+-- ----------------------------------------------------------------------------
+-- Joins of propositions. Both of these are used by the code `Ehat`/`Qhat` and by
+-- the contraction of its fiber at the basepoint.
+-- ----------------------------------------------------------------------------
+
+-- A join of two propositions is a proposition (the `isProp`-argument form of
+-- `Join.levelProp`).
+\lemma joinPropIsProp {A B : \Type} (pa : isProp A) (pb : isProp B) : isProp (Join A B) =>
+  isContr'=>isProp {Join A B} (\case \elim __ \with {
+    | pinl a => transport (Contr __) (QEquiv-to-= (Join-sym B A)) (Join_Contr B (isProp=>isContr pa a))
+    | pinr b => Join_Contr A (isProp=>isContr pb b)
+  })
+
+-- `joinEqLeft` with the right factor given as `isProp B` rather than `B : \Prop`.
+\func joinEqLeftP {A B : \Type} (bP : isProp B) (ca : A)
+                  (pa : \Pi (a : A) -> pinl ca = {Join A B} pinl a) : Contr (Join A B) \cowith
+  | center => pinl ca
+  | contraction => \case \elim __ \with {
+    | pinl b => pa b
+    | pinr c => path (pglue (ca, c))
+    | pglue a i => joinEqLeftP.glueEqP bP ca pa a i
+  } \where {
+  \func glueEqP {A B : \Type} (bP : isProp B) (ca : A)
+                (pa : \Pi (a : A) -> pinl ca = {Join A B} pinl a) (a : \Sigma A B)
+    : Path (\lam i => pinl ca = pglue a i) (pa a.1) (path (pglue (ca, a.2))) => run {
+    pathOver,
+    isProp.=>isSet (isContr=>isProp (Join_Contr A (isProp=>isContr bP a.2))) _ _ _ _
+  }
+}
