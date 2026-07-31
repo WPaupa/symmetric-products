@@ -16,7 +16,6 @@
 \import SymmetricProducts.SP3
 \import Utilities.PathFun
 \import Utilities.Paths
-\import Experiments.SP3.SpaceR
 \import Experiments.SP3.SpaceT
 \import Experiments.SP3.Utils
 
@@ -169,14 +168,88 @@
         }
     }
 
-  -- unused: needed in stage 4 (the diagonal part of the collision stratum).
-  {-
+  -- ----------------------------------------------------------------------------
+  -- Section 4 of SP3-stage5-report.md: the honest diagonal collision path, the
+  -- characterizations that let the collision stratum be indexed by a proposition,
+  -- and the diagonal slice of that stratum.
+  -- ----------------------------------------------------------------------------
+
+  -- If P holds then w0 IS the diagonal collision at x0. This is `colBothTrans`'s
+  -- tuple computation with the values specialized (`routeR 2` sends inl 0, inl 1,
+  -- inr 0 to 0, 1, 2); it replaces the `w0Fatdiag` of the commented-out `SpaceR`
+  -- without reviving `extendBSnBase`/`recFin3.eta`.
+  \func w0Diag (p : P) : w0 = collision x0 x0 =>
+    \let | rt => routeEq 2
+         | base_r => BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) rt
+         | tupleEq : transport (\lam a => a.1 -> A) base_r w0.2 = (collision x0 x0).2 => run {
+             rewrite (transportRouteTuple rt w0.2),
+             ext (\case \elim __ \with {
+               | inl 0 => idp
+               | inl 1 => inv p.1
+               | inr 0 => inv (p.1 *> p.2)
+             })
+           }
+    \in SigmaPath base_r tupleEq
+
   -- Being merely the diagonal collision at x0 is the same proposition as P.
-  -- The direction P -> colAt (x0,x0) is `SpaceR`'s `w0Fatdiag`; the other direction
-  -- is tuple evaluation into the propositional target P.
   \func colAtDiag : colAt (x0, x0) = P =>
     propExtEx prop-isProp prop-isProp
         (\lam ca => TruncP.rec {_} {P} prop-isProp ca (\lam w => (diagonalPinr x0 w).1))
-        (\lam p => inP (R.Rchar.base=.w0Fatdiag {A} {x0} {x1} {x2} p))
-  -}
+        (\lam p => inP (w0Diag p))
+
+  -- The collision certificate with its values pulled out of the truncation. The
+  -- outer Sigma is still a proposition, because the values are determined.
+  \lemma colBothCharIsProp (bv : hUT)
+    : isProp (\Sigma (c : \Sigma A A) (\Sigma (colAt c) (TruncP (bv = collision c.1 c.2)))) =>
+    \lam u v => SigmaPropPath {\Sigma A A} {\lam c => \Sigma (colAt c) (TruncP (bv = collision c.1 c.2))}
+        (\lam _ => prop-isProp)
+        (TruncP.rec prop-isProp u.2.1 (\lam wu => TruncP.rec prop-isProp v.2.1
+            (\lam wv => ext (colValsDet (inv wu *> wv)))))
+
+  -- The collision certificate, built from honest paths.
+  \func colBothOf (bv : hUT) (c : \Sigma A A) (wc : w0 = collision c.1 c.2) (bc : bv = collision c.1 c.2)
+    : colBoth bv => inP (c.1, c.2, (wc, bc))
+
+  \func colBothChar (bv : hUT)
+    : colBoth bv = (\Sigma (c : \Sigma A A) (\Sigma (colAt c) (TruncP (bv = collision c.1 c.2)))) =>
+    propExtEx prop-isProp (colBothCharIsProp bv)
+        (\lam cb => TruncP.rec (colBothCharIsProp bv) cb
+            (\lam s => ((s.1, s.2), (inP s.3.1, inP s.3.2))))
+        (\lam u => TruncP.rec prop-isProp u.2.1
+            (\lam wc => TruncP.rec prop-isProp u.2.2 (\lam bc => colBothOf bv u.1 wc bc)))
+
+  -- Over a fixed collision certificate, "being that collision" and "being in the
+  -- component of w0" are the same proposition. So the fiber of the collision
+  -- stratum over the certificate does not depend on the certificate.
+  \func compChar (c : \Sigma A A) (ca : colAt c) (bv : hUT)
+    : TruncP (bv = collision c.1 c.2) = TruncP (w0 = bv) =>
+    propExtEx prop-isProp prop-isProp
+        (\lam tb => TruncP.rec prop-isProp ca (\lam wc => TruncP.map tb (\lam bc => wc *> inv bc)))
+        (\lam tw => TruncP.rec prop-isProp ca (\lam wc => TruncP.map tw (\lam wb => inv wb *> wc)))
+
+  -- A constant-x0 Borel point over the extended base IS the diagonal collision.
+  \func constIsDiag (b : BSn 3) (q : b = extendBSn 1 (BSnbase 2))
+    : (b, \lam _ => x0) = {hUT} collision x0 x0 \elim q
+    | idp => SigmaPath idp (orConst x0)
+
+  -- With P in hand, every constant-x0 Borel point is on the collision stratum.
+  \func colBothDiag (p : P) (b : BSn 3) : colBoth (b, \lam _ => x0) =>
+    TruncP.rec prop-isProp ((connBSn 3).isConn0 b (extendBSn 1 (BSnbase 2)))
+        (\lam q => colBothOf (b, \lam _ => x0) (x0, x0) (w0Diag p) (constIsDiag b q))
+
+  \lemma diagFibIsProp (bv : hUT) : isProp (\Sigma (colBoth bv) (T {A} {x0} (pinl bv))) =>
+    \lam _ _ => SigmaPath prop-pi (TisProp {A} {x0} (pinl bv) _ _)
+
+  -- The diagonal slice of the collision stratum is BSn 3: the diagonal certificate
+  -- pins the tuple to the constant x0, and then the collision decoration is
+  -- automatic. (This is `diagCompEquiv` of the report.)
+  \func diagSlice= (p : P) : (\Sigma (bv : hUT) (\Sigma (colBoth bv) (T {A} {x0} (pinl bv)))) = BSn 3 =>
+    iso f (g p) (sec p) (ret p) \where {
+    \func f (u : \Sigma (bv : hUT) (\Sigma (colBoth bv) (T {A} {x0} (pinl bv)))) : BSn 3 => u.1.1
+    \func g (p : P) (b : BSn 3) : \Sigma (bv : hUT) (\Sigma (colBoth bv) (T {A} {x0} (pinl bv))) =>
+      ((b, \lam _ => x0), (colBothDiag p b, idp))
+    \func sec (p : P) (u : \Sigma (bv : hUT) (\Sigma (colBoth bv) (T {A} {x0} (pinl bv)))) : g p (f u) = u =>
+      SigmaPath (ext (idp, inv u.2.2)) (diagFibIsProp u.1 _ _)
+    \func ret (p : P) (b : BSn 3) : f (g p b) = b => idp
+  }
 }

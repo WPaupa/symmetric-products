@@ -578,3 +578,10 @@
     isProp.=>isSet (isContr=>isProp (Join_Contr A (isProp=>isContr bP a.2))) _ _ _ _
   }
 }
+
+-- `path-fun` of a `pmap` into the right factor of a Sigma-type. Needed to compute
+-- the corner identifications that are built by `pmap` rather than as an `iso`
+-- (see SP3-stage5-report.md, section 3).
+\func pathFunSigmaR {V X Y : \Type} (q : X = Y) (u : \Sigma V X) :
+  path-fun (pmap (\lam Z => \Sigma V Z) q) u = (u.1, path-fun q u.2) \elim q
+  | idp => idp
