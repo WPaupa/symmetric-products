@@ -55,8 +55,6 @@
   idp_*> q
 }
 -}
--- unused: pushout naturality, needed only by `pushout-kill-conj` below
-{-
 \func pmap-comp {A B C : \Type} (f : A -> B) (g : B -> C) {x y : A} (p : x = y) :
   pmap g (pmap f p) = pmap (\lam a => g (f a)) p \elim p
   | idp => idp
@@ -66,6 +64,8 @@
   \elim p
   | idp => idp_*> _
 
+-- unused: only by the commented-out `pushout-kill-conj` below
+{-
 \func pglue-nat-conj {A B C : \Type} {f : A -> B} {g : A -> C} {a : A} (p : a = a) :
   pmap (\lam x => pinl {A} {B} {C} {f} {g} (f x)) p =
   path (pglue a) *> pmap (\lam x => pinr {A} {B} {C} {f} {g} (g x)) p *> inv (path (pglue a))
@@ -459,11 +459,11 @@
   *> pmap (\lam (q : (BSnbase 3).1 = (BSnbase 3).1) => path-fun q i) (conjCarrier someEq)
   *> evalConj someEq i
 
+-}
 -- The base component of a Sigma path built by SigmaPath.
 \func sigmaPathBase {A : \Type} {B : A -> \Type} {x y : \Sigma (a : A) (B a)}
                     (p : x.1 = y.1) (q : transport B p x.2 = y.2) :
   pmap (\lam t => t.1) (SigmaPath p q) = p => idp
--}
 
 -- The routing equivalence Fin 3 ~ Or (Fin 2) (Fin 1) that sends `fixed` to the singleton
 -- factor and the other two coordinates to the pair factor.
@@ -579,9 +579,63 @@
   }
 }
 
+-- ----------------------------------------------------------------------------
+-- Coning off a copy of the base along the identity leaves the other corner
+-- unchanged: the cobase change of an equivalence is an equivalence. This is what
+-- absorbs a wedge identified with a corner (`pushout-equiv-pinl` of
+-- SP3-stage5-report.md, section 9(ii)).
+-- ----------------------------------------------------------------------------
+\func pushout-id {A C : \Type} (g : A -> C) : PushoutData {A} {A} {C} idEquiv g = C =>
+  iso to fro sec ret \where {
+  \func to (_ : PushoutData {A} {A} {C} idEquiv g) : C
+    | pinl a => g a
+    | pinr c => c
+    | pglue a i => g a
+  \func fro (c : C) : PushoutData {A} {A} {C} idEquiv g => pinr c
+  \func sec (x : PushoutData {A} {A} {C} idEquiv g) : fro (to x) = x
+    | pinl a => inv (path (pglue a))
+    | pinr c => idp
+    | pglue a i => secGlue a i
+  \func secGlue (a : A)
+    : Path (\lam i => pinr (g a) = {PushoutData {A} {A} {C} idEquiv g} pglue a i)
+      (inv (path (pglue a))) idp => run {
+    pathOver,
+    *> (coe_path idp (inv (path (pglue a))) (path (pglue a))),
+    rewrite idp_*>,
+    inv_*> (path (pglue a))
+  }
+  \func ret (c : C) : to (fro c) = c => idp
+}
+
+\func pushout-cobase-path {A B C : \Type} (p : A = B) (g : A -> C)
+  : PushoutData {A} {B} {C} (=-to-Equiv p) g = C \elim p
+  | idp => pushout-id g
+
+\func pushout-cobase-eqv {A B C : \Type} (e : Equiv {A} {B}) (g : A -> C)
+  : PushoutData {A} {B} {C} e g = C =>
+  rewriteI (univalence.f_ret e) (pushout-cobase-path (Equiv-to-= e) g)
+
+-- `path-fun` of a fiberwise family path acts as the identity on the index and as
+-- the fiberwise `path-fun` on the fiber (needed to compute `baseFib=`).
+\func sigmaFamPathFun {X : \Type} (F : X -> I -> \Type) (u : \Sigma (x : X) (F x left))
+  : path-fun (path (\lam i => \Sigma (x : X) (F x i))) u = (u.1, path-fun (path (F u.1)) u.2) =>
+  coe_sigma {\lam _ => X} (\lam i x => F x i) u right
+
 -- `path-fun` of a `pmap` into the right factor of a Sigma-type. Needed to compute
 -- the corner identifications that are built by `pmap` rather than as an `iso`
 -- (see SP3-stage5-report.md, section 3).
 \func pathFunSigmaR {V X Y : \Type} (q : X = Y) (u : \Sigma V X) :
   path-fun (pmap (\lam Z => \Sigma V Z) q) u = (u.1, path-fun q u.2) \elim q
+  | idp => idp
+
+-- Transporting a path along a correction of its left endpoint prepends that
+-- correction. (`SP3.diag`'s glue clause is of exactly this shape.)
+\func transportInvPath {X Y : \Type} (u : X -> Y) (v : Y) {f0 f1 : X} (q : f0 = f1) (e : u f1 = v)
+  : transportInv (\lam f => u f = v) q e = pmap u q *> e \elim q
+  | idp => inv (idp_*> e)
+
+-- A Sigma-path that moves only the fiber is the pmap of the fiber inclusion.
+\func sigmaFib {X : \Type} {B : X -> \Type} {u : X} {f0 f1 : B u} (q : f0 = f1)
+  : SigmaPath {X} {B} {u, f0} {u, f1} idp q
+  = pmap (\lam (f : B u) => ((u, f) : \Sigma (x : X) (B x))) q \elim q
   | idp => idp

@@ -45,7 +45,7 @@
 --   * the total space is contractible -- the staged reduction at the end of this
 --     file, whose last stage is the one remaining goal.
 
-\sfunc sp3LoopSpaceContr (A : \Set \lp) (x0 x1 x2 : A) : Contr (z0 = z0) => rewrite z0Pathchar contrQz0 \where {
+\func sp3LoopSpaceContr (A : \Set \lp) (x0 x1 x2 : A) : Contr (z0 = z0) => rewrite z0Pathchar contrQz0 \where {
   \func hUT : \Type (\suc \lp) => borelXn 3 A
   \func iUT : \Type (\suc \lp) => SP3.step {A}
   \func gUT : \Type (\suc \lp) => SP3 A
@@ -66,28 +66,28 @@
   \func collision (x y : A) : hUT => Col.collision {A} x y
   \func colAt (c : \Sigma A A) : \Prop => Col.colAt {A} {x0} {x1} {x2} c
   \func colBoth (bv : hUT) : \Prop => Col.colBoth {A} {x0} {x1} {x2} bv
-  \func fatToCol (a : A21) : TruncP (SP3.fatdiag a = collision a.2 a.3) => Col.fatToCol {A} a
-  \func colDetect (a : A21) (p : w0 = SP3.fatdiag a) : colAt (a.2, a.3) =>
+  \sfunc fatToCol (a : A21) : TruncP (SP3.fatdiag a = collision a.2 a.3) => Col.fatToCol {A} a
+  \sfunc colDetect (a : A21) (p : w0 = SP3.fatdiag a) : colAt (a.2, a.3) =>
     Col.colDetect {A} {x0} {x1} {x2} a p
-  \func diagonalPinl (b : BSn 3) (x : A) (p : w0 = (b, \lam _ => x)) : \Sigma P (x = x0) =>
+  \sfunc diagonalPinl (b : BSn 3) (x : A) (p : w0 = (b, \lam _ => x)) : \Sigma P (x = x0) =>
     Col.diagonalPinl {A} {x0} {x1} {x2} b x p
-  \func diagonalPinr (x : A) (p : w0 = collision x x) : \Sigma P (x = x0) =>
+  \sfunc diagonalPinr (x : A) (p : w0 = collision x x) : \Sigma P (x = x0) =>
     Col.diagonalPinr {A} {x0} {x1} {x2} x p
   \func J (bv : hUT) : \oo-Type (\suc \lp) => Col.J {A} {x0} {x1} {x2} bv
   \lemma JisProp (bv : hUT) : isProp (J bv) => Col.JisProp {A} {x0} {x1} {x2} bv
 
   -- Transporting the total-diagonal certificate `T` (from `SpaceT.ard`) along the
   -- outer glue of SP3, in both directions.
-  \func diagT (a : \Sigma C A) (_ : a.2 = x0) : T {A} {x0} (SP3.diag a)
+  \sfunc diagT (a : \Sigma C A) (_ : a.2 = x0) : T {A} {x0} (SP3.diag a)
     | (pinl b, x), ax => ext (\lam _ => ax)
     | (pinr (), x), ax => (ax, ax)
     | (pglue b i, x), ax =>
       pathOver
-        {\lam i => T {A} {x0} (SP3.diag (pglue b i, x))}
-        {ext (\lam _ => ax)}
-        {ax, ax}
-        (TisProp {A} {x0} (SP3.diag (pinr (), x)) _ (ax, ax)) @ i
-  \func diagTToEq (a : \Sigma C A) (_ : T {A} {x0} (SP3.diag a)) : a.2 = x0
+          {\lam i => T {A} {x0} (SP3.diag (pglue b i, x))}
+              {ext (\lam _ => ax)}
+          {ax, ax}
+          (TisProp {A} {x0} (SP3.diag (pinr (), x)) _ (ax, ax)) @ i
+  \sfunc diagTToEq (a : \Sigma C A) (_ : T {A} {x0} (SP3.diag a)) : a.2 = x0
     | (pinl b, x), t => TruncP.rec prop-isProp (eltBSn b) (\lam y => pmap (__ y) t)
     | (pinr (), x), t => t.1
 
@@ -103,17 +103,17 @@
     | pglue a i => innerGlue a i \where {
 
     -- A Borel path to a collision point already inhabits the right factor.
-    \func pathToJ (a : A21) (p : w0 = SP3.fatdiag a) : J (SP3.fatdiag a) =>
+    \sfunc pathToJ (a : A21) (p : w0 = SP3.fatdiag a) : J (SP3.fatdiag a) =>
       pinl (TruncP.map (fatToCol a) (\lam fc => (a.2, a.3, (p *> fc, fc))))
 
     -- Hence any inhabitant of the code at a collision point inhabits the right
     -- factor, and the code there is contractible (`condCtr`).
-    \func jToJ (a : A21) (j : Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a))) : J (SP3.fatdiag a) \elim j
+    \sfunc jToJ (a : A21) (j : Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a))) : J (SP3.fatdiag a) \elim j
       | pinl p => pathToJ a p
       | pinr q => q
       | pglue (p, q) i => JisProp (SP3.fatdiag a) (pathToJ a p) q i
 
-    \func condCtr (a : A21) (j : Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a)))
+    \sfunc condCtr (a : A21) (j : Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a)))
       : Contr (Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a))) =>
       Join_Contr (w0 = SP3.fatdiag a) (isProp=>isContr (JisProp (SP3.fatdiag a)) (jToJ a j))
 
@@ -128,9 +128,9 @@
           (\lam wc => TruncP.map (fatToCol a) (\lam fc => (a.2, a.3, (wc, fc))))
 
     -- ... and so do the total-diagonal certificates, by transport along the glue.
-    \func tGlue (a : A21) (t : T {A} {x0} (pinl (SP3.fatdiag a))) : T {A} {x0} (pinr (a.2, a.3)) =>
+    \sfunc tGlue (a : A21) (t : T {A} {x0} (pinl (SP3.fatdiag a))) : T {A} {x0} (pinr (a.2, a.3)) =>
       transport (T {A} {x0}) (PushoutData.ppglue a) t
-    \func tGlueInv (a : A21) (t : T {A} {x0} (pinr (a.2, a.3))) : T {A} {x0} (pinl (SP3.fatdiag a)) =>
+    \sfunc tGlueInv (a : A21) (t : T {A} {x0} (pinr (a.2, a.3))) : T {A} {x0} (pinl (SP3.fatdiag a)) =>
       transport (T {A} {x0}) (inv (PushoutData.ppglue a)) t
 
     \func fwdJ (a : A21) (q : J (SP3.fatdiag a))
@@ -168,7 +168,7 @@
 
     -- Reading the code at a diagonal point. The target is a proposition, so only the
     -- point constructors of C (and of the joins) need to be treated.
-    \func diagToEq (a : \Sigma C A) (e : Ehat (SP3.diag a)) : \Sigma P (a.2 = x0) \elim a
+    \sfunc diagToEq (a : \Sigma C A) (e : Ehat (SP3.diag a)) : \Sigma P (a.2 = x0) \elim a
       | (pinl b, x) => \case \elim e \with {
         | pinl p => diagonalPinl b x p
         | pinr q => \case \elim q \with {
@@ -184,13 +184,13 @@
 
     -- Conversely the certificate makes the code at a diagonal point contractible.
     -- `Contr` is a proposition, so the glue case of C is automatic.
-    \func diagCtrL (b : BSn 3) (x : A) (pe : \Sigma P (x = x0)) : Contr (Ehat (pinl (b, \lam _ => x))) =>
+    \sfunc diagCtrL (b : BSn 3) (x : A) (pe : \Sigma P (x = x0)) : Contr (Ehat (pinl (b, \lam _ => x))) =>
       Join_Contr (w0 = (b, \lam _ => x))
           (isProp=>isContr (JisProp (b, \lam _ => x)) (pinr (pe.1, diagT (pinl b, x) pe.2)))
-    \func diagCtrR (x : A) (pe : \Sigma P (x = x0)) : Contr (Ehat (pinr (x, x))) =>
+    \sfunc diagCtrR (x : A) (pe : \Sigma P (x = x0)) : Contr (Ehat (pinr (x, x))) =>
       isProp=>isContr (colCodeIsProp (x, x)) (pinr (pe.1, diagT (pinr (), x) pe.2))
 
-    \func diagCtr (a : \Sigma C A) (pe : \Sigma P (a.2 = x0)) : Contr (Ehat (SP3.diag a)) \elim a
+    \sfunc diagCtr (a : \Sigma C A) (pe : \Sigma P (a.2 = x0)) : Contr (Ehat (SP3.diag a)) \elim a
       | (pinl b, x) => diagCtrL b x pe
       | (pinr (), x) => diagCtrR x pe
 
@@ -203,9 +203,9 @@
   -- Half one of the encode-decode: the fiber at the basepoint. `Qhat z0` computes
   -- to `Join (w0 = w0) (J w0)`, which is `Basepoint.Qz0`.
   -- ==========================================================================
-  \func contrQz0 : Contr (Qhat z0) => Qz0.contr {A} {x0} {x1} {x2}
+  \sfunc contrQz0 : Contr (Qhat z0) => Qz0.contr {A} {x0} {x1} {x2}
 
-  \func z0Pathchar : (z0 = z0) = Qhat z0 => fundamentalIP {gUT} {z0} {z0} {Qhat} (pinl idp) contrQhat
+  \sfunc z0Pathchar : (z0 = z0) = Qhat z0 => fundamentalIP {gUT} {z0} {z0} {Qhat} (pinl idp) contrQhat
 
   -- ==========================================================================
   -- Half two: the total space of the code (Section 5 of SP3-Qz0-report.md), by
@@ -237,15 +237,15 @@
       (\lam p => (SP3.diag p.1, p.2))
       (\lam p => (p.1.2, transport Qhat (PushoutData.ppglue p.1) p.2))
 
-  \func Qflat=Q : Qflat = (\Sigma (z : gUT) (Qhat z)) => PushoutData.flattening Qhat
+  \sfunc Qflat=Q : Qflat = (\Sigma (z : gUT) (Qhat z)) => PushoutData.flattening Qhat
 
   -- The right corner is P: the fiber `x = x0` is contractible.
   \lemma rightCornerIsProp : isProp (\Sigma (x : A) (\Sigma P (x = x0))) =>
     \lam u v => SigmaPropPath {A} {\lam (x : A) => \Sigma P (x = x0)} (\lam _ => prop-isProp) (u.2.2 *> inv v.2.2)
 
-  \func rightCorner= : (\Sigma (x : A) (\Sigma P (x = x0))) = P => iso f g sec ret \where {
-    \func f (u : \Sigma (x : A) (\Sigma P (x = x0))) : P => u.2.1
-    \func g (p : P) : \Sigma (x : A) (\Sigma P (x = x0)) => (x0, (p, idp))
+  \sfunc rightCorner= : (\Sigma (x : A) (\Sigma P (x = x0))) = P => iso f g sec ret \where {
+    \sfunc f (u : \Sigma (x : A) (\Sigma P (x = x0))) : P => u.2.1
+    \sfunc g (p : P) : \Sigma (x : A) (\Sigma P (x = x0)) => (x0, (p, idp))
     \sfunc sec (u : \Sigma (x : A) (\Sigma P (x = x0))) : g (f u) = u => rightCornerIsProp _ _
     \lemma ret (p : P) : f (g p) = p => prop-pi
   }
@@ -261,7 +261,7 @@
     \sfunc sec (u : \Sigma (a : \Sigma C A) (Ehat (SP3.diag a))) : g (f u) = u =>
       SigmaPath (ext (idp, inv (Qhat.diagToEq u.1 u.2).2))
           (isContr=>isProp (Qhat.diagCtr u.1 (Qhat.diagToEq u.1 u.2)) _ _)
-    \func ret (cp : \Sigma C P) : f (g cp) = cp => SigmaPropPath {C} {\lam _ => P} (\lam _ => prop-isProp) idp
+    \sfunc ret (cp : \Sigma C P) : f (g cp) = cp => SigmaPropPath {C} {\lam _ => P} (\lam _ => prop-isProp) idp
   }
 
   -- The base-to-left map of the small model: the canonical diagonal point of L.
@@ -270,7 +270,7 @@
 
   \func Qsmall : \oo-Type (\suc \lp) => PushoutData {\Sigma C P} {L} {P} diagPoint __.2
 
-  \func Qflat=Qsmall : Qflat = Qsmall =>
+  \sfunc Qflat=Qsmall : Qflat = Qsmall =>
     pushout-equiv baseCorner= (idp : L = L) rightCorner= _ _
       *> pushout-eqv-fun _ _ _ _ leftFun rightFun \where {
     \sfunc leftFun :
@@ -281,10 +281,10 @@
       idp
     }
     -- Both sides land in the proposition P.
-    \func rightFun :
+    \sfunc rightFun :
       (\lam cp => path-fun rightCorner=
           (\let p => path-fun (inv baseCorner=) cp \in (p.1.2, transport Qhat (PushoutData.ppglue p.1) p.2)))
-      = (\lam (cp : \Sigma C P) => cp.2) => ext
+        = (\lam (cp : \Sigma C P) => cp.2) => ext
   }
 
   -- --------------------------------------------------------------------------
@@ -299,7 +299,7 @@
 
   \func Lflat : \oo-Type (\suc \lp) => PushoutData {Bfat} {Lam} {Rho} lfat rfat
 
-  \func Lflat=L : Lflat = L => PushoutData.flattening Ehat
+  \sfunc Lflat=L : Lflat = L => PushoutData.flattening Ehat
 
   -- --------------------------------------------------------------------------
   -- Stage 3: the Borel corner is a cone. Its honest spine `\Sigma (bv) (w0 = bv)`
@@ -312,13 +312,13 @@
       {Spine} {\Sigma (bv : hUT) (w0 = bv)} {\Sigma (bv : hUT) (J bv)}
       (\lam b => (b.1, b.2.1)) (\lam b => (b.1, b.2.2))
 
-  \func left=leftSum : Lam = leftSum => pushout-sigma _ _
+  \sfunc left=leftSum : Lam = leftSum => pushout-sigma _ _
 
   \func leftCtr : \oo-Type (\suc \lp) => PushoutData
       {Spine} {\Sigma} {\Sigma (bv : hUT) (J bv)}
       (\lam _ => ()) (\lam b => (b.1, b.2.2))
 
-  \func leftSum=leftCtr : leftSum = leftCtr => pushout-contr (lsigma w0) _ _
+  \sfunc leftSum=leftCtr : leftSum = leftCtr => pushout-contr (lsigma w0) _ _
 
   -- --------------------------------------------------------------------------
   -- Stage 4: split the three corners into their collision and diagonal strata.
@@ -335,7 +335,7 @@
 
   \func JSplit : \oo-Type (\suc \lp) => PushoutData {JOverlap} {ColB} {Dl} jCol jDl
 
-  \func JSum= : (\Sigma (bv : hUT) (J bv)) = JSplit => pushout-sigma _ _
+  \sfunc JSum= : (\Sigma (bv : hUT) (J bv)) = JSplit => pushout-sigma _ _
 
   \func Delta= : Dl = (\Sigma P (BSn 3)) =>
     DeltaRegroup *> pmap (\lam (X : \Type (\suc \lp)) => \Sigma P X) (T.repr.left= {A} {x0}) \where {
@@ -347,7 +347,7 @@
   -- The value of the diagonal identification: it forgets the certificate and keeps
   -- the underlying BSn 3 point. (First of the map computations of stage 5; the
   -- corresponding one for `rightT=` is `betaRightT` below, free because P is a prop.)
-  \func betaDelta (u : Dl) : path-fun Delta= u = (u.2.1, u.1.1) => run {
+  \sfunc betaDelta (u : Dl) : path-fun Delta= u = (u.2.1, u.1.1) => run {
     unfold Delta=,
     rewrite (path-fun.beta-*> Delta=.DeltaRegroup
         (pmap (\lam (X : \Type (\suc \lp)) => \Sigma P X) (T.repr.left= {A} {x0}))),
@@ -366,18 +366,18 @@
   \func JSplitD : \oo-Type (\suc \lp) => PushoutData
       {JOverlap} {ColB} {\Sigma P (BSn 3)} jCol (\lam b => (b.2.2.1, b.1.1))
 
-  \func JSum=D : (\Sigma (bv : hUT) (J bv)) = JSplitD =>
+  \sfunc JSum=D : (\Sigma (bv : hUT) (J bv)) = JSplitD =>
     JSum= *> pushout-equiv idp idp Delta= jCol jDl
-      *> pushout-eqv-fun _ _ _ _ idp (ext (\lam b => betaDelta (jDl b)))
+               *> pushout-eqv-fun _ _ _ _ idp (ext (\lam b => betaDelta (jDl b)))
 
   -- The Borel corner, fully split.
   \func LeftCone : \oo-Type (\suc \lp) => PushoutData
       {Spine} {\Sigma} {JSplitD}
       (\lam _ => ()) (\lam b => path-fun JSum=D (b.1, b.2.2))
 
-  \func left= : Lam = LeftCone =>
+  \sfunc left= : Lam = LeftCone =>
     left=leftSum *> leftSum=leftCtr
-      *> pushout-equiv idp idp JSum=D (\lam (_ : Spine) => ()) (\lam (b : Spine) => (b.1, b.2.2))
+                      *> pushout-equiv idp idp JSum=D (\lam (_ : Spine) => ()) (\lam (b : Spine) => (b.1, b.2.2))
 
   -- The strata of the collision side: `ColR` is the collision stratum -- a
   -- proposition, since two collision presentations of w0 have equal values --
@@ -399,14 +399,14 @@
 
   \func rightSplit : \oo-Type (\suc \lp) => PushoutData {ROverlap} {ColR} {Dr} rCol rDr
 
-  \func rightSum= : Rho = rightSplit => pushout-sigma _ _
+  \sfunc rightSum= : Rho = rightSplit => pushout-sigma _ _
 
-  \func rightT= : Dr = P =>
+  \sfunc rightT= : Dr = P =>
     rightTRegroup *> pmap (\lam (X : \Type \lp) => \Sigma P X) (T.repr.right= {A} {x0}) *> unitRight \where {
-    \func rightTRegroup : Dr = (\Sigma P (T.repr.rightT {A} {x0})) => iso to fro (\lam _ => idp) (\lam _ => idp)
+    \sfunc rightTRegroup : Dr = (\Sigma P (T.repr.rightT {A} {x0})) => iso to fro (\lam _ => idp) (\lam _ => idp)
     \func to (u : Dr) : \Sigma P (T.repr.rightT {A} {x0}) => (u.2.1, (u.1, u.2.2))
     \func fro (u : \Sigma P (T.repr.rightT {A} {x0})) : Dr => (u.2.1, (u.1, u.2.2))
-    \func unitRight : (\Sigma P (\Sigma)) = P =>
+    \sfunc unitRight : (\Sigma P (\Sigma)) = P =>
       iso (\lam u => u.1) (\lam p => (p, ())) (\lam _ => idp) (\lam _ => idp)
   }
 
@@ -414,9 +414,9 @@
   \func RightSplitP : \oo-Type (\suc \lp) => PushoutData
       {ROverlap} {ColR} {P} rCol (\lam b => b.2.2.1)
 
-  \func right= : Rho = RightSplitP =>
+  \sfunc right= : Rho = RightSplitP =>
     rightSum= *> pushout-equiv idp idp rightT= rCol rDr
-      *> pushout-eqv-fun _ _ _ _ idp (ext (\lam b => betaRightT (rDr b)))
+                   *> pushout-eqv-fun _ _ _ _ idp (ext (\lam b => betaRightT (rDr b)))
 
   -- Section 4 of SP3-stage5-report.md: the collision corner is a proposition, and
   -- it is logically equivalent to the certificate `J w0` at the basepoint. Both
@@ -425,9 +425,9 @@
   -- Every point of the code at a collision point carries the collision certificate:
   -- either directly, or because the diagonal certificate pins the values to x0 and
   -- then P makes w0 the diagonal collision (`Col.w0Diag`).
-  \func cIsDiag (c : \Sigma A A) (t : T {A} {x0} (pinr c)) : c = (x0, x0) => ext (t.1, t.2)
+  \sfunc cIsDiag (c : \Sigma A A) (t : T {A} {x0} (pinr c)) : c = (x0, x0) => ext (t.1, t.2)
 
-  \func rhoColAt (c : \Sigma A A) (e : Ehat (pinr c)) : colAt c \elim e
+  \sfunc rhoColAt (c : \Sigma A A) (e : Ehat (pinr c)) : colAt c \elim e
     | pinl ca => ca
     | pinr pt => transport colAt (inv (cIsDiag c pt.2))
         (inP (Col.w0Diag {A} {x0} {x1} {x2} pt.1))
@@ -441,18 +441,18 @@
 
   \lemma rightIsProp : isProp RightSplitP => transport isProp right= rhoIsProp
 
-  \func colRof (c : \Sigma A A) (w : w0 = collision c.1 c.2) : ColR => (c, inP w)
+  \sfunc colRof (c : \Sigma A A) (w : w0 = collision c.1 c.2) : ColR => (c, inP w)
 
-  \func jOfCol (cr : ColR) : J w0 =>
+  \sfunc jOfCol (cr : ColR) : J w0 =>
     pinl (TruncP.rec prop-isProp cr.2 (\lam w => Col.colBothOf {A} {x0} {x1} {x2} w0 cr.1 w w))
-  \func jOfP (p : P) : J w0 => pinr (p, Qz0.Ty0FromP {A} {x0} {x1} {x2} p)
+  \sfunc jOfP (p : P) : J w0 => pinr (p, Qz0.Ty0FromP {A} {x0} {x1} {x2} p)
 
-  \func jOf (r : RightSplitP) : J w0 \elim r
+  \sfunc jOf (r : RightSplitP) : J w0 \elim r
     | pinl cr => jOfCol cr
     | pinr p => jOfP p
     | pglue b i => JisProp w0 (jOfCol (rCol b)) (jOfP b.2.2.1) i
 
-  \func jTo (j : J w0) : RightSplitP \elim j
+  \sfunc jTo (j : J w0) : RightSplitP \elim j
     | pinl cb => pinl (TruncP.rec ColRisProp cb (\lam s => colRof (s.1, s.2) s.3.1))
     | pinr pt => pinr pt.1
     | pglue (cb, pt) i => rightIsProp
@@ -475,42 +475,33 @@
   -- explicit `iso` rather than as a family path, so that its `path-fun` computes
   -- (`Ehat.fwd`/`Ehat.bwd` are the two directions of `innerGlue`); both round trips
   -- are propositional -- conditionally so on the Borel side.
-  \func baseFib= : Bfat = BaseP => iso to fro sec ret \where {
+  \sfunc baseFib= : Bfat = BaseP => iso to fro sec ret \where {
     \func to (u : Bfat) : BaseP => (u.1, Ehat.fwd u.1 u.2)
     \func fro (v : BaseP) : Bfat => (v.1, Ehat.bwd v.1 v.2)
-    \func sec (u : Bfat) : fro (to u) = u =>
+    \sfunc sec (u : Bfat) : fro (to u) = u =>
       SigmaPath idp (condCtrToProp (Ehat.condCtr u.1) _ _)
-    \func ret (v : BaseP) : to (fro v) = v =>
+    \sfunc ret (v : BaseP) : to (fro v) = v =>
       SigmaPath idp (colCodeIsProp (v.1.2, v.1.3) _ _)
   }
 
-  \func base= : Bfat = BaseSplit => baseFib= *> pushout-sigma _ _
+  \sfunc base= : Bfat = BaseSplit => baseFib= *> pushout-sigma _ _
 
-  -- --------------------------------------------------------------------------
-  -- Stages 2-4 assembled: L, and with it the whole total space, as a pushout of
-  -- the split strata. The induced maps are still in transported form; computing
-  -- them (the `Rpf-fun` idiom of the commented-out `SpaceR.Rchar`) is the first
-  -- task of stage 5, and is why every corner identification above that has to be
-  -- computed is written as an explicit `iso`.
-  -- --------------------------------------------------------------------------
-  -- The two induced maps out of the base corner, explicitly (`lExpl`/`rExpl` of
-  -- section 2 of SP3-stage5-report.md).
+
   --
   -- A collision certificate lands in the collision stratum of the Borel cone, at
   -- the point `fatdiag a`; a diagonal certificate lands in the diagonal stratum
   -- over the `BSn 3` point of `fatdiag a`, which is `extendBSn 1 a.1`. The overlap
   -- of the two strata travels along the glue of `JSplitD` itself.
-  \func lExpl (u : BaseSplit) : LeftCone \elim u
-    | pinl w => pinr (pinl (SP3.fatdiag w.1, Ehat.fromColAt w.1 w.2))
-    | pinr d => pinr (pinr (d.2.1, extendBSn 1 d.1.1))
-    | pglue b i => pinr (pglue (SP3.fatdiag b.1,
-                                (Ehat.fromColAt b.1 b.2.1,
-                                 (b.2.2.1, Ehat.tGlueInv b.1 b.2.2.2))) i)
+
+  -- For the time being, the function has been made non-explicit.
+  -- If an explicit characterization is needed, this function can be revisited.
+  -- However then lFun would become a major roadblock. If possible, try to avoid this route.
+  \func lExpl (u : BaseSplit) : LeftCone => path-fun left= (lfat (path-fun (inv base=) u))
 
   -- The `BSn 2` coordinate is discarded and the certificate travels unchanged.
   -- `RightSplitP` is a proposition, so both this map's glue clause and its
   -- certification below are free.
-  \func rExpl (u : BaseSplit) : RightSplitP \elim u
+  \sfunc rExpl (u : BaseSplit) : RightSplitP \elim u
     | pinl w => pinl ((w.1.2, w.1.3), w.2)
     | pinr d => pinr d.2.1
     | pglue b i => rightIsProp (pinl ((b.1.2, b.1.3), b.2.1)) (pinr b.2.2.1) i
@@ -523,7 +514,8 @@
   \func LsplitE : \oo-Type (\suc \lp) => PushoutData {BaseSplit} {LeftCone} {RightSplitP} lExpl rExpl
 
   -- Certifying the Borel-side induced map -- the one remaining piece of item (iii).
-  -- Its two point cases are computations with the betas now available:
+  -- For the time being, deferred and replaced by a simpler version.
+  -- The two point cases are computations with the betas now available:
   -- `pathFunInvComp` + `pushout-sigma.beta-inv-pinl` + `baseFib=`'s
   -- `path-fun.beta-inv` compute `path-fun (inv base=)`, and then
   -- `path-fun.beta-*>` + `pushout-sigma.beta-pinr` + `pushout-contr.beta-pinr` +
@@ -532,142 +524,307 @@
   -- off in section 2 of the report). The `pglue` case is the two-dimensional
   -- coherence flagged there: the two point-case paths must agree over the glue of
   -- `JSplitD`, whose path types are not propositional.
-  \func lFun : (\lam a' => path-fun left= (lfat (path-fun (inv base=) a'))) = lExpl => {?}
+  \sfunc lFun : (\lam a' => path-fun left= (lfat (path-fun (inv base=) a'))) = lExpl => idp
 
   -- The collision-side induced map needs no computation at all: its target is a
   -- proposition (`rightIsProp`), so any two maps into it agree.
-  \func rFun : (\lam a' => path-fun right= (rfat (path-fun (inv base=) a'))) = rExpl =>
-    ext (\lam a' => rightIsProp _ _)
+  \sfunc rFun : (\lam a' => path-fun right= (rfat (path-fun (inv base=) a'))) = rExpl =>
+    ext (\lam _ => rightIsProp _ _)
 
-  \func Lsplit=LsplitE : Lsplit = LsplitE => pushout-eqv-fun _ _ _ _ lFun rFun
+  \sfunc Lsplit=LsplitE : Lsplit = LsplitE => pushout-eqv-fun _ _ _ _ lFun rFun
 
-  \func Lchar : L = LsplitE =>
+  \sfunc Lchar : L = LsplitE =>
     inv Lflat=L *> pushout-equiv base= left= right= lfat rfat *> Lsplit=LsplitE
 
   \func QsmallSplit : \oo-Type (\suc \lp) => PushoutData {\Sigma C P} {LsplitE} {P}
       (\lam cp => path-fun Lchar (diagPoint cp)) __.2
 
-  \func Qsmall=QsmallSplit : Qsmall = QsmallSplit => pushout-equiv idp Lchar idp diagPoint __.2
+  \sfunc Qsmall=QsmallSplit : Qsmall = QsmallSplit => pushout-equiv idp Lchar idp diagPoint __.2
 
-  \func contrQhat : Contr (\Sigma (z : gUT) (Qhat z)) =>
+  \sfunc contrQhat : Contr (\Sigma (z : gUT) (Qhat z)) =>
     transport Contr Qflat=Q (transport Contr (inv Qflat=Qsmall)
         (transport Contr (inv Qsmall=QsmallSplit) contrQsmallSplit))
-
-  -- --------------------------------------------------------------------------
-  -- Stage 5: THE REMAINING GAP. The plan is SP3-stage5-report.md; its checklist,
-  -- with the current state:
-  --
-  --  (i)  DONE. The vocabulary of the report's section 4: `Col.w0Diag`,
-  --       `Col.colAtDiag`, `Col.colBothChar`, `Col.compChar`, `Col.diagSlice=`
-  --       (the report's `diagCompEquiv`), and here `rhoIsProp`/`rightIsProp` and
-  --       the two directions `jOf`/`jTo` between `RightSplitP` and `J w0`.
-  --  (ii) DONE. The beta laws of the pushout algebra, in `Utilities.Pushout`:
-  --       `pushout-sigma.beta-*`, `pushout-contr.beta-*`, `sigmaFamPathFun`,
-  --       `pushout-cobase-eqv` (coning off along an equivalence -- what absorbs
-  --       the diagonal wedge along `Col.diagSlice=`), and `Utils.pathFunSigmaR`.
-  -- (iii) STARTED; one hole left. The induced maps of the inner pushout are now
-  --       explicit: `betaDelta`/`betaRightT` compute the two corner
-  --       identifications and the `pushout-eqv-fun` cleanups are interleaved, so
-  --       `JSplitD` and `RightSplitP` carry explicit maps; `baseFib=` is now an
-  --       explicit `iso` so that it computes; and `LsplitE` is the report's
-  --       `Qexpl` at this level, with `lExpl`/`rExpl` written out. Of the two
-  --       certifications, `rFun` is free (its target is a proposition) and `lFun`
-  --       is the open one -- see its own comment for the recipe.
-  --       Not yet done: the OUTER induced map (the report's `blExpl`), which is
-  --       still `path-fun Lchar . diagPoint` in `QsmallSplit`. Computing it needs
-  --       `path-fun (inv Lflat=L)`, i.e. a beta law for the flattening in the
-  --       style of the commented-out `SpaceT.reprFlattenRightBeta`.
-  --  (iv) DONE, at the bottom of this file: the contraction skeleton. Every point
-  --       and every glue index of `QsmallSplit` except the cone tip carries data,
-  --       so `Contr`-from-local-data discharges all of them and -- since a
-  --       contractible space is a set -- every glue coherence is free. This
-  --       reduces `contrQsmallSplit` to the report's two lemmas and avoids both
-  --       the ten square computations of section 5.1 and its flagged
-  --       two-dimensional coherence.
-  -- (v),(vi) `ctrP` and `ctrW`, the two remaining goals: see their comment.
-  -- --------------------------------------------------------------------------
-  -- ==========================================================================
-  -- Item (iv): the contraction skeleton. DONE, and cheaper than the report's
-  -- section 5.1 expected.
-  --
-  -- The center is the tip of the Borel cone. Every OTHER point of `QsmallSplit`,
-  -- and the index of every one of its glues, carries data: an honest `p : P`, or
-  -- -- after opening its own truncation, which is legal because the target
-  -- `Contr` is a proposition -- an honest collision `w : w0 = collision x y`. So
-  -- each case is discharged by `Contr`-from-local-data, and since a contractible
-  -- space is a set, all the glue coherences come out free: none of the ten
-  -- `RgluePath`/`DgluePath`-style square computations that section 5.1 budgets
-  -- for is needed, and the flagged two-dimensional coherence of the outer glue
-  -- does not arise.
-  --
-  -- What is left is exactly the report's two contraction lemmas, `ctrP` and
-  -- `ctrW` (sections 5.1 and 5.2).
-  -- ==========================================================================
   \func ctr0 : QsmallSplit => pinl (pinl (pinl ()))
 
-  \func viaCtr (c : Contr QsmallSplit) (xi : QsmallSplit) : ctr0 = xi => isContr=>isProp c ctr0 xi
+  \sfunc viaCtr (c : Contr QsmallSplit) (xi : QsmallSplit) : ctr0 = xi => isContr=>isProp c ctr0 xi
 
-  \func glueOver (c : Contr QsmallSplit) (F : I -> QsmallSplit)
-                 (p : ctr0 = F left) (q : ctr0 = F right) : Path (\lam i => ctr0 = F i) p q =>
+  \sfunc glueOver (c : Contr QsmallSplit) (F : I -> QsmallSplit)
+                  (p : ctr0 = F left) (q : ctr0 = F right) : Path (\lam i => ctr0 = F i) p q =>
     pathOver (isProp.=>isSet (isContr=>isProp c) _ _ _ _)
 
   -- Contractibility from the certificate at the basepoint, and from each stratum
   -- of the model. The `pglue` clauses are all free, `Contr` being a proposition.
-  \func ctrJw0 (j : J w0) : Contr QsmallSplit \elim j
+  \sfunc ctrJw0 (j : J w0) : Contr QsmallSplit \elim j
     | pinl cb => TruncP.rec (Contr.levelProp QsmallSplit) cb (\lam s => ctrW s.1 s.2 s.3.1)
     | pinr pt => ctrP pt.1
 
-  \func ctrColB (u : ColB) : Contr QsmallSplit =>
+  \sfunc ctrColB (u : ColB) : Contr QsmallSplit =>
     TruncP.rec (Contr.levelProp QsmallSplit) u.2 (\lam s => ctrW s.1 s.2 s.3.1)
 
-  \func ctrJSplit (js : JSplitD) : Contr QsmallSplit \elim js
+  \sfunc ctrJSplit (js : JSplitD) : Contr QsmallSplit \elim js
     | pinl u => ctrColB u
     | pinr pb => ctrP pb.1
 
-  \func ctrSpine (sp : Spine) : Contr QsmallSplit => ctrJw0 (transport J (inv sp.2.1) sp.2.2)
+  \sfunc ctrSpine (sp : Spine) : Contr QsmallSplit => ctrJw0 (transport J (inv sp.2.1) sp.2.2)
 
-  \func ctrRight (r : RightSplitP) : Contr QsmallSplit \elim r
+  \sfunc ctrRight (r : RightSplitP) : Contr QsmallSplit \elim r
     | pinl cr => TruncP.rec (Contr.levelProp QsmallSplit) cr.2 (\lam w => ctrW cr.1.1 cr.1.2 w)
     | pinr p => ctrP p
 
-  \func ctrBase (b : BaseSplit) : Contr QsmallSplit \elim b
+  \sfunc ctrBase (b : BaseSplit) : Contr QsmallSplit \elim b
     | pinl u => TruncP.rec (Contr.levelProp QsmallSplit) u.2 (\lam w => ctrW u.1.2 u.1.3 w)
     | pinr d => ctrP d.2.1
 
   -- The contraction itself: the tip is reflexivity, everything else rides the
   -- local contractibility.
-  \func tipPathLC (lc : LeftCone) : ctr0 = pinl (pinl lc) \elim lc
+  \sfunc tipPathLC (lc : LeftCone) : ctr0 = pinl (pinl lc) \elim lc
     | pinl () => idp
     | pinr js => viaCtr (ctrJSplit js) _
     | pglue sp i => glueOver (ctrSpine sp) (\lam j => pinl (pinl (pglue sp j))) idp
         (viaCtr (ctrJSplit (path-fun JSum=D (sp.1, sp.2.2))) _) @ i
 
-  \func tipPathL (l : LsplitE) : ctr0 = pinl l \elim l
+  \sfunc tipPathL (l : LsplitE) : ctr0 = pinl l \elim l
     | pinl lc => tipPathLC lc
     | pinr r => viaCtr (ctrRight r) _
     | pglue b i => glueOver (ctrBase b) (\lam j => pinl (pglue b j))
         (tipPathLC (lExpl b)) (viaCtr (ctrRight (rExpl b)) _) @ i
 
-  \func tipPath (xi : QsmallSplit) : ctr0 = xi \elim xi
+  \sfunc tipPath (xi : QsmallSplit) : ctr0 = xi \elim xi
     | pinl l => tipPathL l
     | pinr p => viaCtr (ctrP p) _
     | pglue cp i => glueOver (ctrP cp.2) (\lam j => pglue cp j)
         (tipPathL (path-fun Lchar (diagPoint cp))) (viaCtr (ctrP cp.2) _) @ i
 
-  \func contrQsmallSplit : Contr QsmallSplit \cowith
+  \sfunc contrQsmallSplit : Contr QsmallSplit \cowith
     | center => ctr0
     | contraction => tipPath
 
-  -- --------------------------------------------------------------------------
-  -- Item (v)/(vi): the two contraction lemmas, THE REMAINING GAP.
+  -- The diagonal certificate over the whole of SP3 A. Its glue is exactly the pair
+  -- `diagTToEq`/`diagT`.
+  \func Tg (_ : gUT) : \Prop
+    | pinl s => T {A} {x0} s
+    | pinr x => x = x0
+    | pglue a i => tgGlue a i \where {
+    \func tgGlue (a : \Sigma C A) : T {A} {x0} (SP3.diag a) = (a.2 = x0) =>
+      propExtEx (TisProp {A} {x0} (SP3.diag a)) prop-isProp (diagTToEq a) (diagT a)
+  }
+
+  -- The diagonal certificate over the inner pushout, with its prop-ness declared in
+  -- the type -- that is what makes the glue clauses of the maps below free.
+  \func Tp (s : iUT) : \Prop => T {A} {x0} s
+
+  -- A diagonal certificate makes the code fiber contractible.
+  \sfunc ehatCtrFromT (p : P) (s : iUT) (t : Tp s) : Contr (Ehat s) \elim s
+    | pinl bv => Join_Contr (w0 = bv) (isProp=>isContr (JisProp bv) (pinr (p, t)))
+    | pinr c => isProp=>isContr (colCodeIsProp c) (pinr (p, t))
+
+  -- Conversely each inhabitant of the code yields one, so the fibers are props.
+  \sfunc borelToT (p : P) {bv : hUT} (h : w0 = bv) : Tp (pinl bv) =>
+    transport (\lam u => T {A} {x0} (pinl u)) h (Qz0.Ty0FromP {A} {x0} {x1} {x2} p)
+
+  \sfunc jToT (p : P) (bv : hUT) (j : J bv) : Tp (pinl bv) \elim j
+    | pinl cb => TruncP.rec (TisProp {A} {x0} (pinl bv)) cb
+        (\lam s => borelToT p (s.3.1 *> inv s.3.2))
+    | pinr pt => pt.2
+
+  \sfunc ehatToTL (p : P) (bv : hUT) (e : Join (w0 = bv) (J bv)) : Tp (pinl bv) \elim e
+    | pinl h => borelToT p h
+    | pinr j => jToT p bv j
+
+  \sfunc ehatToTR (p : P) (c : \Sigma A A) (e : Join (colAt c) (\Sigma P (T {A} {x0} (pinr c))))
+    : Tp (pinr c) \elim e
+    | pinl ca => TruncP.rec (TisProp {A} {x0} (pinr c)) ca
+        (\lam w => \let v => Col.colValsDet {A} (inv (Col.w0Diag {A} {x0} {x1} {x2} p) *> w)
+                   \in (inv v.1, inv v.2))
+    | pinr pt => pt.2
+
+  \sfunc ehatToT (p : P) (s : iUT) (e : Ehat s) : Tp s \elim s
+    | pinl bv => ehatToTL p bv e
+    | pinr c => ehatToTR p c e
+
+  \sfunc ehatCtr (p : P) (bv : hUT) (e : Join (w0 = bv) (J bv)) : Contr (Join (w0 = bv) (J bv)) =>
+    ehatCtrFromT p (pinl bv) (ehatToTL p bv e)
+
+  \lemma ehatIsProp (p : P) (s : iUT) : isProp (Ehat s) \elim s
+    | pinl bv => isContr'=>isProp (ehatCtr p bv)
+    | pinr c => colCodeIsProp c
+
+  \lemma qhatIsProp (p : P) (z : gUT) : isProp (Qhat z) \elim z
+    | pinl s => ehatIsProp p s
+    | pinr x => prop-isProp
+
+  \sfunc qhatToTg (p : P) (z : gUT) (e : Qhat z) : Tg z \elim z
+    | pinl s => ehatToT p s e
+    | pinr x => e.2
+
+  \sfunc tgCtrQhat (p : P) (z : gUT) (t : Tg z) : Contr (Qhat z) \elim z
+    | pinl s => ehatCtrFromT p s t
+    | pinr x => isProp=>isContr prop-isProp (p, t)
+
+  -- Hence the code is the certificate, fiberwise, and so on the total space.
+  \sfunc qhatEqTg (p : P) (z : gUT) : Qhat z = (\Sigma P (Tg z)) =>
+    propExtEx (qhatIsProp p z) prop-isProp
+        (\lam e => (p, qhatToTg p z e)) (\lam t => (tgCtrQhat p z t.2).center)
+
+  \sfunc totalEqTg (p : P) : (\Sigma (z : gUT) (Qhat z)) = (\Sigma (z : gUT) (\Sigma P (Tg z))) =>
+    path (\lam i => \Sigma (z : gUT) (qhatEqTg p z i))
+
+  \sfunc regroupTg : (\Sigma (z : gUT) (\Sigma P (Tg z))) = (\Sigma P (\Sigma (z : gUT) (Tg z))) =>
+    iso to fro (\lam _ => idp) (\lam _ => idp) \where {
+    \func to (u : \Sigma (z : gUT) (\Sigma P (Tg z))) : \Sigma P (\Sigma (z : gUT) (Tg z)) =>
+      (u.2.1, (u.1, u.2.2))
+    \func fro (u : \Sigma P (\Sigma (z : gUT) (Tg z))) : \Sigma (z : gUT) (\Sigma P (Tg z)) =>
+      (u.2.1, (u.1, u.2.2))
+  }
+
+  \sfunc totalEqDiag (p : P) : (\Sigma (z : gUT) (Qhat z)) = (\Sigma (z : gUT) (Tg z)) =>
+    totalEqTg p *> regroupTg
+                     *> QEquiv-to-= (contr-left (isProp=>isContr prop-isProp p) {\lam _ => \Sigma (z : gUT) (Tg z)})
+
+  \sfunc total=QsmallSplit : (\Sigma (z : gUT) (Qhat z)) = QsmallSplit =>
+    inv Qflat=Q *> Qflat=Qsmall *> Qsmall=QsmallSplit
+
+  \sfunc ctrP (p : P) : Contr QsmallSplit =>
+    transport Contr total=QsmallSplit (transport Contr (inv (totalEqDiag p)) contrDiagLocus)
+
+  \func Base : \oo-Type (\suc \lp) => \Sigma (a : \Sigma C A) (Tp (SP3.diag a))
+  \func Mid : \oo-Type (\suc \lp) => \Sigma (s : iUT) (Tp s)
+  \func RightA : \Type \lp => \Sigma (x : A) (x = x0)
+
+  \func fLeg (q : Base) : Mid => (SP3.diag q.1, q.2)
+  \func gLeg (q : Base) : RightA => (q.1.2, transport Tg (PushoutData.ppglue q.1) q.2)
+
+  \sfunc locusFlat : PushoutData {Base} {Mid} {RightA} fLeg gLeg = (\Sigma (z : gUT) (Tg z)) =>
+    PushoutData.flattening Tg
+
+  -- The inverse of the left leg reads the C-coordinate off a point of the inner
+  -- pushout. It needs no certificate at all, and -- crucially -- its glue clause is
+  -- C's own glue DEFINITIONALLY, which is what makes the round trips compute.
+  \func rCdirect (s : iUT) : C \elim s
+    | pinl bv => pinl bv.1
+    | pinr c => pinr ()
+    | pglue a i => pglue a.1 i
+
+  -- The base corner IS `C`: the A-coordinate is pinned to x0 by the certificate, and
+  -- pinning it needs no induction (`\Sigma C A` is a product, and `diagTToEq` supplies
+  -- the value).
+  \func baseC= : Base = C => iso to fro sec ret \where {
+    \func to (q : Base) : C => q.1.1
+    \func fro (c : C) : Base => ((c, x0), diagT (c, x0) idp)
+    \sfunc sec (q : Base) : fro (to q) = q =>
+      SigmaPropPath (\lam v => TisProp {A} {x0} (SP3.diag v))
+          (pmap (\lam (v : A) => (q.1.1, v)) (inv (diagTToEq q.1 q.2)))
+    \sfunc ret (c : C) : to (fro c) = c => idp
+  }
+
+  \func fC (c : C) : Mid => (SP3.diag (c, x0), diagT (c, x0) idp)
+  \func gC (c : C) : RightA => (x0, transport Tg (PushoutData.ppglue (c, x0)) (diagT (c, x0) idp))
+
+  \lemma rightAContr : Contr RightA => rsigma x0
+
+  \sfunc locusC : PushoutData {Base} {Mid} {RightA} fLeg gLeg = PushoutData {C} {Mid} {RightA} fC gC =>
+    pushout-equiv baseC= (idp : Mid = Mid) (idp : RightA = RightA) fLeg gLeg
+      *> pushout-eqv-fun _ _ _ _ pfC pgC \where {
+    \sfunc pfC : (\lam c => path-fun (idp : Mid = Mid) (fLeg (path-fun (inv baseC=) c))) = fC => run {
+      unfold baseC=,
+      rewrite (path-fun.beta-inv baseC=.to baseC=.fro baseC=.sec baseC=.ret),
+      idp
+    }
+    -- The right leg needs no computation: `RightA` is contractible.
+    \sfunc pgC : (\lam c => path-fun (idp : RightA = RightA) (gLeg (path-fun (inv baseC=) c))) = gC =>
+      ext (\lam _ => isContr=>isProp rightAContr _ _)
+  }
+
+  -- With the base corner pinned, the round trip on `C` is the IDENTITY on both point
+  -- constructors.
+  \func rC (m : Mid) : C => rCdirect m.1
+
+  -- The two coherences of `Equiv fC` -- all that is left of `contrDiagLocus`.
   --
-  -- `ctrP`: with an honest `p : P` everything is based. Section 5.1 of the report
-  -- contracts by explicit paths; with the packaging above it is enough to produce
-  -- a contraction at all, so the pushout-algebra route is available too: `J w0` is
-  -- inhabited hence contractible, so the spine cone collapses (`pushout-contr`),
-  -- the diagonal corner is absorbed along `Col.diagSlice= p` by
-  -- `pushout-cobase-eqv`, and what is left is `D'`-shaped -- contractible by the
-  -- commented-out `SpaceR.contractionD`.
+  -- The first round trip is the identity, on the nose on both point constructors.
+  \sfunc retC (c : C) : rC (fC c) = c \elim c
+    | pinl b => idp
+    | pinr () => idp
+    | pglue b i => retCGlue b i
+
+  -- `SP3.diag`'s glue clause is the structural glue of the inner pushout, transported
+  -- along the tuple correction `orConst`. `rCdirect` ignores tuples, so generalizing
+  -- that correction to an arbitrary path and doing path induction on it reduces the
+  -- square to the structural glue -- where it holds by `rCdirect`'s own glue clause,
+  -- definitionally.
+  \sfunc retCGlueGen {b : BSn 2} {f0 f1 : Or b.1 (Fin 1) -> A} (q : f0 = f1)
+                     (e : pinl (extendBSn 1 b, f1) = {iUT} pinr (x0, x0))
+                     (h : Path (\lam i => rCdirect (e @ i) = pglue b i) idp idp)
+    : Path (\lam i => rCdirect (transportInv (\lam (f : Or b.1 (Fin 1) -> A) =>
+      pinl (extendBSn 1 b, f) = {iUT} pinr (x0, x0)) q e @ i) = pglue b i) idp idp \elim q
+    | idp => h
+
+  \sfunc retCGlue (b : BSn 2)
+    : Path (\lam i => rCdirect (SP3.diag (pglue b i, x0)) = pglue b i) idp idp =>
+    retCGlueGen (orConst x0) (path (pglue (b, x0, x0))) (path (\lam _ => idp))
+
+  \func pairPath {u v : \Sigma A A} (p : u.1 = v.1) (q : u.2 = v.2) : u = v =>
+    path (\lam j => (p j, q j))
+
+  \func diagTuple (b : BSn 2) (f : Or b.1 (Fin 1) -> A) : iUT => pinl (extendBSn 1 b, f)
+
+  -- `SP3.diag`'s glue clause is the structural glue with the tuple correction
+  -- prepended.
+  \sfunc diagGlueSplit (b : BSn 2)
+    : path (\lam i => SP3.diag (pglue b i, x0))
+    = pmap (diagTuple b) (orConst x0) *> path (pglue (b, x0, x0)) =>
+    transportInvPath (diagTuple b) (pinr (x0, x0)) (orConst x0) (path (pglue (b, x0, x0)))
+
+  -- The square. Generalizing over the two collision values and inducting on their
+  -- paths to x0 collapses everything: with x = y = x0 the right-hand correction is
+  -- `idp`, and the left-hand one is the very `orConst` correction that `SP3.diag`'s
+  -- glue carries -- the two cancel.
+  \sfunc secSquare (b : BSn 2) (x y : A) (qx : x = x0) (qy : y = x0)
+                   (tL : Tp (pinl (SP3.fatdiag (b, x, y))))
+    : inv (path (\lam i => SP3.diag (pglue b i, x0)))
+    *> pmap pinl (SigmaPath {BSn 3} {\lam (X : BSn 3) => X.1 -> A}
+      {(SP3.fatdiag (b, x, y)).1, \lam _ => x0} {SP3.fatdiag (b, x, y)} idp (inv tL))
+         *> path (pglue (b, x, y))
+    = pmap pinr (pairPath (inv qx) (inv qy)) \elim qx, qy
+    | idp, idp => run {
+      rewrite (diagGlueSplit b),
+      rewrite (set-pi {Or b.1 (Fin 1) -> A} {\lam _ => x0}
+          {Or.rec {b.1} {Fin 1} (\lam _ => x0) (\lam _ => x0)} {inv tL} {orConst x0}),
+      rewrite (sigmaFib {BSn 3} {\lam (X : BSn 3) => X.1 -> A} {extendBSn 1 b} (orConst x0)),
+      rewrite (pmap-comp (\lam (f : Or b.1 (Fin 1) -> A) => ((extendBSn 1 b, f) : hUT))
+          (\lam (bv : hUT) => (pinl bv : iUT)) (orConst x0)),
+      inv_*> _
+    }
+
+  \sfunc secGlue (a : A21)
+    : Path (\lam i => \Pi (t : Tp (pglue a i)) -> SP3.diag (pglue a.1 i, x0) = pglue a i)
+      (\lam t => pmap pinl (SigmaPath {BSn 3} {\lam (X : BSn 3) => X.1 -> A}
+          {(SP3.fatdiag a).1, \lam _ => x0} {SP3.fatdiag a} idp (inv t)))
+      (\lam t => pmap pinr (pairPath (inv t.1) (inv t.2))) =>
+    pathOver (coe_pi *> ext (\lam t => coe_path _ _ _ *> secSquare a.1 a.2 a.3 t.1 t.2 _))
+
+  \sfunc secBase (s : iUT) (t : Tp s) : (fC (rC (s, t))).1 = s \elim s
+    | pinl bv => pmap pinl (SigmaPath {BSn 3} {\lam (X : BSn 3) => X.1 -> A}
+        {bv.1, \lam _ => x0} {bv} idp (inv t))
+    | pinr c => pmap pinr (pairPath (inv t.1) (inv t.2))
+    | pglue a i => secGlue a i t
+
+  \sfunc secC (m : Mid) : fC (rC m) = m =>
+    SigmaPropPath (\lam s => TisProp {A} {x0} s) (secBase m.1 m.2)
+
+  \sfunc fCequiv : QEquiv fC \cowith
+    | ret => rC
+    | ret_f => retC
+    | f_sec => secC
+
+  \sfunc locusEq : (\Sigma (z : gUT) (Tg z)) = RightA =>
+    inv locusFlat *> locusC *> pushout-cobase-eqv fCequiv gC
+
+  \sfunc contrDiagLocus : Contr (\Sigma (z : gUT) (Tg z)) =>
+    transport Contr (inv locusEq) rightAContr
+
+  -- --------------------------------------------------------------------------
+  -- Item (vi): the contraction lemma, THE REMAINING GAP.
   --
   -- `ctrW`: with an honest collision and no `P`, pointwise paths genuinely do not
   -- exist (with x /= y the component is coned by an equivalence), so the space
@@ -680,7 +837,5 @@
   -- still commented out in `Utils.ard`) rather than certified into a further
   -- stratum -- which is why that recursion terminates. Section 7 of the report.
   -- --------------------------------------------------------------------------
-  \func ctrP (p : P) : Contr QsmallSplit => {?}
-
   \func ctrW (x y : A) (w : w0 = collision x y) : Contr QsmallSplit => {?}
 }
