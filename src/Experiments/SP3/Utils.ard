@@ -9,6 +9,7 @@
 \import Homotopy.Pushout
 \import Algebra.Group.Symmetric
 \import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
 \import Utilities.Equiv
 \import Utilities.PathFun
 \import Utilities.Paths
@@ -43,11 +44,12 @@
   | idp => idp
 \func pathFunIdInv {X Y : \Type} (p : X = Y) (y : Y) : path-fun p (path-fun (inv p) y) = y \elim p
   | idp => idp
--- unused: `pathFunInvComp` only by the commented-out `SpaceT.reprFlattenRightBeta`
-{-
 \func pathFunInvComp {X Y Z : \Type} (p : X = Y) (q : Y = Z) (z : Z) :
   path-fun (inv (p *> q)) z = path-fun (inv p) (path-fun (inv q) z) \elim p, q
   | idp, idp => idp
+
+-- unused
+{-
 \func *>-inv-left {X : \Type} {x y z : X} (p : x = y) (q : x = z) :
   p *> (inv p *> q) = q => run {
   rewriteI (*>-assoc p (inv p) q),
@@ -264,30 +266,27 @@
 \func =-to-Equiv-inv {A B : \Type} (p : A = B) :
   =-to-Equiv (inv p) = symEquiv (=-to-Equiv p) \elim p
   | idp => Equiv.equals idp
+-}
 
 -- The carrier component of a BSnPath is the underlying equivalence-induced path.
 \func bsnPathCarrier {n : Nat} (a b : BSn n) (e : Equiv {a.1} {b.1}) :
   pmap (\lam t => t.1) (BSnPath a b e) = Equiv-to-= e => idp
--}
 
 -- path-fun of an equivalence-induced path is the equivalence (and its inverse).
--- unused: only by the commented-out `psiAction` / `evalConj`
-{-
 \func pathFunEqTo {A B : \Type} (e : Equiv {A} {B}) : path-fun (Equiv-to-= e) = e.f => idp
--}
 \func pathFunInvEqTo {A B : \Type} (e : Equiv {A} {B}) : path-fun (inv (Equiv-to-= e)) = e.ret =>
   pathFunQEquivInv (QEquiv.fromEquiv e)
 
--- unused: the BS2-flip-through-extendBSn machinery of the retired `ifTransposition`
-{-
 -- path-fun commutes with the left-summand type constructor `Or _ K`.
-\func pathFunOrL {X Y K : \Type} (q : X = Y) (a : X) :
+\sfunc pathFunOrL {X Y K : \Type} (q : X = Y) (a : X) :
   path-fun (pmap (\lam Z => Or Z K) q) (inl a) = {Or Y K} inl (path-fun q a) \elim q
   | idp => idp
-\func pathFunOrR {X Y K : \Type} (q : X = Y) (b : K) :
+\sfunc pathFunOrR {X Y K : \Type} (q : X = Y) (b : K) :
   path-fun (pmap (\lam Z => Or Z K) q) (inr b) = {Or Y K} inr b \elim q
   | idp => idp
 
+-- unused: the BS2-flip-through-extendBSn machinery of the retired `ifTransposition`
+{-
 -- The included BS2 flip loop, and the Or-level flip it induces through `extendBSn 1`.
 \func theta2 : BSnbase 2 = BSnbase 2 => BSnPath (BSnbase 2) (BSnbase 2) notBS2.notFin2Eq
 \func orFlip (o : Or (Fin 2) (Fin 1)) : Or (Fin 2) (Fin 1) \elim o
@@ -518,7 +517,7 @@
   idp
 }
 
--- unused: `sigmaCommute` only by the commented-out `SpaceR.baseR=tail`, `scFst`/`sigmaLoopDet` only by the retired `ifTransposition`
+-- unused: `sigmaCommute` only by the commented-out `SpaceR.baseR=tail`
 {-
 \func sigmaCommute {A P : \Type} {F G : A -> \Type} :
   (\Sigma (s : A) (\Sigma (F s) (\Sigma P (G s)))) =
@@ -530,6 +529,7 @@
   \func sec (x : left) : g (f x) = x => idp
   \func ret (x : right) : f (g x) = x => idp
 }
+-}
 
 -- The first component of the characterization of a Sigma-path is its base component.
 \func scFst {A : \Type} {B : A -> \Type} {x y : \Sigma (a : A) (B a)} (p : x = y) :
@@ -547,7 +547,30 @@
   \in SigmaPathChar.eq p
     *> SigmaPathBeta (SigmaPathChar x y p).1 (SigmaPathChar x y q).1 (SigmaPathChar x y p).2 (SigmaPathChar x y q).2 baseEq fibEq
     *> inv (SigmaPathChar.eq q)
--}
+
+-- The two instances of `sigmaLoopDet` that the Borel construction needs. Their
+-- projections are named, so that the codomain of the `pmap` stays fixed, and
+-- their `isSet` witnesses are stated at concrete types, so that they do not
+-- constrain the homotopy level of `sigmaLoopDet`'s universe parameter.
+\func bsnCar {n : Nat} {a b : BSn n} (p : a = b) : a.1 = {\Set \lp} b.1 =>
+  pmap {BSn n} {\Set \lp} (\lam (t : BSn n) => t.1) p
+
+\func borelBase {n : Nat} {A : \Set \lp} {u v : borelXn n A} (p : u = v) : u.1 = {BSn n} v.1 =>
+  pmap {borelXn n A} {BSn n} (\lam (t : borelXn n A) => t.1) p
+
+\lemma funIsSet {X A : \Set \lp} : isSet (X -> A) => \lam _ _ => prop-isProp
+
+-- A path in `BSn n` is determined by its carrier component.
+\func bsnPathDet {n : Nat} {a b : BSn n} (p q : a = b) (h : bsnCar p = bsnCar q) : p = q =>
+  sigmaLoopDet {\Set \lp} {\lam (X : \Set \lp) => TruncP (Equiv {X} {Fin n})}
+      (\lam _ => isProp.=>isSet (\lam u v => path (truncP u v))) p q h
+
+-- A path in `borelXn n A`, for a SET of values, is determined by its `BSn n`
+-- component: the tuples form a set, so the fiber contributes nothing.
+\func borelPathDet {n : Nat} {A : \Set \lp} {u v : borelXn n A} (p q : u = v)
+                   (h : borelBase p = borelBase q) : p = q =>
+  sigmaLoopDet {BSn n} {\lam (X : BSn n) => X.1 -> A}
+      (\lam (X : BSn n) => funIsSet {X.1} {A}) p q h
 
 -- ----------------------------------------------------------------------------
 -- Joins of propositions. Both of these are used by the code `Ehat`/`Qhat` and by
@@ -585,7 +608,7 @@
 -- absorbs a wedge identified with a corner (`pushout-equiv-pinl` of
 -- SP3-stage5-report.md, section 9(ii)).
 -- ----------------------------------------------------------------------------
-\func pushout-id {A C : \Type} (g : A -> C) : PushoutData {A} {A} {C} idEquiv g = C =>
+\sfunc pushout-id {A C : \Type} (g : A -> C) : PushoutData {A} {A} {C} idEquiv g = C =>
   iso to fro sec ret \where {
   \func to (_ : PushoutData {A} {A} {C} idEquiv g) : C
     | pinl a => g a
@@ -605,15 +628,106 @@
     inv_*> (path (pglue a))
   }
   \func ret (c : C) : to (fro c) = c => idp
+
+  -- The surviving corner, computed once here so that nothing downstream has to
+  -- unfold the `iso`.
+  \func beta (c : C) : path-fun (pushout-id g) (pinr c) = c => run {
+    rewrite (\peval pushout-id g),
+    pmap (\lam (h : PushoutData {A} {A} {C} idEquiv g -> C) => h (pinr c))
+        (path-fun.beta to fro sec ret)
+  }
 }
 
-\func pushout-cobase-path {A B C : \Type} (p : A = B) (g : A -> C)
+\sfunc pushout-swap {A B C : \Type} (f : A -> B) (g : A -> C) : PushoutData f g = PushoutData g f => iso
+    (to {A} {B} {C} {f} {g}) (to {A} {C} {B} {g} {f}) (sec {A} {B} {C} {f} {g}) (sec {A} {C} {B} {g} {f}) \where {
+  \func to (_ : PushoutData f g) : PushoutData g f
+    | pinl b => pinr b
+    | pinr c => pinl c
+    | pglue a i => pglue a (invI i)
+
+  \func sec (x : PushoutData f g) : to {A} {C} {B} {g} {f} (to {A} {B} {C} {f} {g} x) = x
+    | pinl b => idp
+    | pinr c => idp
+    | pglue a i => secGlue a i
+  \func secGlue (a : A) : Path (\lam i => pglue {A} {B} {C} {f} {g} a (invI (invI i)) = pglue a i) idp idp => run {
+    pathOver,
+    coe_path (\lam i => pglue a (invI (invI i))) _ (path (pglue a)) *>,
+    rewrite idp_*>,
+    closeOut (path (\lam i => pglue a (invI (invI i)))) (path (pglue a)) (invLemma a)
+  }
+  \func closeOut {X : \Type} {a b : X} (p q : a = b) (r : p = q) : inv p *> q = idp \elim r
+    | idp => inv_*> p
+
+  \func invLemma (a : A) : path (\lam i => pglue a (invI (invI i))) = path (\lam i => pglue {A} {B} {C} {f} {g} a i) => run {
+    rewrite (invI.betaP (path (\lam i => pglue a (invI i)))),
+    rewrite (invI.betaP (path (pglue a))),
+    inv_inv _
+  }
+
+  -- The swap is an explicit `iso`, so its `path-fun` computes on the corners.
+  \func beta : path-fun (pushout-swap f g) = to {A} {B} {C} {f} {g} => run {
+    rewrite (\peval pushout-swap f g),
+    path-fun.beta (to {A} {B} {C} {f} {g}) (to {A} {C} {B} {g} {f})
+        (sec {A} {B} {C} {f} {g}) (sec {A} {C} {B} {g} {f})
+  }
+  \func beta-pinl (b : B) : path-fun (pushout-swap f g) (pinl b) = pinr b =>
+    pmap (\lam (h : PushoutData f g -> PushoutData g f) => h (pinl b)) beta
+  \func beta-pinr (c : C) : path-fun (pushout-swap f g) (pinr c) = pinl c =>
+    pmap (\lam (h : PushoutData f g -> PushoutData g f) => h (pinr c)) beta
+}
+
+\sfunc pushout-cobase-path {A B C : \Type} (p : A = B) (g : A -> C)
   : PushoutData {A} {B} {C} (=-to-Equiv p) g = C \elim p
   | idp => pushout-id g
+  \where {
+  -- The surviving corner is untouched.
+  \func beta {A B C : \Type} (p : A = B) (g : A -> C) (c : C)
+    : path-fun (pushout-cobase-path p g) (pinr c) = c \elim p
+    | idp => rewrite (\peval pushout-cobase-path (idp {\Type} {A}) g) (pushout-id.beta {A} {C} {g} c)
+}
 
-\func pushout-cobase-eqv {A B C : \Type} (e : Equiv {A} {B}) (g : A -> C)
+\sfunc pushout-cobase-eqv {A B C : \Type} (e : Equiv {A} {B}) (g : A -> C)
   : PushoutData {A} {B} {C} e g = C =>
-  rewriteI (univalence.f_ret e) (pushout-cobase-path (Equiv-to-= e) g)
+  transport (\lam (e' : Equiv {A} {B}) => PushoutData {A} {B} {C} e' g = C) (univalence.f_ret e)
+      (pushout-cobase-path (Equiv-to-= e) g) \where {
+  -- Changing the collapsed leg does not move the surviving corner.
+  \func transportBeta {A B C : \Type} {e1 e2 : Equiv {A} {B}} (q : e1 = e2) (g : A -> C)
+      (X : PushoutData {A} {B} {C} e1 g = C) (c : C)
+    : path-fun (transport (\lam (e' : Equiv {A} {B}) => PushoutData {A} {B} {C} e' g = C) q X) (pinr c)
+    = path-fun X (pinr c) \elim q
+    | idp => idp
+
+  \func beta {A B C : \Type} (e : Equiv {A} {B}) (g : A -> C) (c : C)
+    : path-fun (pushout-cobase-eqv e g) (pinr c) = c => run {
+    rewrite (\peval pushout-cobase-eqv e g),
+    transportBeta (univalence.f_ret e) g (pushout-cobase-path (Equiv-to-= e) g) c
+      *> pushout-cobase-path.beta (Equiv-to-= e) g c
+  }
+
+  -- The symmetric form: an equivalence on the RIGHT leg collapses onto the left
+  -- corner. Written as a composite so that it, too, computes.
+  \sfunc right {A B C : \Type} (e : Equiv {A} {C}) (g : A -> B) : PushoutData {A} {B} {C} g e = B =>
+    pushout-swap g e *> pushout-cobase-eqv e g
+
+  -- The inverses, read off the forward betas by injectivity of `path-fun`.
+  \func betaInv {A B C : \Type} (e : Equiv {A} {B}) (g : A -> C) (c : C)
+    : path-fun (inv (pushout-cobase-eqv e g)) c = pinr c =>
+    pmap (path-fun (inv (pushout-cobase-eqv e g))) (inv (beta e g c))
+      *> pathFunInvId (pushout-cobase-eqv e g) (pinr c)
+
+  \func rightInvBeta {A B C : \Type} (e : Equiv {A} {C}) (g : A -> B) (b : B)
+    : path-fun (inv (right e g)) b = pinl b =>
+    pmap (path-fun (inv (right e g))) (inv (rightBeta e g b))
+      *> pathFunInvId (right e g) (pinl b)
+
+  \func rightBeta {A B C : \Type} (e : Equiv {A} {C}) (g : A -> B) (b : B)
+    : path-fun (right e g) (pinl b) = b => run {
+    rewrite (\peval right e g),
+    rewrite (path-fun.beta-*> (pushout-swap g e) (pushout-cobase-eqv e g)),
+    rewrite (pushout-swap.beta-pinl b),
+    beta e g b
+  }
+}
 
 -- `path-fun` of a fiberwise family path acts as the identity on the index and as
 -- the fiberwise `path-fun` on the fiber (needed to compute `baseFib=`).
@@ -633,6 +747,17 @@
 \func transportInvPath {X Y : \Type} (u : X -> Y) (v : Y) {f0 f1 : X} (q : f0 = f1) (e : u f1 = v)
   : transportInv (\lam f => u f = v) q e = pmap u q *> e \elim q
   | idp => inv (idp_*> e)
+
+-- Transporting contractibility along an equality of types. Stated with the TYPES
+-- as parameters rather than as `transport Contr`, whose universe argument leaves
+-- the homotopy level of the call site open.
+\func contrTransport {X Y : \Type} (e : X = Y) (c : Contr Y) : Contr X \elim e
+  | idp => c
+
+-- The canonical path over a path: `inv p` slides to `idp` along `p`. This is the
+-- coherence of a cone attachment (`Kw.pglue` in `SP3OfSet.ard`).
+\func invPathOver {X : \Type} {a b : X} (p : a = b) : Path (\lam i => b = p @ i) (inv p) idp \elim p
+  | idp => idp
 
 -- A Sigma-path that moves only the fiber is the pmap of the fiber inclusion.
 \func sigmaFib {X : \Type} {B : X -> \Type} {u : X} {f0 f1 : B u} (q : f0 = f1)

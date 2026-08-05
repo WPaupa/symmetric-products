@@ -1,0 +1,207 @@
+\import Data.Fin
+\import Data.Or
+\import Equiv
+\import Equiv.Univalence
+\import Function.Meta
+\import Logic
+\import Logic.Unique
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Set
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import SymmetricProducts.SP3
+\import Utilities.PathFun
+\import Utilities.Paths
+\import Experiments.SP3.Collision
+\import Experiments.SP3.Utils
+
+-- ============================================================================
+-- Paths between strict binary-collision tuples with FIXED values.
+--
+-- `fatVal b` is the tuple [x, x, y] presented over the `BSn 2` point `b`; the
+-- values `x` (doubled) and `y` (single) are fixed once and for all. This file
+-- proves the only new mathematical ingredient of the last stage of
+-- `SP3OfSet.ard` (section 5 of `SP3-stage6-report.md`): a path between two such
+-- tuples either preserves the singleton position -- and then it is
+-- `pmap fatVal` of a path of `BSn 2` points -- or it moves the singleton into
+-- the pair, which forces `x = y`.
+--
+-- Only the three positions of the tuple are ever case-split on; no equality in
+-- `A` is decided. Nothing here mentions the basepoint `w0`, so this file is
+-- independent of `Collision.ard` apart from two generic helpers.
+--
+-- Everything below is stated in `\Set \lp`, and the universe of every type-level
+-- path (`fatOrS`, `inv {\Set \lp}`, `bsnCar`) is pinned: leaving those universes
+-- open makes the homotopy level of the statements float, and the two
+-- determinacy lemmas at the end can then no longer be applied.
+-- ============================================================================
+\func fatVal {A : \Set \lp} {x y : A} (b : BSn 2) : borelXn 3 A => SP3.fatdiag (b, x, y)
+
+-- The three positions of the tuple: the pair and the singleton. `fatOrS` pins
+-- the universe of `Or`, so that no carrier path here mentions a free h-level.
+\func fatOrS {_ : \Set \lp} (Z : \Set \lp) : \Set \lp => Or Z (Fin 1)
+
+\func fatPos {A : \Set \lp} (b : BSn 2) : \Set \lp => fatOrS {A} b.1
+
+\data FatPathChar {A : \Set \lp} {x y : A} (b' b : BSn 2)
+                  (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b)
+  | lifted (q : b' = b) (e : pmap (fatVal {A} {x} {y}) q = p)
+  | diagonal (v : x = y)
+
+-- ----------------------------------------------------------------------------
+-- The data carried by such a path: its Borel component, the induced bijection
+-- of positions in both directions, and the tuple compatibility.
+-- ----------------------------------------------------------------------------
+\func fatBp {A : \Set \lp} {x y : A} {b' b : BSn 2}
+            (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b)
+  : \Sigma (q : (fatVal {A} {x} {y} b').1 = (fatVal {A} {x} {y} b).1)
+           (transport (\lam (X : BSn 3) => X.1 -> A) q (fatVal {A} {x} {y} b').2
+              = (fatVal {A} {x} {y} b).2) =>
+  SigmaPathChar (fatVal {A} {x} {y} b') (fatVal {A} {x} {y} b) p
+
+\func fatCar {A : \Set \lp} {x y : A} {b' b : BSn 2}
+             (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b) : fatPos {A} b' = fatPos {A} b =>
+  bsnCar (fatBp p).1
+
+\func fatR {A : \Set \lp} {x y : A} {b' b : BSn 2}
+           (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b) (o : fatPos {A} b) : fatPos {A} b' =>
+  path-fun (inv {\Set \lp} (fatCar p)) o
+
+\func fatS {A : \Set \lp} {x y : A} {b' b : BSn 2}
+           (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b) (o : fatPos {A} b') : fatPos {A} b =>
+  path-fun (fatCar p) o
+
+-- The tuple values match up along the induced bijection (the `h` of
+-- `Col.colValsDet`, here with the values fixed).
+\sfunc fatH {A : \Set \lp} {x y : A} {b' b : BSn 2}
+            (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b) (o : fatPos {A} b)
+  : (fatVal {A} {x} {y} b').2 (fatR p o) = (fatVal {A} {x} {y} b).2 o =>
+  funExt- (inv (transportBorelFun {3} {A} {(fatVal {A} {x} {y} b').1} {(fatVal {A} {x} {y} b).1}
+                    (fatBp p).1 (fatVal {A} {x} {y} b').2
+                *> path-fun.transport-fun {A} {fatPos {A} b'} {fatPos {A} b}
+                    (fatVal {A} {x} {y} b').2 (fatCar p))
+           *> (fatBp p).2) o
+
+-- ----------------------------------------------------------------------------
+-- Case 2: the singleton is preserved. Then so is it under the inverse, and both
+-- directions restrict to the pair, giving an equivalence `b'.1 ~ b.1`.
+-- ----------------------------------------------------------------------------
+\sfunc fatEs {A : \Set \lp} {x y : A} {b' b : BSn 2}
+             (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b)
+             (e : fatR p (inr fzero) = inr fzero) : fatS p (inr fzero) = inr fzero =>
+  pathFunInvInj {fatPos {A} b'} {fatPos {A} b} (fatCar p) {fatS p (inr fzero)} {inr fzero}
+      (pathFunInvId (fatCar p) (inr fzero) *> inv e)
+
+\sfunc fatRp' {A : \Set \lp} {x y : A} {b' b : BSn 2}
+              (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b)
+              (e : fatR p (inr fzero) = inr fzero) (k : b.1)
+  : \Sigma (a : b'.1) (fatR p (inl k) = inl a) =>
+  \case fatR p (inl k) \as ro, idp : fatR p (inl k) = ro \with {
+    | inl a, e0 => (a, e0)
+    | inr fzero, e0 => absurd (\case pathFunInvInj {fatPos {A} b'} {fatPos {A} b} (fatCar p)
+        {inl k} {inr fzero} (e0 *> inv e) \with {})
+  }
+
+\sfunc fatSp' {A : \Set \lp} {x y : A} {b' b : BSn 2}
+              (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b)
+              (e : fatR p (inr fzero) = inr fzero) (k : b'.1)
+  : \Sigma (a : b.1) (fatS p (inl k) = inl a) =>
+  \case fatS p (inl k) \as so, idp : fatS p (inl k) = so \with {
+    | inl a, e0 => (a, e0)
+    | inr fzero, e0 => absurd
+        (\case inv (pathFunInvId (fatCar p) (inl k)) *> pmap (fatR p) e0 *> e \with {})
+  }
+
+\sfunc fatSecRS {A : \Set \lp} {x y : A} {b' b : BSn 2}
+                (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b)
+                (e : fatR p (inr fzero) = inr fzero) (k : b'.1)
+  : (fatRp' p e (fatSp' p e k).1).1 = k =>
+  inlInj (inv (fatRp' p e (fatSp' p e k).1).2
+          *> pmap (fatR p) (inv (fatSp' p e k).2)
+          *> pathFunInvId (fatCar p) (inl k))
+
+\sfunc fatRetSR {A : \Set \lp} {x y : A} {b' b : BSn 2}
+                (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b)
+                (e : fatR p (inr fzero) = inr fzero) (k : b.1)
+  : (fatSp' p e (fatRp' p e k).1).1 = k =>
+  inlInj (inv (fatSp' p e (fatRp' p e k).1).2
+          *> pmap (fatS p) (inv (fatRp' p e k).2)
+          *> pathFunIdInv (fatCar p) (inl k))
+
+\func fatPairEqv {A : \Set \lp} {x y : A} {b' b : BSn 2}
+                 (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b)
+                 (e : fatR p (inr fzero) = inr fzero) : QEquiv {b'.1} {b.1} => \new QEquiv {
+  | f (k : b'.1) => (fatSp' p e k).1
+  | ret (k : b.1) => (fatRp' p e k).1
+  | ret_f => fatSecRS p e
+  | f_sec => fatRetSR p e
+}
+
+\func fatQ {A : \Set \lp} {x y : A} {b' b : BSn 2}
+           (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b)
+           (e : fatR p (inr fzero) = inr fzero) : b' = b => BSnPath b' b (fatPairEqv p e)
+
+-- ----------------------------------------------------------------------------
+-- The restricted equivalence induces the same carrier path as `p` itself. Both
+-- are equalities of types, so it is enough to compare their `path-fun`s.
+-- `bsnCar (fatQ p e)` is `Equiv-to-= (fatPairEqv p e)` by definition; it is
+-- written this way to keep every carrier path in `\Set \lp`.
+-- ----------------------------------------------------------------------------
+\sfunc fatFunEq {A : \Set \lp} {x y : A} {b' b : BSn 2}
+                (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b)
+                (e : fatR p (inr fzero) = inr fzero)
+  : path-fun (pmap (fatOrS {A}) (bsnCar (fatQ p e))) = path-fun (fatCar p) =>
+  ext (\case \elim __ \with {
+    | inl a => pathFunOrL {b'.1} {b.1} {Fin 1} (bsnCar (fatQ p e)) a *> inv (fatSp' p e a).2
+    | inr fzero => pathFunOrR {b'.1} {b.1} {Fin 1} (bsnCar (fatQ p e)) fzero *> inv (fatEs p e)
+  })
+
+\sfunc fatCarEq {A : \Set \lp} {x y : A} {b' b : BSn 2}
+                (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b)
+                (e : fatR p (inr fzero) = inr fzero)
+  : pmap (fatOrS {A}) (bsnCar (fatQ p e)) = fatCar p =>
+  path-fun.equals {fatPos {A} b'} {fatPos {A} b}
+      (pmap (fatOrS {A}) (bsnCar (fatQ p e))) (fatCar p) (fatFunEq p e)
+
+-- The carrier of a lifted path, by path induction.
+\func fatCarPmap {A : \Set \lp} {x y : A} {b' b : BSn 2} (q : b' = b)
+  : bsnCar (borelBase (pmap (fatVal {A} {x} {y}) q)) = pmap (fatOrS {A}) (bsnCar q) \elim q
+  | idp => idp
+
+-- ... and of the given one, which is `fatCar` by definition.
+\func fatCarP {A : \Set \lp} {x y : A} {b' b : BSn 2}
+              (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b)
+  : bsnCar (borelBase p) = fatCar p =>
+  inv (pmap (bsnCar {3} {(fatVal {A} {x} {y} b').1} {(fatVal {A} {x} {y} b).1})
+      (scFst {BSn 3} {\lam (X : BSn 3) => X.1 -> A}
+          {fatVal {A} {x} {y} b'} {fatVal {A} {x} {y} b} p))
+
+-- ----------------------------------------------------------------------------
+-- The `BSn 3` fibers are propositions and the tuple fibers are sets, so a path
+-- of tuples is determined by its carrier, two levels down.
+-- ----------------------------------------------------------------------------
+\sfunc fatBaseEq {A : \Set \lp} {x y : A} {b' b : BSn 2}
+                 (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b)
+                 (e : fatR p (inr fzero) = inr fzero)
+  : borelBase (pmap (fatVal {A} {x} {y}) (fatQ p e)) = borelBase p =>
+  bsnPathDet (borelBase (pmap (fatVal {A} {x} {y}) (fatQ p e))) (borelBase p)
+      (fatCarPmap {A} {x} {y} (fatQ p e) *> fatCarEq p e *> inv (fatCarP p))
+
+\sfunc fatE {A : \Set \lp} {x y : A} {b' b : BSn 2}
+            (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b)
+            (e : fatR p (inr fzero) = inr fzero) : pmap (fatVal {A} {x} {y}) (fatQ p e) = p =>
+  borelPathDet (pmap (fatVal {A} {x} {y}) (fatQ p e)) p (fatBaseEq p e)
+
+-- ----------------------------------------------------------------------------
+-- The classification itself.
+-- ----------------------------------------------------------------------------
+\sfunc fatPathChar {A : \Set \lp} {x y : A} (b' b : BSn 2)
+                   (p : fatVal {A} {x} {y} b' = fatVal {A} {x} {y} b) : FatPathChar b' b p =>
+  \case fatR p (inr fzero) \as ro, idp : fatR p (inr fzero) = ro \with {
+    -- the singleton moves into the pair: its value `y` equals the pair value `x`
+    | inl a, e => diagonal (inv (pmap (fatVal {A} {x} {y} b').2 e) *> fatH p (inr fzero))
+    -- the singleton is preserved: the path comes from `BSn 2`
+    | inr fzero, e => lifted (fatQ p e) (fatE p e)
+  }

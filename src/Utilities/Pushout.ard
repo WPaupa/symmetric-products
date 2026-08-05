@@ -1,3 +1,5 @@
+\import Equiv
+\import Equiv.Univalence
 \import Homotopy.Pushout
 \import Meta
 \import Paths.Meta
@@ -45,6 +47,17 @@
     | pinl b => idp
     | pinr c => idp
     | pglue a i => idp
+
+  \func beta-pinl (a : A) (c : C a) : path-fun (pushout-sigma f g) (a, pinl c) = pinl (a, c) =>
+    pmap (__ (a, pinl c)) (path-fun.beta to fro sec ret)
+  \func beta-pinr (a : A) (d : D a) : path-fun (pushout-sigma f g) (a, pinr d) = pinr (a, d) =>
+    pmap (__ (a, pinr d)) (path-fun.beta to fro sec ret)
+  \func beta-inv-pinl (u : \Sigma (a : A) (C a)) :
+    path-fun (inv (pushout-sigma f g)) (pinl u) = (u.1, pinl u.2) =>
+    pmap (__ (pinl u)) (path-fun.beta-inv to fro sec ret)
+  \func beta-inv-pinr (u : \Sigma (a : A) (D a)) :
+    path-fun (inv (pushout-sigma f g)) (pinr u) = (u.1, pinr u.2) =>
+    pmap (__ (pinr u)) (path-fun.beta-inv to fro sec ret)
 }
 
 -- An equality of pushouts comes from equalities of
@@ -141,4 +154,9 @@
     unfold pmap,
     inv_*> _
   }
+
+  \func beta-pinr (c : C) : path-fun (pushout-contr pr f g) (pinr c) = pinr c =>
+    pmap (__ (pinr c)) (path-fun.beta to fro sec ret)
+  \func beta-inv-pinr (c : C) : path-fun (inv (pushout-contr pr f g)) (pinr c) = pinr c =>
+    pmap (__ (pinr c)) (path-fun.beta-inv to fro sec ret)
 }
