@@ -233,7 +233,7 @@
     | idp => SigmaPath idp (orConst x0)
 
   -- With P in hand, every constant-x0 Borel point is on the collision stratum.
-  \func colBothDiag (p : P) (b : BSn 3) : colBoth (b, \lam _ => x0) =>
+  \lemma colBothDiag (p : P) (b : BSn 3) : colBoth (b, \lam _ => x0) =>
     TruncP.rec prop-isProp ((connBSn 3).isConn0 b (extendBSn 1 (BSnbase 2)))
         (\lam q => colBothOf (b, \lam _ => x0) (x0, x0) (w0Diag p) (constIsDiag b q))
 

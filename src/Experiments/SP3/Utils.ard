@@ -751,7 +751,7 @@
 -- Transporting contractibility along an equality of types. Stated with the TYPES
 -- as parameters rather than as `transport Contr`, whose universe argument leaves
 -- the homotopy level of the call site open.
-\func contrTransport {X Y : \Type} (e : X = Y) (c : Contr Y) : Contr X \elim e
+\func contrTransport {X Y : \oo-Type} (e : X = Y) (c : Contr Y) : Contr X \elim e
   | idp => c
 
 -- The canonical path over a path: `inv p` slides to `idp` along `p`. This is the

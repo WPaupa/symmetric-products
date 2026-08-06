@@ -581,50 +581,54 @@
 
   -- Contractibility from the certificate at the basepoint, and from each stratum
   -- of the model. The `pglue` clauses are all free, `Contr` being a proposition.
-  \sfunc ctrJw0 (j : J w0) : Contr QsmallSplit \elim j
+  \sfunc ctrJw0 (j : J w0) : Contr (QsmallSplit \levels _ -1) \elim j
     | pinl cb => TruncP.rec ctrQsProp cb (\lam s => ctrW s.1 s.2 s.3.1)
     | pinr pt => ctrP pt.1
 
   \sfunc ctrColB (u : ColB) : Contr QsmallSplit =>
     TruncP.rec ctrQsProp u.2 (\lam s => ctrW s.1 s.2 s.3.1)
 
-  \sfunc ctrJSplit (js : JSplitD) : Contr QsmallSplit \elim js
+  \sfunc ctrJSplit (js : JSplitD) : Contr (QsmallSplit \levels _ -1) \elim js
     | pinl u => ctrColB u
     | pinr pb => ctrP pb.1
 
   \sfunc ctrSpine (sp : Spine) : Contr QsmallSplit => ctrJw0 (transport J (inv sp.2.1) sp.2.2)
 
-  \sfunc ctrRight (r : RightSplitP) : Contr QsmallSplit \elim r
+  \sfunc ctrRight (r : RightSplitP) : Contr (QsmallSplit \levels _ -1) \elim r
     | pinl cr => TruncP.rec ctrQsProp cr.2 (\lam w => ctrW cr.1.1 cr.1.2 w)
     | pinr p => ctrP p
 
-  \sfunc ctrBase (b : BaseSplit) : Contr QsmallSplit \elim b
+  \sfunc ctrBase (b : BaseSplit) : Contr (QsmallSplit \levels _ -1) \elim b
     | pinl u => TruncP.rec ctrQsProp u.2 (\lam w => ctrW u.1.2 u.1.3 w)
     | pinr d => ctrP d.2.1
 
   -- The contraction itself: the tip is reflexivity, everything else rides the
   -- local contractibility.
-  \sfunc tipPathLC (lc : LeftCone) : ctr0 = pinl (pinl lc) \elim lc
+  \sfunc tipPathLC (lc : LeftCone \levels _ -1) : ctr0 = pinl (pinl lc) \elim lc
     | pinl () => idp
     | pinr js => viaCtr (ctrJSplit js) _
     | pglue sp i => glueOver (ctrSpine sp) (\lam j => pinl (pinl (pglue sp j))) idp
         (viaCtr (ctrJSplit (path-fun JSum=D (sp.1, sp.2.2))) _) @ i
 
-  \sfunc tipPathL (l : LsplitE) : ctr0 = pinl l \elim l
+  \sfunc tipPathL (l : LsplitE \levels _ -1) : ctr0 = pinl l \elim l
     | pinl lc => tipPathLC lc
     | pinr r => viaCtr (ctrRight r) _
     | pglue b i => glueOver (ctrBase b) (\lam j => pinl (pglue b j))
         (tipPathLC (lExpl b)) (viaCtr (ctrRight (rExpl b)) _) @ i
 
-  \sfunc tipPath (xi : QsmallSplit) : ctr0 = xi \elim xi
+  \sfunc tipPath (xi : QsmallSplit \levels _ -1) : ctr0 = xi \elim xi
     | pinl l => tipPathL l
     | pinr p => viaCtr (ctrP p) _
     | pglue cp i => glueOver (ctrP cp.2) (\lam j => pglue cp j)
         (tipPathL (path-fun Lchar (diagPoint cp))) (viaCtr (ctrP cp.2) _) @ i
 
-  \sfunc contrQsmallSplit : Contr QsmallSplit \cowith
+  \sfunc QsmsEq : QsmallSplit \levels _ -1 = QsmallSplit => idp
+
+  \sfunc contrQsmallSplit-1 : Contr (QsmallSplit \levels _ -1) \cowith
     | center => ctr0
     | contraction => tipPath
+
+  \sfunc contrQsmallSplit : Contr QsmallSplit => rewriteI QsmsEq contrQsmallSplit-1
 
   -- The diagonal certificate over the whole of SP3 A. Its glue is exactly the pair
   -- `diagTToEq`/`diagT`.
@@ -870,7 +874,8 @@
   -- which is well typed, but it pins the homotopy level shared by this `\where`
   -- block, and that bound then propagates out to the `Contr.levelProp` calls of
   -- `ctrJw0`/`ctrColB`/`ctrBase` above.
-  \func ctrW (x y : A) (w : w0 = collision x y) : Contr QsmallSplit => {?} \where {
+  \func ctrW (x y : A) (w : w0 = collision x y) : Contr QsmallSplit => contrTransport QsmallSplit=Qw contrQw
+    \where {
     -- The strict collision tuple over the `BSn 2` point `b`, with the values of
     -- `w` fixed. Its path theory is `FatPath.ard`.
     \func fatxy (b : BSn 2) : hUT => fatVal {A} {x} {y} b
@@ -1242,7 +1247,12 @@
     -- `\lh <= constant` on the homotopy level shared by `ctrW`'s `\where` block,
     -- and that constraint then propagates out to `ctrJw0`/`ctrColB`/`ctrBase`.
     -- Pinning `hUT`/`iUT`/`gUT`/`C`/`A21`/`Kw`/`Qw` at `\oo-Type` was not enough.
-    \func qPath (z : Qw) : cw = z => {?}
+    \func qPath (z : Qw \levels _ -1) : cw = z -- => {?} {-
+      | pinl k  => kPath k
+      | pinr p  => viaCtrW (ctrPW p) (pinr p)
+      | pglue cp i => glueOverW (ctrPW cp.2) (\lam j => pglue cp j)
+                           (kPath (qLeft cp)) (viaCtrW (ctrPW cp.2) (pinr cp.2)) @ i
+                           ---}
 
     \func contrQw : Contr Qw \cowith
       | center => cw
