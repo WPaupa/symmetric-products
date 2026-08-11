@@ -1,0 +1,1138 @@
+\import Algebra.Meta
+\import Experiments.HomotopyGroup.GroupPushout
+\import Function.Meta
+\import Logic.Meta
+\import Set
+\import Homotopy.Pointed
+\import Homotopy.Loop
+\import Paths
+\import Algebra.Group
+\import Algebra.Group.GroupHom
+\import Homotopy.EckmannHilton \hiding (#, .#, o, .o)
+\import Homotopy.Pushout
+\import Logic
+\import Meta
+\import Paths.Meta
+\import Category \hiding (univalence)
+\import Algebra.Group.GroupCategory
+\import Equiv
+\import Equiv.Univalence
+\import Homotopy.Connected
+\import Relation.Equivalence
+
+\import Experiments.HomotopyGroup.HomotopyGroup
+
+\func pushoutVanKampen {A B C : Pointed}
+                       (connA : Connected0 A) (f : A ->* C) (g : A ->* B) :
+  pi_group 0 (PushoutPointed f g) = GroupPushout (pi_functor-hom {0} f) (pi_functor-hom {0} g)
+  => Cat.isotoid {GroupCat} (pushoutVanKampen.vanKampen-iso connA f g)
+  \where {
+
+    \func PushoutPointed {A B C : Pointed} (f : A ->* C) (g : A ->* B) : Pointed (PushoutData f.1 g.1) \cowith
+      | base => pinl C.base
+
+    -- | The pinl-inclusion C → PushoutPointed f g as a pointed map. The
+    --   pointedness condition holds by definition: PushoutPointed's basepoint
+    --   IS `pinl C.base`.
+    \func pinl-pointed {A B C : Pointed} (f : A ->* C) (g : A ->* B) : C ->* PushoutPointed f g =>
+      (\lam c => pinl c, idp)
+
+    -- | The pinr-inclusion B → PushoutPointed f g as a pointed map. The
+    --   pointedness condition routes `pinr B.base` → `pinr (g A.base)` (via g.2)
+    --   → `pinl (f A.base)` (via pglue) → `pinl C.base = base` (via f.2).
+    \func pinr-pointed {A B C : Pointed} (f : A ->* C) (g : A ->* B) : B ->* PushoutPointed f g =>
+      (\lam b => pinr b,
+       pmap pinr (inv g.2) *> inv (path (pglue A.base)) *> pmap pinl f.2)
+
+    -- | π₁ of pinl-pointed as a group homomorphism π₁(C) → π₁(PushoutPointed f g).
+    \func pi-pinl-hom {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+      : GroupHom (pi_group 0 C) (pi_group 0 (PushoutPointed f g))
+      => pi_functor-hom {0} (pinl-pointed f g)
+
+    -- | π₁ of pinr-pointed as a group homomorphism π₁(B) → π₁(PushoutPointed f g).
+    \func pi-pinr-hom {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+      : GroupHom (pi_group 0 B) (pi_group 0 (PushoutPointed f g))
+      => pi_functor-hom {0} (pinr-pointed f g)
+
+    -- | Pointwise A-agreement: the two ways of mapping a π₁(A) class into
+    --   π₁(PushoutPointed f g) — via pinl ∘ f, or via pinr ∘ g — give equal
+    --   classes. After unfolding, the goal is:
+    --
+  --     idp *> pmap pinl (inv f.2 *> pmap f.1 loop *> f.2)
+    --   = inv q *> pmap pinr (inv g.2 *> pmap g.1 loop *> g.2) *> q
+    --
+  --   where q = pmap pinr (inv g.2) *> inv (path (pglue A.base)) *> pmap pinl f.2.
+    --   Cancelling the pmap (·) f.2 / g.2 wrappings on both sides, this reduces
+    --   to the naturality of pglue along loop:
+    --
+  --     pmap (pinl ∘ f.1) loop = pg *> pmap (pinr ∘ g.1) loop *> inv pg
+    --
+  --   (where pg = path (pglue A.base)); the implementation below proves
+    --   this by path induction and explicit path algebra.
+    -- | pglue's naturality along a general path. For p : A.base = a',
+    --   the two ways of mapping p into the pushout — push then walk via pinl,
+    --   or walk via pinr after a pglue — agree as paths from pinl (f A.base)
+    --   to pinr (g a').
+    \func pglue-nat-general {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+                            {a' : A} (p : A.base = a')
+      : pmap (\lam a => pinl {_} {_} {_} {f.1} {g.1} (f.1 a)) p *> path (pglue a')
+      = path (pglue A.base) *> pmap (\lam a => pinr (g.1 a)) p
+    \elim p
+      | idp => idp_*> _
+
+    \func pushoutVanKampen-coh {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+                               (a : pi_group 0 A)
+      : pi-pinl-hom f g (pi_functor-hom {0} f a) = pi-pinr-hom f g (pi_functor-hom {0} g a)
+    \elim a
+      | in0 loop => pmap in0 (loop-bridge f g loop)
+
+    -- | The path between the two loop representations in PushoutPointed.
+    --   LHS is the pinl-side route; RHS is the pinr-side route (conjugated by
+    --   pglue). The proof reduces to pglue-nat-general after the standard
+    --   path-algebra: cancel outer `pmap pinl f.2` wrappings (both sides have
+    --   them), simplify inner `pgrg *> inv pgrg` etc. on the RHS, then apply
+    --   pglue-nat-general to the residual conjugation.
+    -- | Conjugation form of pglue-nat-general: loop in pinl-side equals
+    --   pglue-conjugated loop in pinr-side. Derived from pglue-nat-general
+    --   by multiplying both sides by inv pg on the right and simplifying.
+    -- | Conjugation form of pglue-nat-general:
+    --     pmap (pinl ∘ f.1) loop = pg *> pmap (pinr ∘ g.1) loop *> inv pg
+    --   Derived from pglue-nat-general by multiplying both sides by `*> inv pg`
+    --   on the right and simplifying `pg *> inv pg = idp`.
+    \func pglue-nat-conj {A B C : Pointed} (f : A ->* C) (g : A ->* B) (loop : A.base = A.base)
+      : pmap (\lam a => pinl {_} {_} {_} {f.1} {g.1} (f.1 a)) loop
+      = path (pglue A.base) *> pmap (\lam a => pinr (g.1 a)) loop *> inv (path (pglue A.base))
+      => \let
+        | pl-loop : pinl {_} {_} {_} {f.1} {g.1} (f.1 A.base) = pinl (f.1 A.base) => pmap (\lam a => pinl (f.1 a)) loop
+        | pr-loop : pinr {_} {_} {_} {f.1} {g.1} (g.1 A.base) = pinr (g.1 A.base) => pmap (\lam a => pinr (g.1 a)) loop
+        | pg : pinl {_} {_} {_} {f.1} {g.1} (f.1 A.base) = pinr (g.1 A.base) => path (pglue A.base)
+        | nat : pl-loop *> pg = pg *> pr-loop => pglue-nat-general f g loop
+         \in -- Goal: pl-loop = pg *> pr-loop *> inv pg
+        -- Chain: pl-loop                                    (= pl-loop *> idp definitionally)
+        --      = pl-loop *> (pg *> inv pg)                  via pmap (·*>) (inv *>_inv pg)
+        --      = (pl-loop *> pg) *> inv pg                  via inv *>-assoc
+        --      = (pg *> pr-loop) *> inv pg                  via pmap (·*> inv pg) nat
+        --      = pg *> (pr-loop *> inv pg)                  via *>-assoc
+        pmap (\lam y => pl-loop *> y) (inv (*>_inv pg))
+          *> inv (*>-assoc pl-loop pg (inv pg))
+               *> pmap (\lam y => y *> inv pg) nat
+                    *> *>-assoc pg pr-loop (inv pg)
+
+    -- | Abstract path-algebra: re-associate and cancel two conjugate pairs.
+    --   With p1, p2, p3 eliminated to idp, both sides reduce to q.
+    \func pgrg-cancel {X : \Type} {x0 x1 x2 x3 : X}
+                      (p1 : x0 = x1) (p2 : x0 = x2) (p3 : x2 = x3) (q : x2 = x2)
+      : ((inv p1 *> p2) *> p3) *> (inv p3 *> q *> p3) *> inv p3 *> inv p2 *> p1
+      = inv p1 *> (p2 *> q *> inv p2) *> p1
+    \elim p1, p2, p3
+      | idp, idp, idp => idp
+
+    -- | RHS of loop-bridge, normalized to canonical form
+    --   `inv pglf *> pg *> pr-loop *> inv pg *> pglf`.
+    --   Sequence: distribute outer inv(...); distribute pmap pinr (inv g.2 *> ...);
+    --   convert pmap pinr (inv g.2) to inv pgrg three times; cancel pgrg *> inv pgrg
+    --   pairs twice; clean up idp_*>.
+    \func rhs-to-canonical {A B C : Pointed} (f : A ->* C) (g : A ->* B) (loop : A.base = A.base)
+      : inv (pmap (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) (inv g.2)
+      *> inv (path (pglue A.base)) *> pmap (pinl {A.E} {C.E} {B.E} {f.1} {g.1}) f.2) *>
+    pmap (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) (inv g.2 *> pmap g.1 loop *> g.2) *>
+    pmap (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) (inv g.2)
+      *> inv (path (pglue A.base)) *> pmap (pinl {A.E} {C.E} {B.E} {f.1} {g.1}) f.2
+      = inv (pmap (pinl {A.E} {C.E} {B.E} {f.1} {g.1}) f.2) *>
+        (path (pglue A.base) *>
+        pmap (\lam a => pinr {A.E} {C.E} {B.E} {f.1} {g.1} (g.1 a)) loop *>
+        inv (path (pglue A.base))) *>
+        pmap (pinl {A.E} {C.E} {B.E} {f.1} {g.1}) f.2
+      => run {
+        rewrite (pmap_inv-comm (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) g.2),
+        rewrite (pmap_*>-comm (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) (inv g.2) (pmap g.1 loop *> g.2)),
+        rewrite (pmap_*>-comm (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) (pmap g.1 loop) g.2),
+        rewrite (pmap_inv-comm (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) g.2),
+        rewrite (*>_inv-comm (inv (pmap (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) g.2))
+            (inv (path (pglue {A.E} {C.E} {B.E} {f.1} {g.1} A.base)) *> pmap (pinl {A.E} {C.E} {B.E} {f.1} {g.1}) f.2)),
+        rewrite (*>_inv-comm (inv (path (pglue {A.E} {C.E} {B.E} {f.1} {g.1} A.base)))
+            (pmap (pinl {A.E} {C.E} {B.E} {f.1} {g.1}) f.2)),
+        rewrite (inv_inv (path (pglue {A.E} {C.E} {B.E} {f.1} {g.1} A.base))),
+        rewrite (inv_inv (pmap (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) g.2)),
+        pgrg-cancel (pmap (pinl {A.E} {C.E} {B.E} {f.1} {g.1}) f.2)
+            (path (pglue {A.E} {C.E} {B.E} {f.1} {g.1} A.base))
+            (pmap (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) g.2)
+            (pmap (pinr {A.E} {C.E} {B.E} {f.1} {g.1}) (pmap g.1 loop))
+      }
+
+    \func loop-bridge {A B C : Pointed} (f : A ->* C) (g : A ->* B) (loop : A.base = A.base)
+      : path (\lam _ => pinl {_} {_} {_} {f.1} {g.1} C.base) *>
+    path (\lam i => pinl {_} {_} {_} {f.1} {g.1} ((inv f.2 *> pmap f.1 loop *> f.2) @ i))
+      = inv (pmap pinr (inv g.2) *> inv (path (pglue A.base)) *> pmap pinl f.2) *>
+        pmap pinr (inv g.2 *> pmap g.1 loop *> g.2) *>
+        pmap pinr (inv g.2) *> inv (path (pglue A.base)) *> pmap pinl f.2
+      => idp_*> _ *>
+      pmap_*>-comm pinl (inv f.2) (pmap f.1 loop *> f.2) *>
+      pmap (\lam y => pmap pinl (inv f.2) *> y) (pmap_*>-comm pinl (pmap f.1 loop) f.2) *>
+      pmap (\lam y => y *> (pmap pinl (pmap f.1 loop) *> pmap pinl f.2)) (pmap_inv-comm pinl f.2) *>
+      pmap (\lam y => inv (pmap pinl f.2) *> y *> pmap pinl f.2) (pglue-nat-conj f g loop) *>
+      inv (rhs-to-canonical f g loop)
+
+    -- | Back-direction of van Kampen: GroupPushout → π₁(pushout). Drops out of
+    --   recHom once the inclusion homs (pi-pinl-hom, pi-pinr-hom) are in place
+    --   and their A-agreement (pushoutVanKampen-coh) is provided.
+    \func vanKampen-back {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+      : GroupHom (GroupPushout (pi_functor-hom {0} f) (pi_functor-hom {0} g))
+        (pi_group 0 (PushoutPointed f g))
+      => GroupPushout.recHom {pi_group 0 A} {pi_group 0 C} {pi_group 0 B}
+          {pi_functor-hom {0} f} {pi_functor-hom {0} g}
+          (pi-pinl-hom f g) (pi-pinr-hom f g) (pushoutVanKampen-coh f g)
+
+    -- Set-truncated paths and the operations used below.
+    \func P0 {X : \Type} (x y : X) : \Set => Trunc0 (x = y)
+
+    \func p0-id {X : \Type} (x : X) : P0 x x => in0 idp
+
+    \func p0-comp {X : \Type} {x y z : X}
+                  (p : P0 x y) (q : P0 y z) : P0 x z
+    \elim p, q
+      | in0 p, in0 q => in0 (p *> q) \where {
+      \func p0-idp {X : \Type} {x y : X} (p : P0 x y) : p0-comp p (in0 idp) = p \elim p
+        | in0 a => idp
+    }
+
+    \func p0-pi_0 {X : Pointed} (p0 p1 : pi_group 0 X) : p0-comp p0 p1 = (pi_group 0 X).* p0 p1
+      | in0 a, in0 a1 => idp
+
+    \func p0-inv {X : \Type} {x y : X} (p : P0 x y) : P0 y x
+    \elim p
+      | in0 p => in0 (inv p)
+
+
+    \func p0-map {X Y : \Type} (h : X -> Y) {x y : X}
+                 (p : P0 x y) : P0 (h x) (h y)
+    \elim p
+      | in0 p => in0 (pmap h p)
+
+    \func p0-diff {X : Pointed} {x : X}
+                  (p q : P0 X.base x) : pi_group 0 X
+    \elim p, q
+      | in0 p, in0 q => in0 (p *> inv q)
+
+    \lemma p0-diff-refl {X : Pointed} {x : X}
+                        (p : P0 X.base x) :
+      p0-diff p p = pi_group.ide {0}
+    \elim p
+      | in0 p => pmap in0 (*>_inv p)
+
+    \lemma p0-diff-trans {X : Pointed} {x : X}
+                         (p q r : P0 X.base x) :
+      pi_group.* {0} (p0-diff p q) (p0-diff q r) = p0-diff p r
+    \elim p, q, r
+      | in0 p, in0 q, in0 r => pmap in0 (
+        *>-assoc p (inv q) (q *> inv r)
+          *> pmap (p *>) (inv (*>-assoc (inv q) q (inv r)))
+               *> pmap (p *>) (pmap (\lam z => z *> inv r) (inv_*> q))
+                    *> pmap (p *>) (idp_*> (inv r)))
+
+    \lemma p0-comp-assoc {X : \Type} {w x y z : X}
+                         (p : P0 w x) (q : P0 x y) (r : P0 y z) :
+      p0-comp (p0-comp p q) r = p0-comp p (p0-comp q r)
+    \elim p, q, r
+      | in0 p, in0 q, in0 r => pmap in0 (*>-assoc p q r)
+
+    \lemma p0-diff-factor {X : Pointed} {x : X}
+                          (p q : P0 X.base x) :
+      p0-comp (p0-diff p q) q = p
+    \elim p, q
+      | in0 p, in0 q => pmap in0 (
+        *>-assoc p (inv q) q
+          *> pmap (p *>) (inv_*> q))
+
+    -- A pointed path starts at the chosen basepoint of the codomain.  The
+    -- conjugation by j.2 is the same conjugation used by pi_functor-hom.
+    \func pointed-p0 {X Y : Pointed} (j : X ->* Y) {x : X}
+                     (p : P0 X.base x) : P0 Y.base (j.1 x)
+    \elim p
+      | in0 p => in0 (inv j.2 *> pmap j.1 p)
+
+    \func pointed-p0-diff-path {X Y : Pointed} (j : X ->* Y)
+                               {x : X} (p q : X.base = x) :
+      (inv j.2 *> pmap j.1 p) *> inv (inv j.2 *> pmap j.1 q)
+        = inv j.2 *> pmap j.1 (p *> inv q) *> j.2
+    \elim q
+      | idp =>
+        pmap (\lam z => (inv j.2 *> pmap j.1 p) *> z) (inv_inv j.2)
+          *> *>-assoc (inv j.2) (pmap j.1 p) j.2
+
+    \lemma pointed-p0-diff {X Y : Pointed} (j : X ->* Y) {x : X}
+                           (p q : P0 X.base x) :
+      p0-diff (pointed-p0 j p) (pointed-p0 j q)
+        = pi_functor-hom {0} j (p0-diff p q)
+    \elim p, q
+      | in0 p, in0 q => pmap in0 (pointed-p0-diff-path j p q)
+
+    \lemma pointed-p0-factor {X Y : Pointed} (j : X ->* Y) {x : X}
+                             (p q : P0 X.base x) :
+      pointed-p0 j p =
+      p0-comp (pi_functor-hom {0} j (p0-diff p q))
+          (pointed-p0 j q)
+      => inv (p0-diff-factor (pointed-p0 j p) (pointed-p0 j q))
+        *> pmap (\lam d => p0-comp d (pointed-p0 j q))
+               (pointed-p0-diff j p q)
+
+    -- The associated set for the right action rho.  A representative (p,u)
+    -- denotes the path p together with coefficient u.  Replacing p by q
+    -- multiplies u by rho(p q^{-1}).
+    \func AssocRaw {X : Pointed} (G : Group) (x : X) : \Set =>
+      \Sigma (p : P0 X.base x) G
+
+    \func AssocRel {X : Pointed} {G : Group}
+                   (rho : GroupHom (pi_group 0 X) G) (x : X)
+                   (r s : AssocRaw G x) : \Prop =>
+      s.2 = r.2 G.* rho (p0-diff r.1 s.1)
+
+    \func Associated {X : Pointed} {G : Group}
+                     (rho : GroupHom (pi_group 0 X) G) (x : X) : \Set =>
+      Quotient (AssocRel rho x)
+
+    \func assoc-coord-raw {X : Pointed} {G : Group}
+                          (rho : GroupHom (pi_group 0 X) G) {x : X}
+                          (c : P0 X.base x) (r : AssocRaw G x) : G =>
+      r.2 G.* rho (p0-diff r.1 c)
+
+    \lemma assoc-coord-resp {X : Pointed} {G : Group}
+                            (rho : GroupHom (pi_group 0 X) G) {x : X}
+                            (c : P0 X.base x) (r s : AssocRaw G x)
+                            (h : AssocRel rho x r s) :
+      assoc-coord-raw rho c r = assoc-coord-raw rho c s
+      => \let
+        | d1 => p0-diff r.1 s.1
+        | d2 => p0-diff s.1 c
+         \in
+        r.2 G.* rho (p0-diff r.1 c)
+          ==< pmap (r.2 G.*)
+                  (pmap rho (inv (p0-diff-trans r.1 s.1 c))) >==
+        r.2 G.* rho (d1 pi_group.* d2)
+          ==< pmap (r.2 G.*) (rho.func-* {d1} {d2}) >==
+        r.2 G.* (rho d1 G.* rho d2)
+          ==< inv G.*-assoc >==
+        (r.2 G.* rho d1) G.* rho d2
+          ==< pmap (\lam z => z G.* rho d2) (inv h) >==
+        s.2 G.* rho d2 `qed
+
+    \func assoc-coord {X : Pointed} {G : Group}
+                      (rho : GroupHom (pi_group 0 X) G) {x : X}
+                      (c : P0 X.base x) (z : Associated rho x) : G
+    \elim z
+      | in~ r => assoc-coord-raw rho c r
+      | ~-equiv r s h => assoc-coord-resp rho c r s h
+
+    \func assoc-uncoord {X : Pointed} {G : Group}
+                        (rho : GroupHom (pi_group 0 X) G) {x : X}
+                        (c : P0 X.base x) (u : G) : Associated rho x =>
+      in~ (c, u)
+
+    \lemma assoc-ret {X : Pointed} {G : Group}
+                     (rho : GroupHom (pi_group 0 X) G) {x : X}
+                     (c : P0 X.base x) (z : Associated rho x) :
+      assoc-uncoord rho c (assoc-coord rho c z) = z
+    \elim z
+      | in~ r => inv (~-pequiv idp)
+
+    \lemma assoc-sec {X : Pointed} {G : Group}
+                     (rho : GroupHom (pi_group 0 X) G) {x : X}
+                     (c : P0 X.base x) (u : G) :
+      assoc-coord rho c (assoc-uncoord rho c u) = u
+      => u G.* rho (p0-diff c c)
+        ==< pmap (u G.*) (pmap rho (p0-diff-refl c)) >==
+      u G.* rho (pi_group.ide {0})
+        ==< pmap (u G.*) rho.func-ide >==
+      u G.* G.ide
+        ==< G.ide-right >==
+      u `qed
+
+    \func assoc-equiv {X : Pointed} {G : Group}
+                      (rho : GroupHom (pi_group 0 X) G) {x : X}
+                      (c : P0 X.base x) : QEquiv (assoc-coord rho c) \cowith
+      | ret => assoc-uncoord rho c
+      | ret_f => assoc-ret rho c
+      | f_sec => assoc-sec rho c
+
+    \lemma assoc-transport-canonical {X : Pointed} {G : Group}
+                                     (rho : GroupHom (pi_group 0 X) G)
+                                     {x : X} (p : X.base = x) (u : G) :
+      transport (Associated rho) p
+          (assoc-uncoord rho (in0 idp) u)
+        = assoc-uncoord rho (in0 p) u
+    \elim p
+      | idp => idp
+
+    \lemma assoc-transport-back {X : Pointed} {G : Group}
+                                (rho : GroupHom (pi_group 0 X) G)
+                                {x : X} (p : X.base = x) (u : G) :
+      transport (Associated rho) (inv p)
+          (assoc-uncoord rho (in0 p) u)
+        = assoc-uncoord rho (in0 idp) u
+    \elim p
+      | idp => idp
+
+    -- Decoding an associated-code representative through a pointed map j.
+    -- `compat` says that the chosen back map agrees with rho along j.
+    \func assoc-decode-raw {X P : Pointed} {G : Group}
+                           (_ : GroupHom (pi_group 0 X) G)
+                           (back : GroupHom G (pi_group 0 P))
+                           (j : X ->* P) {x : X}
+                           (r : AssocRaw G x) : P0 P.base (j.1 x) =>
+      p0-comp (back r.2) (pointed-p0 j r.1)
+
+    \lemma assoc-decode-resp {X P : Pointed} {G : Group}
+                             (rho : GroupHom (pi_group 0 X) G)
+                             (back : GroupHom G (pi_group 0 P))
+                             (j : X ->* P)
+                             (compat : \Pi (l : pi_group 0 X) ->
+                                 back (rho l) = pi_functor-hom {0} j l)
+                             {x : X} (r s : AssocRaw G x)
+                             (h : AssocRel rho x r s) :
+      assoc-decode-raw rho back j r = assoc-decode-raw rho back j s
+      => \let
+        | d => p0-diff r.1 s.1
+        | jq => pointed-p0 j s.1
+         \in
+        p0-comp (back r.2) (pointed-p0 j r.1)
+          ==< pmap (p0-comp (back r.2))
+                  (pointed-p0-factor j r.1 s.1) >==
+        p0-comp (back r.2)
+            (p0-comp (pi_functor-hom {0} j d) jq)
+          ==< inv (p0-comp-assoc (back r.2)
+            (pi_functor-hom {0} j d) jq) >==
+        p0-comp (p0-comp (back r.2)
+            (pi_functor-hom {0} j d)) jq
+          ==< pmap (\lam t => p0-comp (p0-comp (back r.2) t) jq)
+                  (inv (compat d)) >==
+        p0-comp (p0-comp (back r.2) (back (rho d))) jq
+          ==< pmap (\lam t => p0-comp t jq)
+                  (p0-pi_0 _ _ *> inv (back.func-* {r.2} {rho d})) >==
+        p0-comp (back (r.2 G.* rho d)) jq
+          ==< pmap (\lam t => p0-comp (back t) jq) (inv h) >==
+        p0-comp (back s.2) jq `qed
+
+    \func assoc-decode {X P : Pointed} {G : Group}
+                       (rho : GroupHom (pi_group 0 X) G)
+                       (back : GroupHom G (pi_group 0 P))
+                       (j : X ->* P)
+                       (compat : \Pi (l : pi_group 0 X) ->
+                           back (rho l) = pi_functor-hom {0} j l)
+                       {x : X} (z : Associated rho x) : P0 P.base (j.1 x)
+    \elim z
+      | in~ r => assoc-decode-raw rho back j r
+      | ~-equiv r s h => assoc-decode-resp rho back j compat r s h
+
+    \lemma assoc-decode-coordinate {X P : Pointed} {G : Group}
+                                   (rho : GroupHom (pi_group 0 X) G)
+                                   (back : GroupHom G (pi_group 0 P))
+                                   (j : X ->* P)
+                                   (compat : \Pi (l : pi_group 0 X) ->
+                                       back (rho l) = pi_functor-hom {0} j l)
+                                   {x : X} (c : P0 X.base x)
+                                   (z : Associated rho x) :
+      assoc-decode rho back j compat z =
+      p0-comp (back (assoc-coord rho c z)) (pointed-p0 j c)
+    \elim z
+      | in~ r => assoc-decode-resp rho back j compat
+          r (c, assoc-coord-raw rho c r) idp
+
+    -- Specialization to the group pushout used by van Kampen.
+    \func VKGroup {A B C : Pointed} (f : A ->* C) (g : A ->* B) : Group =>
+      GroupPushout (pi_functor-hom {0} f) (pi_functor-hom {0} g)
+
+    \func rhoC {A B C : Pointed} (f : A ->* C) (g : A ->* B) :
+      GroupHom (pi_group 0 C) (VKGroup f g) =>
+      GroupPushout.gpinlHom {pi_group 0 A} {pi_group 0 C} {pi_group 0 B} {pi_functor-hom {0} f} {pi_functor-hom {0} g}
+
+    \func rhoB {A B C : Pointed} (f : A ->* C) (g : A ->* B) :
+      GroupHom (pi_group 0 B) (VKGroup f g) =>
+      GroupPushout.gpinrHom {pi_group 0 A} {pi_group 0 C} {pi_group 0 B} {pi_functor-hom {0} f} {pi_functor-hom {0} g}
+
+    -- A bridge obtained from an actual path A.base = a.
+    \func vk-bridge-at {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+                       {a : A} (p : A.base = a) :
+      Equiv {Associated (rhoC f g) (f.1 a)}
+          {Associated (rhoB f g) (g.1 a)} =>
+      transEquiv
+          (assoc-equiv (rhoC f g) (pointed-p0 f (in0 p)))
+          (symQEquiv (assoc-equiv (rhoB f g) (pointed-p0 g (in0 p))))
+
+    \lemma vk-bridge-loop {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+                          {a : A} (p q : A.base = a) :
+      rhoC f g (p0-diff (pointed-p0 f (in0 p))
+          (pointed-p0 f (in0 q)))
+        = rhoB f g (p0-diff (pointed-p0 g (in0 p))
+          (pointed-p0 g (in0 q)))
+      => pmap (rhoC f g) (pointed-p0-diff f (in0 p) (in0 q))
+        *> GroupPushout.gpglue-comm {pi_group 0 A} {pi_group 0 C} {pi_group 0 B} {pi_functor-hom {0} f} {pi_functor-hom {0} g} (p0-diff (in0 p) (in0 q))
+             *> pmap (rhoB f g) (inv (pointed-p0-diff g (in0 p) (in0 q)))
+
+    \lemma vk-bridge-at-point {A B C : Pointed}
+                              (f : A ->* C) (g : A ->* B)
+                              {a : A} (p q : A.base = a)
+                              (r : AssocRaw (VKGroup f g) (f.1 a)) :
+      vk-bridge-at f g p (in~ r) = vk-bridge-at f g q (in~ r)
+      => \let
+        | cp => pointed-p0 f (in0 p)
+        | cq => pointed-p0 f (in0 q)
+        | bp => pointed-p0 g (in0 p)
+        | bq => pointed-p0 g (in0 q)
+        | d1 => p0-diff r.1 cp
+        | d2 => p0-diff cp cq
+         \in ~-pequiv (
+          (VKGroup f g).* r.2 (rhoC f g (p0-diff r.1 cq))
+            ==< pmap ((VKGroup f g).* r.2)
+                    (pmap (rhoC f g)
+                        (inv (p0-diff-trans r.1 cp cq))) >==
+          (VKGroup f g).* r.2
+              (rhoC f g (d1 pi_group.* d2))
+            ==< pmap ((VKGroup f g).* r.2)
+                    ((rhoC f g).func-* {d1} {d2}) >==
+          (VKGroup f g).* r.2
+              ((VKGroup f g).* (rhoC f g d1) (rhoC f g d2))
+            ==< inv (VKGroup f g).*-assoc >==
+              (VKGroup f g).* ((VKGroup f g).* r.2 (rhoC f g d1)) (rhoC f g d2)
+            ==< pmap
+                    (\lam z => (VKGroup f g).* ((VKGroup f g).* r.2 (rhoC f g d1)) z)
+                    (vk-bridge-loop f g p q) >==
+              (VKGroup f g).* ((VKGroup f g).* r.2 (rhoC f g d1)) (rhoB f g (p0-diff bp bq)) `qed)
+
+    \lemma vk-bridge-at-points {A B C : Pointed}
+                               (f : A ->* C) (g : A ->* B)
+                               {a : A} (p q : A.base = a) :
+      vk-bridge-at f g p = {Associated (rhoC f g) (f.1 a) -> Associated (rhoB f g) (g.1 a)} vk-bridge-at f g q => ext (\case \elim __ \with {
+      | in~ r => vk-bridge-at-point f g p q r
+    })
+
+    \func vk-bridge-at-constant {A B C : Pointed}
+                                 (f : A ->* C) (g : A ->* B)
+                                 {a : A} (p q : A.base = a) :
+      vk-bridge-at f g p = {Equiv {Associated (rhoC f g) (f.1 a)} {Associated (rhoB f g) (g.1 a)}} vk-bridge-at f g q
+      => Equiv.equals {Associated (rhoC f g) (f.1 a)} {Associated (rhoB f g) (g.1 a)} (vk-bridge-at-points f g p q)
+
+    -- rec-set chooses a bridge from the merely inhabited path A.base = a.
+    -- Its second component records a representative, which is used in the
+    -- pglue coherence for vk-decode.
+    \lemma vk-bridge-data {A B C : Pointed}
+                         (connA : Connected0 A)
+                         (f : A ->* C) (g : A ->* B) (a : A) :
+      \Sigma
+        (e : Equiv {Associated (rhoC f g) (f.1 a)}
+            {Associated (rhoB f g) (g.1 a)})
+        (∃ (p : A.base = a) (vk-bridge-at f g p = e)) =>
+      TruncP.rec-set (connA.isConn0 A.base a)
+          (vk-bridge-at f g)
+          (\lam p q => vk-bridge-at-constant f g p q)
+
+    \func vk-bridge {A B C : Pointed}
+                    (connA : Connected0 A)
+                    (f : A ->* C) (g : A ->* B) (a : A) :
+      Equiv {Associated (rhoC f g) (f.1 a)}
+          {Associated (rhoB f g) (g.1 a)} =>
+      (vk-bridge-data connA f g a).1
+
+    -- The actual code family.  This is the implementation replacing the
+    -- informal VKCode in the review.
+    \func VKCode {A B C : Pointed}
+                 (connA : Connected0 A)
+                 (f : A ->* C) (g : A ->* B)
+                 (x : PushoutPointed f g) : \Set
+    \elim x
+      | pinl c => Associated (rhoC f g) c
+      | pinr b => Associated (rhoB f g) b
+      | pglue a => Equiv-to-= (vk-bridge connA f g a)
+
+    \func transport-Equiv-to-= {X Y : \Type} (e : Equiv {X} {Y}) :
+      transport (\lam Z => Z) (Equiv-to-= e) = e.f => idp
+
+    \lemma VKCode-transport {A B C : Pointed}
+                            (connA : Connected0 A)
+                            (f : A ->* C) (g : A ->* B)
+                            (a : A)
+                            (z : Associated (rhoC f g) (f.1 a)) :
+      transport (VKCode connA f g) (path (pglue a)) z
+        = vk-bridge connA f g a z
+      => pmap (\lam h => h z)
+          (transport-Equiv-to-= (vk-bridge connA f g a))
+
+    \lemma VKCode-pinl-transport {A B C : Pointed}
+                                 (connA : Connected0 A)
+                                 (f : A ->* C) (g : A ->* B)
+                                 {c c' : C} (p : c = c')
+                                 (z : Associated (rhoC f g) c) :
+      transport (VKCode connA f g) (pmap pinl p) z
+        = transport (Associated (rhoC f g)) p z
+    \elim p
+      | idp => idp
+
+    \lemma VKCode-pinr-transport {A B C : Pointed}
+                                 (connA : Connected0 A)
+                                 (f : A ->* C) (g : A ->* B)
+                                 {b b' : B} (p : b = b')
+                                 (z : Associated (rhoB f g) b) :
+      transport (VKCode connA f g) (pmap pinr p) z
+        = transport (Associated (rhoB f g)) p z
+    \elim p
+      | idp => idp
+
+    -- The basepoint cancellation used by the crossing computation.
+    \func base-bridge-cancel {X : \Type}
+                             {x0 xb xf xg : X}
+                             (r : xb = xg) (pg : xf = xg) (s : xf = x0) :
+      inv s *> pg = inv (r *> inv pg *> s) *> r
+    \elim r, pg, s
+      | idp, idp, idp => idp
+
+    \lemma vk-crossing-path {A B C : Pointed}
+                            (f : A ->* C) (g : A ->* B)
+                            {a : A} (p : A.base = a) :
+      p0-comp
+          (pointed-p0 (pinl-pointed f g) (pointed-p0 f (in0 p)))
+          (in0 (path (pglue a)))
+        = pointed-p0 (pinr-pointed f g) (pointed-p0 g (in0 p))
+    \elim p
+      | idp =>
+        \let
+          | r => pmap pinr (inv g.2)
+          | pg => path (pglue A.base)
+          | s => pmap pinl f.2
+        \in pmap in0 (
+          pmap (\lam t => t *> pg) (idp_*> (pmap pinl (inv f.2)))
+            *> pmap (\lam t => t *> pg) (pmap_inv-comm pinl f.2)
+                 *> base-bridge-cancel r pg s)
+
+    \func back-rhoC {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+                    (l : pi_group 0 C) :
+      vanKampen-back f g (rhoC f g l)
+        = pi_functor-hom {0} (pinl-pointed f g) l => idp
+
+    \func back-rhoB {A B C : Pointed} (f : A ->* C) (g : A ->* B)
+                    (l : pi_group 0 B) :
+      vanKampen-back f g (rhoB f g l)
+        = pi_functor-hom {0} (pinr-pointed f g) l => idp
+
+    \func vk-decode-C {A B C : Pointed}
+                      (f : A ->* C) (g : A ->* B) {c : C} (z : Associated \levels _ \oo (rhoC f g) c) :
+      P0 (PushoutPointed f g).base (pinl c) =>
+      assoc-decode \levels _ \oo (rhoC f g) (vanKampen-back f g)
+          (pinl-pointed f g) (back-rhoC f g) z
+
+    \func vk-decode-B {A B C : Pointed}
+                      (f : A ->* C) (g : A ->* B) {b : B} (z : Associated \levels _ \oo (rhoB f g) b) :
+      P0 (PushoutPointed f g).base (pinr b) =>
+      assoc-decode \levels _ \oo (rhoB f g) (vanKampen-back f g)
+          (pinr-pointed f g) (back-rhoB f g) z
+
+    \lemma transport-p0-right {X : \Type} {x0 x y : X}
+                              (p : x = y) (q : P0 x0 x) :
+      transport (\lam z => P0 x0 z) p q = p0-comp q (in0 p)
+    \elim p, q
+      | idp, in0 l => idp
+
+    \lemma vk-decode-cross-at {A B C : Pointed}
+                              (f : A ->* C) (g : A ->* B)
+                              {a : A} (p : A.base = a)
+                              (z : Associated \levels _ \oo (rhoC \levels _ \oo f g) (f.1 a)) :
+      transport {PushoutPointed f g} (\lam x => P0 (PushoutPointed f g).base x)
+          (path (pglue a)) (vk-decode-C \levels _ \oo f g z)
+        = vk-decode-B f g (vk-bridge-at \levels _ \oo f g p z)
+      => \let
+        | cp => pointed-p0 f (in0 p)
+        | bp => pointed-p0 g (in0 p)
+        | u => assoc-coord (rhoC f g) cp z
+        | pc => pointed-p0 (pinl-pointed f g) cp
+        | pb => pointed-p0 (pinr-pointed f g) bp
+        | pg => path (pglue a)
+         \in
+        transport (\lam x => P0 (PushoutPointed f g).base x)
+            pg (vk-decode-C f g z)
+          ==< transport-p0-right pg (vk-decode-C f g z) >==
+        p0-comp (vk-decode-C f g z) (in0 pg)
+          ==< pmap (\lam t => p0-comp t (in0 pg))
+                  (assoc-decode-coordinate
+                      (rhoC f g) (vanKampen-back f g)
+                      (pinl-pointed f g) (back-rhoC f g) cp z) >==
+        p0-comp (p0-comp (vanKampen-back f g u) pc) (in0 pg)
+          ==< p0-comp-assoc (vanKampen-back f g u) pc (in0 pg) >==
+        p0-comp (vanKampen-back f g u)
+            (p0-comp pc (in0 pg))
+          ==< pmap (p0-comp (vanKampen-back f g u))
+                  (vk-crossing-path f g p) >==
+        p0-comp (vanKampen-back f g u) pb `qed
+
+    \lemma vk-decode-cross {A B C : Pointed}
+                           (connA : Connected0 A)
+                           (f : A ->* C) (g : A ->* B)
+                           (a : A)
+                           (z : Associated \levels _ \oo (rhoC \levels _ \oo f g) (f.1 a)) :
+      transport (\lam x => P0 (PushoutPointed f g).base x)
+          (path (pglue a)) (vk-decode-C f g z)
+        = vk-decode-B f g (vk-bridge connA f g a z)
+      => \case (vk-bridge-data connA f g a).2 \with {
+        | inP (p,h) =>
+          vk-decode-cross-at f g p z
+            *> pmap (vk-decode-B f g)
+                   (pmap (\lam (e : Equiv {Associated (rhoC f g) (f.1 a)}
+                       {Associated (rhoB f g) (g.1 a)}) => e z) h)
+      }
+
+    \lemma vk-decode-glue {A B C : Pointed}
+                          (connA : Connected0 A)
+                          (f : A ->* C) (g : A ->* B)
+                          (a : A) :
+      transport
+          (\lam x => VKCode connA f g x ->
+          P0 (PushoutPointed f g).base x)
+          (path (pglue a)) (vk-decode-C f g)
+        = vk-decode-B f g
+      => transport_pi2
+          (VKCode connA f g)
+          (\lam x => P0 (PushoutPointed f g).base x)
+          (path (pglue a))
+          (vk-decode-C f g)
+          (vk-decode-B f g)
+          (\lam z =>
+              vk-decode-cross connA f g a z
+                *> pmap (vk-decode-B f g)
+                       (inv (VKCode-transport connA f g a z)))
+
+    -- Decoding and encoding.  These are now ordinary definitions, not
+    -- previously missing definitions.
+    \func vk-base-code {A B C : Pointed}
+                       (connA : Connected0 A)
+                       (f : A ->* C) (g : A ->* B) :
+      VKCode connA f g (PushoutPointed f g).base =>
+      assoc-uncoord (rhoC f g) (in0 idp) (VKGroup f g).ide
+
+    \func vk-encode {A B C : Pointed}
+                    (connA : Connected0 A)
+                    (f : A ->* C) (g : A ->* B)
+                    {x : PushoutPointed f g}
+                    (p : P0 (PushoutPointed f g).base x) :
+      VKCode connA f g x
+    \elim p
+      | in0 p => transport (VKCode connA f g) p
+          (vk-base-code connA f g)
+
+    \func vk-decode {A B C : Pointed}
+                    (connA : Connected0 A)
+                    (f : A ->* C) (g : A ->* B)
+                    (x : PushoutPointed \levels _ \oo f g) :
+      VKCode \levels _ \oo connA f g x -> P0 (PushoutPointed f g).base x
+    \elim x
+      | pinl c => vk-decode-C \levels _ \oo f g
+      | pinr b => vk-decode-B \levels _ \oo f g
+      | pglue a => pathOver (vk-decode-glue \levels _ \oo connA f g a)
+
+    \lemma vk-decode-base {A B C : Pointed}
+                          (connA : Connected0 A)
+                          (f : A ->* C) (g : A ->* B) :
+      vk-decode connA f g (PushoutPointed f g).base
+          (vk-base-code connA f g)
+        = in0 idp => idp
+
+    \lemma vk-decode-encode {A B C : Pointed}
+                            (connA : Connected0 A)
+                            (f : A ->* C) (g : A ->* B)
+                            {x : PushoutPointed f g}
+                            (p : P0 (PushoutPointed f g).base x) :
+      vk-decode connA f g x (vk-encode connA f g p) = p
+    \elim p
+      | in0 idp => vk-decode-base connA f g
+
+    -- The raw inverse function at the basepoint.  Wrapping it as GroupHom only
+    -- needs the two inverse laws; preservation of multiplication follows by
+    -- injectivity of vanKampen-back.
+    \func vanKampen-forward-fun {A B C : Pointed}
+                                (connA : Connected0 A)
+                                (f : A ->* C) (g : A ->* B)
+                                (z : pi_group 0 (PushoutPointed f g)) :
+      VKGroup f g =>
+      assoc-coord (rhoC f g) (in0 idp)
+          (vk-encode connA f g z)
+
+    \lemma vanKampen-sec-fun {A B C : Pointed}
+                             (connA : Connected0 A)
+                             (f : A ->* C) (g : A ->* B)
+                             (z : pi_group 0 (PushoutPointed f g)) :
+      vanKampen-back f g (vanKampen-forward-fun connA f g z) = z
+      => inv (p0-comp.p0-idp _) *> inv (assoc-decode-coordinate
+          (rhoC f g) (vanKampen-back f g)
+          (pinl-pointed f g) (back-rhoC f g)
+          (in0 idp) (vk-encode connA f g z))
+        *> vk-decode-encode connA f g z
+
+    -- Transport along a set-truncated path.  This is legal because every fiber
+    -- is a set.
+
+    \func transport0-equiv {X : \Type} (F : X -> \Set) {x y : X}
+                           (p : P0 x y) : Equiv (transport0 {X} F {x} {y} p)
+    \elim p
+      | in0 idp => idEquiv
+
+
+    \func transport0 {X : \Type} (F : X -> \Set) {x y : X}
+                     (p : P0 x y) (z : F x) : F y
+    \elim p
+      | in0 p => transport F p z
+
+    \lemma transport0-comp {X : \Type} (F : X -> \Set)
+                           {x y z : X} (p : P0 x y) (q : P0 y z)
+                           (u : F x) :
+      transport0 F (p0-comp p q) u =
+      transport0 F q (transport0 F p u)
+    \elim p, q
+      | in0 p, in0 q => transport_*> F p q u
+
+
+    -- The group of self-equivalences of a set.  Multiplication is composition
+    -- in path order: e1 * e2 first applies e1 and then e2.
+    \instance AutGroup (S : \Set) : Group (Equiv {S} {S})
+      | ide => idEquiv
+      | * e1 e2 => transEquiv e1 e2
+      | *-assoc => Equiv.equals (ext (\lam _ => idp))
+      | ide-left => Equiv.equals (ext (\lam _ => idp))
+      | inverse e => symQEquiv e
+      | inverse-left {e} => Equiv.equals (ext (\lam x => e.f_ret x))
+
+    -- Monodromy of a set family is a group homomorphism from pi_1 into the
+    -- automorphism group of the base fiber.
+    \func monodromy-hom {X : Pointed} (F : X -> \Set) :
+      GroupHom (pi_group 0 X) (AutGroup (F X.base)) \cowith
+      | func p => transport0-equiv F p
+      | func-ide => Equiv.equals (ext (\lam _ => idp))
+      | func-* {p} {q} => monodromy-comp p q
+      \where {
+
+        \lemma monodromy-comp (p q : pi_group 0 X) :
+          transport0-equiv F ((pi_group 0 X).* p q)
+            = (AutGroup (F X.base)).* (transport0-equiv F p) (transport0-equiv F q)
+        \elim p, q
+          | in0 p, in0 q => transport0-* F p q
+        \lemma transport0-* {X : Pointed} (F : X -> \Set) {x y z : X} (p : x = y) (q : y = z) :
+          transport0-equiv F (in0 (p *> q)) =
+              transEquiv (transport0-equiv F (in0 p)) (transport0-equiv F (in0 q)) \elim p, q
+          | idp, idp => idp
+      }
+
+    -- Conjugation transports automorphisms across a chosen equivalence.
+    \func conjugate-hom {S T : \Set} (e : QEquiv {S} {T}) :
+      GroupHom (AutGroup S) (AutGroup T) \cowith
+      | func h => transEquiv (symQEquiv e) (transEquiv h e)
+      | func-ide => Equiv.equals (ext (\lam t => e.f_ret t))
+      | func-* {h1} {h2} => Equiv.equals (ext (\lam t =>
+          pmap (\lam s => e (h2 s))
+              (inv (e.ret_f (h1 (e.ret t)))))) \where {
+      \func beta {S T : \Set} (e : QEquiv {S} {T}) (h : Equiv {S} {S}) (t : T) : conjugate-hom e h t = e (h (e.ret t)) => idp
+    }
+
+    \func vk-right-equiv {G : Group} (u : G) :
+      QEquiv (\lam v => v G.* u) \cowith
+      | ret v => v G.* G.inverse u
+      | ret_f _ => simplify
+      | f_sec _ => simplify
+
+    \func right-regular-hom (G : Group) :
+      GroupHom G (AutGroup G) \cowith
+      | func u => vk-right-equiv u
+      | func-ide => Equiv.equals (ext (\lam _ => G.ide-right))
+      | func-* {_} {_} =>
+        Equiv.equals (ext (\lam _ => inv G.*-assoc))
+
+    -- Generic monodromy calculation for Associated rho.
+    \lemma assoc-monodromy {X : Pointed} {G : Group}
+                           (rho : GroupHom (pi_group 0 X) G)
+                           (l : pi_group 0 X) (v : G) :
+      assoc-coord rho (in0 idp)
+          (transport0 (Associated rho) l
+              (assoc-uncoord rho (in0 idp) v))
+        = v G.* rho l
+    \elim l
+      | in0 p =>
+        pmap (assoc-coord rho (in0 idp))
+            (assoc-transport-canonical rho p v)
+
+    \lemma assoc-monodromy-code {X : Pointed} {G : Group}
+                                (rho : GroupHom (pi_group 0 X) G)
+                                (l : pi_group 0 X) (v : G) :
+      transport0 (Associated rho) l
+          (assoc-uncoord rho (in0 idp) v)
+        = assoc-uncoord rho (in0 idp) (v G.* rho l)
+      => \let | z => transport0 (Associated rho) l
+          (assoc-uncoord rho (in0 idp) v)
+         \in inv (assoc-ret rho (in0 idp) z)
+          *> pmap (assoc-uncoord rho (in0 idp))
+                 (assoc-monodromy rho l v)
+
+    \lemma pi-pinl-simple {A B C : Pointed}
+                          (f : A ->* C) (g : A ->* B)
+                          (l : pi_group 0 C) :
+      pi-pinl-hom f g l = p0-map pinl l
+    \elim l
+      | in0 p => pmap in0 (idp_*> (pmap pinl p))
+
+    \lemma vk-pinl-monodromy {A B C : Pointed}
+                             (connA : Connected0 A)
+                             (f : A ->* C) (g : A ->* B)
+                             (l : pi_group 0 C) (v : VKGroup f g) :
+      assoc-coord (rhoC f g) (in0 idp)
+          (transport0 (VKCode connA f g) (pi-pinl-hom f g l)
+              (assoc-uncoord (rhoC f g) (in0 idp) v))
+        = (VKGroup f g).* v (rhoC f g l)
+    \elim l
+      | in0 p =>
+        \let | z => assoc-uncoord (rhoC f g) (in0 idp) v
+        \in pmap (assoc-coord (rhoC f g) (in0 idp))
+            (pmap (\lam q => transport0 (VKCode connA f g) q z)
+                (pi-pinl-simple f g (in0 p)))
+          *> pmap (assoc-coord (rhoC f g) (in0 idp))
+                 (VKCode-pinl-transport connA f g p z)
+               *> assoc-monodromy (rhoC f g) (in0 p) v
+
+    \lemma vk-bridge-base {A B C : Pointed}
+                          (connA : Connected0 A)
+                          (f : A ->* C) (g : A ->* B) :
+      vk-bridge connA f g A.base = {Equiv {Associated (rhoC f g) (f.1 A.base)} {Associated (rhoB f g) (g.1 A.base)}}
+      vk-bridge-at f g idp
+      => \case (vk-bridge-data connA f g A.base).2 \with {
+        | inP (p,h) => inv h *> vk-bridge-at-constant f g p idp
+      }
+
+    \func inverse-base-path {X : \Type}
+                            {x0 xb xf xg : X}
+                            (r : xb = xg) (pg : xf = xg) (s : xf = x0) :
+      inv (r *> inv pg *> s) = inv s *> pg *> inv r
+    \elim r, pg, s
+      | idp, idp, idp => idp
+
+    \func pmap-inv-image-inv {X Y : \Type} (h : X -> Y)
+                             {x y : X} (p : x = y) :
+      inv (pmap h (inv p)) = pmap h p
+      => pmap inv (pmap_inv-comm h p) *> inv_inv (pmap h p)
+
+    \lemma vk-base-step-C {A B C : Pointed}
+                          (connA : Connected0 A)
+                          (f : A ->* C) (g : A ->* B)
+                          (v : VKGroup f g) :
+      transport (VKCode connA f g) (inv (pmap pinl f.2))
+          (assoc-uncoord (rhoC f g) (in0 idp) v)
+        = assoc-uncoord (rhoC f g) (pointed-p0 f (in0 idp)) v
+      => \let | z => assoc-uncoord (rhoC f g) (in0 idp) v
+         \in pmap (\lam p => transport (VKCode connA f g) p z)
+            (inv (pmap_inv-comm pinl f.2))
+          *> VKCode-pinl-transport connA f g (inv f.2) z
+               *> assoc-transport-canonical (rhoC f g) (inv f.2) v
+
+    \lemma vk-base-step-glue {A B C : Pointed}
+                             (connA : Connected0 A)
+                             (f : A ->* C) (g : A ->* B)
+                             (v : VKGroup f g) :
+      transport (VKCode connA f g) (path (pglue A.base))
+          (assoc-uncoord (rhoC f g) (pointed-p0 f (in0 idp)) v)
+        = assoc-uncoord (rhoB f g) (pointed-p0 g (in0 idp)) v
+      => \let
+        | cp => pointed-p0 f (in0 idp)
+        | bp => pointed-p0 g (in0 idp)
+        | z => assoc-uncoord (rhoC f g) cp v
+         \in VKCode-transport connA f g A.base z
+          *> pmap (\lam (e : Equiv {Associated (rhoC f g) (f.1 A.base)}
+        {Associated (rhoB f g) (g.1 A.base)}) => e z) (vk-bridge-base connA f g)
+               *> pmap (assoc-uncoord (rhoB f g) bp)
+                      (assoc-sec (rhoC f g) cp v)
+
+    \lemma vk-base-step-B {A B C : Pointed}
+                          (connA : Connected0 A)
+                          (f : A ->* C) (g : A ->* B)
+                          (v : VKGroup f g) :
+      transport (VKCode connA f g)
+          (inv (pmap pinr (inv g.2)))
+          (assoc-uncoord (rhoB f g) (pointed-p0 g (in0 idp)) v)
+        = assoc-uncoord (rhoB f g) (in0 idp) v
+      => \let
+        | bp => pointed-p0 g (in0 idp)
+        | z => assoc-uncoord (rhoB f g) bp v
+         \in pmap (\lam p => transport (VKCode connA f g) p z)
+            (pmap-inv-image-inv pinr g.2)
+          *> VKCode-pinr-transport connA f g g.2 z
+               *> pmap (\lam p => transport (Associated (rhoB f g)) p z)
+                      (inv (inv_inv g.2))
+                    *> assoc-transport-back (rhoB f g) (inv g.2) v
+
+    -- Transport from the C presentation of the pushout basepoint to the B
+    -- presentation preserves the coefficient.
+    \lemma vk-base-to-B {A B C : Pointed}
+                        (connA : Connected0 A)
+                        (f : A ->* C) (g : A ->* B)
+                        (v : VKGroup f g) :
+      transport (VKCode connA f g) (inv (pinr-pointed f g).2)
+          (assoc-uncoord (rhoC f g) (in0 idp) v)
+        = assoc-uncoord (rhoB f g) (in0 idp) v
+      => \let
+        | r => pmap pinr (inv g.2)
+        | pg => path (pglue A.base)
+        | s => pmap pinl f.2
+        | z0 => assoc-uncoord (rhoC f g) (in0 idp) v
+        | zC => assoc-uncoord (rhoC f g)
+            (pointed-p0 f (in0 idp)) v
+        | zB => assoc-uncoord (rhoB f g)
+            (pointed-p0 g (in0 idp)) v
+         \in pmap (\lam p => transport (VKCode connA f g) p z0)
+            (inverse-base-path r pg s)
+          *> transport_*> (VKCode connA f g)
+                 (inv s) (pg *> inv r) z0
+               *> pmap (transport (VKCode connA f g) (pg *> inv r))
+                      (vk-base-step-C connA f g v)
+                    *> transport_*> (VKCode connA f g) pg (inv r) zC
+                         *> pmap (transport (VKCode connA f g) (inv r))
+                                (vk-base-step-glue connA f g v)
+                              *> vk-base-step-B connA f g v
+
+    \lemma vk-base-from-B {A B C : Pointed}
+                          (connA : Connected0 A)
+                          (f : A ->* C) (g : A ->* B)
+                          (v : VKGroup f g) :
+      transport (VKCode connA f g) (pinr-pointed f g).2
+          (assoc-uncoord (rhoB f g) (in0 idp) v)
+        = assoc-uncoord (rhoC f g) (in0 idp) v
+      => \let
+        | q => (pinr-pointed f g).2
+        | z => assoc-uncoord (rhoC f g) (in0 idp) v
+         \in inv (pmap (transport (VKCode connA f g) q)
+            (vk-base-to-B connA f g v))
+          *> transport_id_inv (VKCode connA f g) q z
+
+    \lemma vk-pinr-monodromy {A B C : Pointed}
+                             (connA : Connected0 A)
+                             (f : A ->* C) (g : A ->* B)
+                             (l : pi_group 0 B) (v : VKGroup f g) :
+      assoc-coord (rhoC f g) (in0 idp)
+          (transport0 (VKCode connA f g) (pi-pinr-hom f g l)
+              (assoc-uncoord (rhoC f g) (in0 idp) v))
+        = (VKGroup f g).* v (rhoB f g l)
+    \elim l
+      | in0 p =>
+        \let
+          | F => VKCode connA f g
+          | q => (pinr-pointed f g).2
+          | zC => assoc-uncoord (rhoC f g) (in0 idp) v
+          | zB => assoc-uncoord (rhoB f g) (in0 idp) v
+          | w => (VKGroup f g).* v (rhoB f g (in0 p))
+        \in pmap (assoc-coord (rhoC f g) (in0 idp)) (
+          transport_*> F (inv q) (pmap pinr p *> q) zC
+            *> pmap (transport F (pmap pinr p *> q))
+                   (vk-base-to-B connA f g v)
+                 *> transport_*> F (pmap pinr p) q zB
+                      *> pmap (transport F q)
+                             (VKCode-pinr-transport connA f g p zB)
+                           *> pmap (transport F q)
+                                  (assoc-monodromy-code (rhoB f g) (in0 p) v)
+                                *> vk-base-from-B connA f g w)
+          *> assoc-sec (rhoC f g) (in0 idp) w
+
+    -- Monodromy of VKCode, transported to the coordinate group of the base
+    -- fiber and precomposed with vanKampen-back.
+    \func vk-action-hom {A B C : Pointed}
+                        (connA : Connected0 A)
+                        (f : A ->* C) (g : A ->* B) :
+      GroupHom (VKGroup f g) (AutGroup (VKGroup f g)) =>
+      GroupCat.∘
+          (conjugate-hom (assoc-equiv (rhoC f g) (in0 idp)))
+          (GroupCat.∘
+              (monodromy-hom (VKCode connA f g))
+              (vanKampen-back f g))
+
+    \lemma vk-action-gpinl {A B C : Pointed}
+                           (connA : Connected0 A)
+                           (f : A ->* C) (g : A ->* B)
+                           (c : pi_group 0 C) :
+      vk-action-hom connA f g (GroupPushout.gpinl c)
+        =  right-regular-hom (VKGroup f g) (GroupPushout.gpinl c)
+      => Equiv.equals {VKGroup f g} {VKGroup f g} (ext (\lam v =>
+        vk-pinl-monodromy connA f g c v
+      ))
+
+    \lemma vk-action-gpinr {A B C : Pointed}
+                           (connA : Connected0 A)
+                           (f : A ->* C) (g : A ->* B)
+                           (b : pi_group 0 B) :
+      vk-action-hom connA f g (GroupPushout.gpinr b)
+        = right-regular-hom (VKGroup f g) (GroupPushout.gpinr b)
+      => Equiv.equals (ext (\lam v => vk-pinr-monodromy connA f g b v))
+
+    \lemma vk-action-right-regular {A B C : Pointed}
+                                   (connA : Connected0 A)
+                                   (f : A ->* C) (g : A ->* B) :
+      vk-action-hom connA f g = right-regular-hom (VKGroup f g)
+      => GroupPushout.hom-ext {pi_group 0 A} {pi_group 0 C} {pi_group 0 B} {pi_functor-hom {0} f} {pi_functor-hom {0} g}
+          (vk-action-hom connA f g)
+          (right-regular-hom (VKGroup f g))
+          (vk-action-gpinl connA f g)
+          (vk-action-gpinr connA f g)
+
+    -- The missing inverse law is now a one-line evaluation of the equality of
+    -- actions at u and at the identity element.
+    \lemma vanKampen-ret-fun {A B C : Pointed}
+                             (connA : Connected0 A)
+                             (f : A ->* C) (g : A ->* B)
+                             (u : VKGroup f g) :
+      vanKampen-forward-fun connA f g (vanKampen-back f g u) = u
+      => run {
+          unfold vanKampen-forward-fun,
+          rewriteI (lemma (vanKampen-back f g u)),
+          pmap (\lam (h : GroupHom (VKGroup f g) (AutGroup (VKGroup f g))) => h u (VKGroup f g).ide)
+              (vk-action-right-regular connA f g)
+            *> (VKGroup f g).ide-left
+        } \where {
+      \func lemma {x : PushoutPointed f g} (p : P0 (PushoutPointed f g).base x) : transport0 (VKCode connA f g) p
+          (symQEquiv (assoc-equiv (rhoC f g) (in0 idp)) (VKGroup f g).ide) = vk-encode connA f g p
+        | in0 idp => idp
+    }
+
+      \lemma vanKampen-back-inj {A B C : Pointed}
+                              (connA : Connected0 A)
+                              (f : A ->* C) (g : A ->* B)
+                              {u v : VKGroup f g}
+                              (h : vanKampen-back f g u = vanKampen-back f g v) :
+      u = v
+      => inv (vanKampen-ret-fun connA f g u)
+        *> pmap (vanKampen-forward-fun connA f g) h
+             *> vanKampen-ret-fun connA f g v
+
+    \func vanKampen-forward {A B C : Pointed}
+                            (connA : Connected0 A)
+                            (f : A ->* C) (g : A ->* B) :
+      GroupHom (pi_group 0 (PushoutPointed f g)) (VKGroup f g) \cowith
+      | func => vanKampen-forward-fun connA f g
+      | func-* {x} {y} => vanKampen-back-inj connA f g (
+        vanKampen-sec-fun connA f g (x pi_group.* y)
+          *> inv (
+              (vanKampen-back f g).func-*
+            *> pmap2 (\lam x y => x pi_group.* y)
+          (vanKampen-sec-fun connA f g x)
+          (vanKampen-sec-fun connA f g y)))
+
+    \func vanKampen-sec {A B C : Pointed}
+                        (connA : Connected0 A)
+                        (f : A ->* C) (g : A ->* B) :
+      GroupCat.∘ (vanKampen-back f g)
+          (vanKampen-forward connA f g)
+        = GroupCat.id (pi_group 0 (PushoutPointed f g))
+      => exts (vanKampen-sec-fun connA f g)
+
+    \func vanKampen-ret {A B C : Pointed}
+                        (connA : Connected0 A)
+                        (f : A ->* C) (g : A ->* B) :
+      GroupCat.∘ (vanKampen-forward connA f g)
+          (vanKampen-back f g)
+        = GroupCat.id (VKGroup f g)
+      => exts (vanKampen-ret-fun connA f g)
+
+    \func vanKampen-iso {A B C : Pointed}
+                        (connA : Connected0 A)
+                        (f : A ->* C) (g : A ->* B) :
+      Iso {GroupCat} (vanKampen-forward connA f g) \cowith
+      | hinv => vanKampen-back f g
+      | hinv_f => vanKampen-sec connA f g
+      | f_hinv => vanKampen-ret connA f g
+  }
