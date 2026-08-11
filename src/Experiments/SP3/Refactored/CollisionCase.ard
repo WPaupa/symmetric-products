@@ -1,0 +1,388 @@
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import Data.Or
+\import Data.Fin
+\import Function.Meta
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Logic
+\import Logic.Unique
+\import Set
+\import Homotopy.Join
+\import Equiv
+\import Equiv.Sigma
+\import Equiv.Univalence
+\import Homotopy.Pushout
+\import SymmetricProducts.SP3
+\import Utilities.Equiv
+\import Utilities.PathFun
+\import Utilities.Paths
+\import Utilities.Pushout
+\import Experiments.SP3.Refactored.BaseFiber
+\import Experiments.SP3.Refactored.Collision
+\import Experiments.SP3.Refactored.StrictCollisionPaths
+\import Experiments.SP3.Refactored.Diagonal
+\import Experiments.SP3.Refactored.Utilities
+\import Utilities.Unit
+\import Experiments.SP3.Refactored.PathCode
+\import Experiments.SP3.Refactored.TotalSpaceModel
+\import Experiments.SP3.Refactored.DiagonalCase (ctrP \as diagonalCtrP)
+
+-- The strict-collision branch of the total-space contraction.
+-- A chosen path w0 = collision x y reduces the model to the strict-or-diagonal
+-- code classified in StrictCollisionPaths.
+\func ctrW {A : \Set \lp} {x0 x1 x2 : A} (x y : A)
+  (w : PathCode.w0 {A} {x0} {x1} {x2} = PathCode.collision {A} x y)
+  : Contr (TotalSpaceModel.QsmallSplit {A} {x0} {x1} {x2}) =>
+  contrTransport QsmallSplit=Qw contrQw
+  \where {
+  -- Notation for the fixed Cartesian code.
+  \func hUT => PathCode.hUT {A}
+  \func A21 => PathCode.A21 {A}
+  \func w0 => PathCode.w0 {A} {x0} {x1} {x2}
+  \func P => PathCode.P {A} {x0} {x1} {x2}
+  \func C => PathCode.C
+  \func collision => PathCode.collision {A}
+  \func colAt => PathCode.colAt {A} {x0} {x1} {x2}
+  \func colBoth => PathCode.colBoth {A} {x0} {x1} {x2}
+  \func J => PathCode.J {A} {x0} {x1} {x2}
+  \func JisProp => PathCode.JisProp {A} {x0} {x1} {x2}
+  \func diagonalPinr => PathCode.diagonalPinr {A} {x0} {x1} {x2}
+  \func ehatFromColAt => PathCode.Ehat.fromColAt {A} {x0} {x1} {x2}
+
+  -- Notation for the normalized total-space strata and comparison maps.
+  \func BOverlap => TotalSpaceModel.BOverlap {A} {x0} {x1} {x2}
+  \func BaseSplit => TotalSpaceModel.BaseSplit {A} {x0} {x1} {x2}
+  \func ColB => TotalSpaceModel.ColB {A} {x0} {x1} {x2}
+  \func ColR => TotalSpaceModel.ColR {A} {x0} {x1} {x2}
+  \func JOverlap => TotalSpaceModel.JOverlap {A} {x0} {x1} {x2}
+  \func JSplitD => TotalSpaceModel.JSplitD {A} {x0} {x1} {x2}
+  \func JSum=D => TotalSpaceModel.JSum=D {A} {x0} {x1} {x2}
+  \func jSumDBetaPinl => TotalSpaceModel.jSumDBetaPinl {A} {x0} {x1} {x2}
+  \func Lchar => TotalSpaceModel.Lchar {A} {x0} {x1} {x2}
+  \func LeftCone => TotalSpaceModel.LeftCone {A} {x0} {x1} {x2}
+  \func LsplitE => TotalSpaceModel.LsplitE {A} {x0} {x1} {x2}
+  \func QsmallSplit => TotalSpaceModel.QsmallSplit {A} {x0} {x1} {x2}
+  \func RightSplitP => TotalSpaceModel.RightSplitP {A} {x0} {x1} {x2}
+  \func Spine => TotalSpaceModel.Spine {A} {x0} {x1} {x2}
+  \func base= => TotalSpaceModel.base= {A} {x0} {x1} {x2}
+  \func baseInvBetaPinl => TotalSpaceModel.baseInvBetaPinl {A} {x0} {x1} {x2}
+  \func cIsDiag => TotalSpaceModel.cIsDiag {A} {x0}
+  \func diagPoint => TotalSpaceModel.diagPoint {A} {x0} {x1} {x2}
+  \func jCol => TotalSpaceModel.jCol {A} {x0} {x1} {x2}
+  \func lExpl => TotalSpaceModel.lExpl {A} {x0} {x1} {x2}
+  \func left= => TotalSpaceModel.left= {A} {x0} {x1} {x2}
+  \func leftBetaPinrPinl => TotalSpaceModel.leftBetaPinrPinl {A} {x0} {x1} {x2}
+  \func lfat => TotalSpaceModel.lfat {A} {x0} {x1} {x2}
+  \func rExpl => TotalSpaceModel.rExpl {A} {x0} {x1} {x2}
+  \lemma rightIsProp => TotalSpaceModel.rightIsProp {A} {x0} {x1} {x2}
+
+  \func ctrP => diagonalCtrP {A} {x0} {x1} {x2}
+
+
+  \func fatxy (b : BSn 2) : hUT => fatVal {A} {x} {y} b
+
+  \func cr0 : ColR => ((x, y), inP w)
+
+  \func kCol (b : BSn 2) : ColB =>
+    (fatxy b, ehatFromColAt (b, x, y) (inP w))
+
+  -- The w-local normal form: cone off the strict BSn 2 presentations of the
+  -- collision stratum.
+  \func Kw : \oo-Type (\suc \lp) =>
+    PushoutData {BSn 2} {ColB} {\Sigma} kCol (\lam _ => ())
+
+  \func rightWCtr : Contr RightSplitP =>
+    isProp=>isContr rightIsProp (pinl cr0)
+
+  \func rightW= : RightSplitP = (\Sigma) => isContrEqUnit rightWCtr
+
+  \func cbw0 : colBoth w0 =>
+    Col.colBothOf {A} {x0} {x1} {x2} w0 (x, y) w w
+
+  \func sp0 : Spine => (w0, (idp, pinl cbw0))
+
+
+  \lemma jOverlapFib (bv : hUT) : isProp (\Sigma (colBoth bv) (\Sigma P (T {A} {x0} (pinl bv)))) =>
+    \lam _ _ => SigmaPath prop-pi (SigmaPath prop-pi (TisProp {A} {x0} (pinl bv) _ _))
+
+
+  \func jDiag= : QEquiv {JOverlap} {\Sigma P (BSn 3)} => \new QEquiv {
+    | f (u : JOverlap) => (u.2.2.1, u.1.1)
+    | ret (pb : \Sigma P (BSn 3)) =>
+      ((pb.2, \lam _ => x0),
+       (Col.colBothDiag {A} {x0} {x1} {x2} pb.1 pb.2, (pb.1, idp)))
+    | ret_f (u : JOverlap) => SigmaPropPath jOverlapFib (ext (idp, inv u.2.2.2))
+    | f_sec (_ : \Sigma P (BSn 3)) => idp
+  }
+
+  \sfunc JSplit= : JSplitD = ColB => pushout-cobase-eqv.right jDiag= jCol
+
+
+  \sfunc spineRegroup : Spine = (\Sigma (s : \Sigma (bv : hUT) (w0 = bv)) (J s.1)) =>
+    iso to fro (\lam _ => idp) (\lam _ => idp) \where {
+    \func to (u : Spine) : \Sigma (s : \Sigma (bv : hUT) (w0 = bv)) (J s.1) => ((u.1, u.2.1), u.2.2)
+    \func fro (u : \Sigma (s : \Sigma (bv : hUT) (w0 = bv)) (J s.1)) : Spine => (u.1.1, (u.1.2, u.2))
+  }
+
+  \sfunc spine= : Spine = J w0 =>
+    spineRegroup *> QEquiv-to-= (contr-left (lsigma w0)
+        {\lam (s : \Sigma (bv : hUT) (w0 = bv)) => J s.1})
+
+  \lemma spineIsProp : isProp Spine => transport isProp (inv spine=) (JisProp w0)
+
+
+  \func spineEqv : QEquiv {Spine} {\Sigma} => \new QEquiv {
+    | f _ => ()
+    | ret _ => sp0
+    | ret_f s => spineIsProp sp0 s
+    | f_sec _ => idp
+  }
+
+  \func spineLeg (b : Spine) : JSplitD => path-fun JSum=D (b.1, b.2.2)
+
+  \sfunc leftCone= : LeftCone = JSplitD => pushout-cobase-eqv spineEqv spineLeg
+
+  \sfunc leftW= : LeftCone = ColB => leftCone= *> JSplit=
+
+  \sfunc leftWBeta (u : ColB) : path-fun leftW= (pinr (pinl u)) = u => run {
+    rewrite (\peval leftW=),
+    rewrite (path-fun.beta-*> leftCone= JSplit=),
+    rewrite (\peval leftCone=),
+    rewrite (pushout-cobase-eqv.beta spineEqv spineLeg (pinl u)),
+    rewrite (\peval JSplit=),
+    pushout-cobase-eqv.rightBeta jDiag= jCol u
+  }
+
+
+  \func BCol : \oo-Type (\suc \lp) => \Sigma (a : A21) (colAt (a.2, a.3))
+  \func BDiag : \oo-Type (\suc \lp) => \Sigma (a : A21) (\Sigma P (T {A} {x0} (pinr (a.2, a.3))))
+
+
+  \func colAtOfDiag (d : BDiag) : colAt (d.1.2, d.1.3) =>
+    transport colAt (inv (cIsDiag (d.1.2, d.1.3) d.2.2))
+        (inP (Col.w0Diag {A} {x0} {x1} {x2} d.2.1))
+
+  \lemma bOverlapFib (a : A21)
+    : isProp (\Sigma (colAt (a.2, a.3)) (\Sigma P (T {A} {x0} (pinr (a.2, a.3))))) =>
+    \lam _ _ => SigmaPath prop-pi (SigmaPath prop-pi (TisProp {A} {x0} (pinr (a.2, a.3)) _ _))
+
+  \func bFwd (b : BOverlap) : BDiag => (b.1, b.2.2)
+  \func bBwd (d : BDiag) : BOverlap => (d.1, (colAtOfDiag d, d.2))
+  \func bColLeg (b : BOverlap) : BCol => (b.1, b.2.1)
+
+  \func bDiagEqv : QEquiv {BOverlap} {BDiag} => \new QEquiv {
+    | f => bFwd
+    | ret => bBwd
+    | ret_f (_ : BOverlap) => SigmaPropPath bOverlapFib idp
+    | f_sec (_ : BDiag) => idp
+  }
+
+  \sfunc baseCol= : BaseSplit = BCol => pushout-cobase-eqv.right bDiagEqv bColLeg
+
+
+  \func kBase (b : BSn 2) : BCol => ((b, x, y), inP w)
+
+  \lemma bVals (u : BCol) : \Sigma (u.1.2 = x) (u.1.3 = y) =>
+    TruncP.rec {_} {\Sigma (u.1.2 = x) (u.1.3 = y)} prop-isProp u.2
+        (\lam wu => Col.colValsDet {A} (inv wu *> w))
+
+  \sfunc bCol= : BCol = BSn 2 => iso f kBase sec ret \where {
+    \func f (u : BCol) : BSn 2 => u.1.1
+    \sfunc sec (u : BCol) : kBase (f u) = u =>
+      SigmaPropPath {A21} {\lam a => colAt (a.2, a.3)} (\lam _ => prop-isProp)
+          {kBase (f u)} {u} (ext (idp, inv (bVals u).1, inv (bVals u).2))
+    \func ret (b : BSn 2) : f (kBase b) = b => idp
+  }
+
+  \sfunc baseW= : BaseSplit = BSn 2 => baseCol= *> bCol=
+
+
+  \sfunc baseWInvBeta (b : BSn 2) : path-fun (inv baseW=) b = pinl (kBase b) => run {
+    rewrite (\peval baseW=),
+    rewrite (pathFunInvComp baseCol= bCol= b),
+    rewrite (\peval bCol=),
+    rewrite (path-fun.beta-inv bCol=.f kBase bCol=.sec bCol=.ret),
+    rewrite (\peval baseCol=),
+    pushout-cobase-eqv.rightInvBeta bDiagEqv bColLeg (kBase b)
+  }
+
+
+  \sfunc baseInvBeta (b : BSn 2)
+    : path-fun (inv base=) (pinl (kBase b))
+    = ((b, x, y), pinr (pinl (ehatFromColAt (b, x, y) (inP w)))) =>
+    baseInvBetaPinl (kBase b)
+
+
+  \sfunc jSumDBeta (b : BSn 2)
+    : path-fun JSum=D (fatxy b, pinl (ehatFromColAt (b, x, y) (inP w))) = pinl (kCol b) =>
+    jSumDBetaPinl (fatxy b) (ehatFromColAt (b, x, y) (inP w))
+
+
+  \sfunc leftBeta (b : BSn 2)
+    : path-fun left= (fatxy b, pinr (pinl (ehatFromColAt (b, x, y) (inP w))))
+    = pinr (pinl (kCol b)) =>
+    leftBetaPinrPinl (fatxy b) (ehatFromColAt (b, x, y) (inP w))
+
+  \sfunc lWBetaAt (b : BSn 2) : path-fun leftW= (lExpl (path-fun (inv baseW=) b)) = kCol b => run {
+    rewrite (baseWInvBeta b),
+    unfold lExpl,
+    unfold TotalSpaceModel.lExpl,
+    rewrite (baseInvBeta b),
+    rewrite (leftBeta b),
+    leftWBeta (kCol b)
+  }
+
+  \sfunc lWBeta : (\lam (b : BSn 2) => path-fun leftW= (lExpl (path-fun (inv baseW=) b))) = kCol =>
+    ext lWBetaAt
+
+
+  -- The inner total space is exactly Kw; only the collision value of lExpl is
+  -- needed for this identification.
+  \sfunc Lw= : LsplitE = Kw =>
+    pushout-equiv baseW= leftW= rightW= lExpl rExpl
+        *> pushout-eqv-fun _ _ _ _ lWBeta ext
+
+
+  \sfunc qLeft (cp : \Sigma C P) : Kw => path-fun Lw= (path-fun Lchar (diagPoint cp))
+
+  \func Qw : \oo-Type (\suc \lp) => PushoutData {\Sigma C P} {Kw} {P} qLeft (\lam cp => cp.2)
+
+  \sfunc QsmallSplit=Qw : QsmallSplit = Qw =>
+    pushout-equiv idp Lw= idp (\lam cp => path-fun Lchar (diagPoint cp)) (\lam cp => cp.2)
+        *> pushout-eqv-fun _ _ _ _ (ext (\lam cp => inv (\peval qLeft cp))) idp
+
+
+  \sfunc charOf (b' b : BSn 2) (p : fatxy b' = fatxy b) : FatPathChar {A} {x} {y} b' b p =>
+    fatPathChar {A} {x} {y} b' b p
+
+
+  \func V : \Prop => x = y
+
+  \func Strict (bv : hUT) : \oo-Type (\suc \lp) => \Sigma (b : BSn 2) (fatxy b = bv)
+
+  \func Diag (bv : hUT) : \Prop => \Sigma V (bv.2 = (\lam _ => x))
+
+  \lemma diagIsProp (bv : hUT) : isProp (Diag bv) => prop-isProp
+
+  -- Strict-or-diagonal code for points of the collision stratum.
+  \func WCode (bv : hUT) : \oo-Type (\suc \lp) => Join (Strict bv) (Diag bv)
+
+  \func wl {bv : hUT} (s : Strict bv) : WCode bv => pinl s
+  \func wr {bv : hUT} (d : Diag bv) : WCode bv => pinr d
+  \func wGlue {bv : hUT} (s : Strict bv) (d : Diag bv) : wl s = wr d => path (pglue (s, d))
+
+
+  \func fatDiag (b : BSn 2) (v : x = y) : (fatxy b).2 = (\lam _ => x) =>
+    ext (\case \elim __ \with {
+      | inl _ => idp
+      | inr fzero => inv v
+    })
+
+  \func strictEq {b' b : BSn 2} {p : fatxy b' = fatxy b} (q : b' = b) (e : pmap fatxy q = p)
+    : (b, idp) = {Strict (fatxy b)} (b', p) \elim q, e
+    | idp, idp => idp
+
+  \func fatReduce (b : BSn 2) (s : Strict (fatxy b)) : wl (b, idp) = wl s =>
+    \case charOf s.1 b s.2 \with {
+      | lifted q e => pmap (\lam (t : Strict (fatxy b)) => wl t) (strictEq q e)
+      | diagonal v => \let d : Diag (fatxy b) => (v, fatDiag b v)
+                      \in wGlue (b, idp) d *> inv (wGlue s d)
+    }
+
+  \func fatCtr (b : BSn 2) : Contr (WCode (fatxy b)) =>
+    joinEqLeftP {Strict (fatxy b)} {Diag (fatxy b)} (diagIsProp (fatxy b)) (b, idp) (fatReduce b)
+
+  \sfunc codeCondCtr (bv : hUT) (e : WCode bv) : Contr (WCode bv) \elim e
+    | pinl s => transport (\lam (z : hUT) => Contr (WCode z)) s.2 (fatCtr s.1)
+    | pinr d => Join_Contr (Strict bv) (isProp=>isContr (diagIsProp bv) d)
+
+  -- StrictCollisionPaths proves that two strict presentations either agree
+  -- through BSn 2 or force x = y.  Hence WCode is a proposition.
+  \lemma WCodeIsProp (bv : hUT) : isProp (WCode bv) => condCtrToProp (codeCondCtr bv)
+
+
+  -- Every collision-stratum point carries WCode, since the truncated
+  -- presentation may now be eliminated into a proposition.
+  \lemma codeOfCol (u : ColB) : WCode u.1 =>
+    TruncP.rec (WCodeIsProp u.1) u.2
+        (\lam s => wl (BSnbase 2, inv w *> s.3.1 *> inv s.3.2))
+
+
+  \sfunc ctrPW (p : P) : Contr Qw =>
+    contrTransport (inv QsmallSplit=Qw) (ctrP p)
+
+  \func kIn (u : ColB) : Kw => pinl u
+  \func kTip : Kw => pinr ()
+  \func kGlue (b : BSn 2) : kIn (kCol b) = kTip => path (pglue b)
+  \func qIn (k : Kw) : Qw => pinl k
+
+  \func cw : Qw => qIn kTip
+
+  \sfunc viaCtrW (c : Contr Qw) (z : Qw) : cw = z => isContr=>isProp c cw z
+
+  \sfunc glueOverW (c : Contr Qw) (F : I -> Qw) (p : cw = F left) (q : cw = F right)
+    : Path (\lam i => cw = F i) p q => pathOver (isProp.=>isSet (isContr=>isProp c) _ _ _ _)
+
+
+  \sfunc eqToP (q : x = y) : P => (diagonalPinr x (w *> pmap (collision x) (inv q))).1
+
+
+  \func colBPath (b : BSn 2) (u : ColB) (p : fatxy b = u.1) : kCol b = u =>
+    SigmaPropPath {hUT} {colBoth} (\lam _ => prop-isProp) p
+
+  \func colBPathIdp (b : BSn 2) : colBPath b (kCol b) idp = idp =>
+    SigmaPropPathBeta {hUT} {colBoth} (\lam _ => prop-isProp) (idp {ColB} {kCol b})
+
+
+  \func strictPath (u : ColB) (s : Strict u.1) : cw = qIn (kIn u) =>
+    pmap qIn (inv (kGlue s.1) *> pmap kIn (colBPath s.1 u s.2))
+
+  \func diagPath (u : ColB) (d : Diag u.1) : cw = qIn (kIn u) =>
+    viaCtrW (ctrPW (eqToP d.1)) (qIn (kIn u))
+
+
+  \func repPath (u : ColB) (e : WCode u.1) : cw = qIn (kIn u) \elim e
+    | pinl s => strictPath u s
+    | pinr d => diagPath u d
+    | pglue (s, d) i => glueOverW (ctrPW (eqToP d.1)) (\lam _ => qIn (kIn u))
+        (strictPath u s) (diagPath u d) @ i
+
+  \func colPath (u : ColB) : cw = qIn (kIn u) => repPath u (codeOfCol u)
+
+
+  \func codeAtKBeta (b : BSn 2) : codeOfCol (kCol b) = wl (b, idp) => WCodeIsProp (fatxy b) _ _
+
+  \func strictPathBeta (b : BSn 2) : repPath (kCol b) (wl (b, idp)) = pmap qIn (inv (kGlue b)) =>
+    pmap (\lam (t : kIn (kCol b) = kIn (kCol b)) => pmap qIn (inv (kGlue b) *> t))
+        (pmap (pmap kIn) (colBPathIdp b))
+
+  \func colPathAtK (b : BSn 2) : colPath (kCol b) = inv (pmap qIn (kGlue b)) =>
+    pmap (repPath (kCol b)) (codeAtKBeta b) *> strictPathBeta b
+      *> pmap_inv-comm qIn (kGlue b)
+
+  \func kGlueOver (b : BSn 2)
+    : Path (\lam i => cw = qIn (pglue b i)) (colPath (kCol b)) idp =>
+    transport (\lam (t : cw = qIn (kIn (kCol b))) => Path (\lam i => cw = qIn (pglue b i)) t idp)
+        (inv (colPathAtK b)) (invPathOver (pmap qIn (kGlue b)))
+
+  -- Contract Kw at its cone point, using the strict branch directly and the
+  -- diagonal branch through the already proved contraction ctrP.
+  \func kPath (k : Kw) : cw = qIn k \elim k
+    | pinl u => colPath u
+    | pinr () => idp
+    | pglue b i => kGlueOver b @ i
+
+
+  \func qPath (z : Qw \levels _ -1) : cw = z
+    | pinl k  => kPath k
+    | pinr p  => viaCtrW (ctrPW p) (pinr p)
+    | pglue cp i => glueOverW (ctrPW cp.2) (\lam j => pglue cp j)
+                         (kPath (qLeft cp)) (viaCtrW (ctrPW cp.2) (pinr cp.2)) @ i
+
+
+  \func contrQw : Contr Qw \cowith
+    | center => cw
+    | contraction => qPath
+}

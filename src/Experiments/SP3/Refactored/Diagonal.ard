@@ -1,0 +1,102 @@
+\import Data.Or
+\import Equiv.Univalence
+\import Experiments.SP3.Refactored.Utilities
+\import Homotopy.Pushout
+\import Logic
+\import Logic.Unique
+\import Set
+\import Meta
+\import Paths
+\import Paths.Meta
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import SymmetricProducts.SP3
+\import Utilities.PathFun
+\import Utilities.Paths
+\import Utilities.Pushout
+\import Equiv
+
+-- The total-diagonal certificate on SP3.step.
+--
+-- At a Borel point it says that the tuple is constantly x0; at a collision
+-- point it says that both values are x0.  The glue identifies these two
+-- descriptions.
+\func T {A : \Set \lp} {x0 : A} (x : SP3.step {A}) : \Type \elim x
+  | pinl b => b.2 = (\lam _ => x0)
+  | pinr c => \Sigma (c.1 = x0) (c.2 = x0)
+  | pglue a i => glueEq a i \where {
+  \sfunc glueEq (a : \Sigma (BSn 2) A A) :
+    (Or.rec {a.1.1} {Fin 1} (\lam _ => a.2) (\lam _ => a.3) = (\lam _ => x0)) = (\Sigma (a.2 = x0) (a.3 = x0)) =>
+    propExtEx
+        (\lam p q => set-pi {Or a.1.1 (Fin 1) -> A}
+            {Or.rec {a.1.1} {Fin 1} (\lam _ => a.2) (\lam _ => a.3)} {\lam _ => x0} {p} {q})
+        prop-isProp
+        (\lam p => (TruncP.rec prop-isProp (eltBSn a.1) (\lam x => pmap (__ (inl x)) p),
+                    pmap (__ (inr 0)) p))
+        (\lam p => ext (\case \elim __ \with {
+          | inl _ => p.1
+          | inr 0 => p.2
+        }))
+
+
+  -- The total space of T is the mapping cone BS3 // BS2.  This is the
+  -- geometric description of the diagonal locus used in the main proof.
+  \func repr : (\Sigma (s : SP3.step {A}) (T s)) = SP3.subspaceBS2 =>
+    inv (PushoutData.flattening T) *> pushout-equiv base= left= right= lmap rmap *> pushout-eqv-fun _ _ _ _ leftFun rightFun
+    \where {
+      \func baseT => \Sigma (p : \Sigma (BSn 2) A A)
+                            (Or.rec {p.1.1} {Fin 1} (\lam _ => p.2) (\lam _ => p.3) = (\lam _ => x0))
+      \func leftT => \Sigma (p : borelXn 3 A) (p.2 = (\lam _ => x0))
+      \func rightT => \Sigma (p : \Sigma A A) (\Sigma (p.1 = x0) (p.2 = x0))
+      \func lmap (p : baseT) : leftT => ((extendBSn 1 p.1.1,
+                                          Or.rec {p.1.1.1} {Fin 1} (\lam _ => p.1.2) (\lam _ => p.1.3)), p.2)
+      \func rmap (p : baseT) : rightT => ((p.1.2, p.1.3), transport T (PushoutData.ppglue p.1) p.2)
+
+      \func base= : baseT = BSn 2 => iso f g sec ret \where {
+        \func f (p : baseT) : BSn 2 => p.1.1
+        \func g (b : BSn 2) : baseT => ((b, x0, x0), inv (orConst x0))
+        \func triplePath (p : baseT) : (p.1.1, x0, x0) = p.1 =>
+          \let q => path-fun (T.glueEq p.1) p.2 \in ext (idp, inv q.1, inv q.2)
+        \func sec (p : baseT) : g (f p) = p =>
+          SigmaPath (triplePath p) set-pi
+        \func ret (b : BSn 2) : f (g b) = b => idp
+      }
+      \func left= : leftT = BSn 3 => iso f g sec ret \where {
+        \func f (p : leftT) : BSn 3 => p.1.1
+        \func g (b : BSn 3) : leftT => ((b, \lam (_ : b.1) => x0), idp)
+        \func pairPath (p : leftT) : (p.1.1, \lam (_ : p.1.1.1) => x0) = {borelXn 3 A} p.1 => ext (idp, inv p.2)
+        \func sec (p : leftT) : g (f p) = p => SigmaPath (pairPath p) set-pi
+        \func ret (b : BSn 3) : f (g b) = b => idp
+      }
+      \func right= : rightT = (\Sigma) => iso f g sec ret \where {
+        \func f (_ : rightT) : \Sigma => ()
+        \func g (_ : \Sigma) : rightT => ((x0, x0), (idp, idp))
+        \func pairPath (p : rightT) : (x0, x0) = p.1 => ext (inv p.2.1, inv p.2.2)
+        \func sec (p : rightT) : g (f p) = p => SigmaPath (pairPath p) prop-pi
+        \func ret (u : \Sigma) : f (g u) = u => idp
+      }
+
+      \sfunc leftFun : (\lam b => path-fun left= (lmap (path-fun (inv base=) b))) = extendBSn 1 => run {
+        unfold base=,
+        rewrite (path-fun.beta-inv base=.f base=.g base=.sec base=.ret),
+        unfold left=,
+        rewrite (path-fun.beta left=.f left=.g left=.sec left=.ret),
+        idp
+      }
+      \sfunc rightFun : (\lam b => path-fun right= (rmap (path-fun (inv base=) b))) = \lam _ => () => run {
+        unfold base=,
+        rewrite (path-fun.beta-inv base=.f base=.g base=.sec base=.ret),
+        unfold right=,
+        rewrite (path-fun.beta right=.f right=.g right=.sec right=.ret),
+        idp
+      }
+    }
+
+
+}
+
+
+-- Because A is a set, every diagonal certificate is a proposition.
+\lemma TisProp {A : \Set \lp} {x : A} (s : SP3.step {A}) : isProp (T {A} {x} s) \elim s
+  | pinl b => \lam _ _ => set-pi
+  | pinr c => prop-isProp

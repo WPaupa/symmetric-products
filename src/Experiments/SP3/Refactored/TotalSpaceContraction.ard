@@ -1,0 +1,147 @@
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import Data.Or
+\import Data.Fin
+\import Function.Meta
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Logic
+\import Logic.Unique
+\import Set
+\import Homotopy.Join
+\import Equiv
+\import Equiv.Sigma
+\import Equiv.Univalence
+\import Homotopy.Pushout
+\import SymmetricProducts.SP3
+\import Utilities.Equiv
+\import Utilities.PathFun
+\import Utilities.Paths
+\import Utilities.Pushout
+\import Experiments.SP3.Refactored.BaseFiber
+\import Experiments.SP3.Refactored.Collision
+\import Experiments.SP3.Refactored.StrictCollisionPaths
+\import Experiments.SP3.Refactored.Diagonal
+\import Experiments.SP3.Refactored.Utilities
+\import Utilities.Unit
+\import Experiments.SP3.Refactored.PathCode
+\import Experiments.SP3.Refactored.TotalSpaceModel
+\import Experiments.SP3.Refactored.DiagonalCase (ctrP \as diagonalCtrP)
+\import Experiments.SP3.Refactored.CollisionCase (ctrW \as collisionCtrW)
+
+-- Total-space lemma.  Every point of the normalized model lies in either
+-- the diagonal branch or the strict-collision branch.  Pushout induction
+-- therefore contracts the total space of the path code.
+\sfunc contrQhat {A : \Set \lp} {x0 x1 x2 : A}
+  : Contr (\Sigma (z : PathCode.gUT {A}) (PathCode.Qhat {A} {x0} {x1} {x2} z)) =>
+  transport Contr Qflat=Q (transport Contr (inv Qflat=Qsmall)
+      (transport Contr (inv Qsmall=QsmallSplit) contrQsmallSplit))
+  \where {
+  -- Notation for the fixed Cartesian code.
+  \func gUT => PathCode.gUT {A}
+  \func z0 => PathCode.z0 {A} {x0} {x1} {x2}
+  \func w0 => PathCode.w0 {A} {x0} {x1} {x2}
+  \func P => PathCode.P {A} {x0} {x1} {x2}
+  \func Qhat => PathCode.Qhat {A} {x0} {x1} {x2}
+  \func J => PathCode.J {A} {x0} {x1} {x2}
+
+  -- Notation for the normalized total-space model and its attaching maps.
+  \func Qflat=Q => TotalSpaceModel.Qflat=Q {A} {x0} {x1} {x2}
+  \func Qflat=Qsmall => TotalSpaceModel.Qflat=Qsmall {A} {x0} {x1} {x2}
+  \func Qsmall=QsmallSplit => TotalSpaceModel.Qsmall=QsmallSplit {A} {x0} {x1} {x2}
+  \func QsmallSplit => TotalSpaceModel.QsmallSplit {A} {x0} {x1} {x2}
+  \func BaseSplit => TotalSpaceModel.BaseSplit {A} {x0} {x1} {x2}
+  \func ColB => TotalSpaceModel.ColB {A} {x0} {x1} {x2}
+  \func JSplitD => TotalSpaceModel.JSplitD {A} {x0} {x1} {x2}
+  \func JSum=D => TotalSpaceModel.JSum=D {A} {x0} {x1} {x2}
+  \func Lchar => TotalSpaceModel.Lchar {A} {x0} {x1} {x2}
+  \func LeftCone => TotalSpaceModel.LeftCone {A} {x0} {x1} {x2}
+  \func LsplitE => TotalSpaceModel.LsplitE {A} {x0} {x1} {x2}
+  \func RightSplitP => TotalSpaceModel.RightSplitP {A} {x0} {x1} {x2}
+  \func Spine => TotalSpaceModel.Spine {A} {x0} {x1} {x2}
+  \func diagPoint => TotalSpaceModel.diagPoint {A} {x0} {x1} {x2}
+  \func lExpl => TotalSpaceModel.lExpl {A} {x0} {x1} {x2}
+  \func rExpl => TotalSpaceModel.rExpl {A} {x0} {x1} {x2}
+
+  \func ctrP => diagonalCtrP {A} {x0} {x1} {x2}
+  \func ctrW => collisionCtrW {A} {x0} {x1} {x2}
+
+
+  -- Each stratum supplies either p : P or an honest collision path w, so the
+  -- local contractions ctrP and ctrW cover every point.  Pushout induction then
+  -- contracts QsmallSplit, and transport along the flattening equivalences
+  -- contracts the original total type.
+  \func ctr0 : QsmallSplit => pinl (pinl (pinl ()))
+
+  \sfunc viaCtr (c : Contr QsmallSplit) (xi : QsmallSplit) : ctr0 = xi => isContr=>isProp c ctr0 xi
+
+  \sfunc glueOver (c : Contr QsmallSplit) (F : I -> QsmallSplit)
+                  (p : ctr0 = F left) (q : ctr0 = F right) : Path (\lam i => ctr0 = F i) p q =>
+    pathOver (isProp.=>isSet (isContr=>isProp c) _ _ _ _)
+
+
+  \lemma ctrQsProp : isProp (Contr QsmallSplit) => Contr.levelProp QsmallSplit
+
+
+  \sfunc ctrJw0 (j : J w0) : Contr (QsmallSplit \levels _ -1) \elim j
+    | pinl cb => TruncP.rec ctrQsProp cb (\lam s => ctrW s.1 s.2 s.3.1)
+    | pinr pt => ctrP pt.1
+
+  \sfunc ctrColB (u : ColB) : Contr QsmallSplit =>
+    TruncP.rec ctrQsProp u.2 (\lam s => ctrW s.1 s.2 s.3.1)
+
+  \sfunc ctrJSplit (js : JSplitD) : Contr (QsmallSplit \levels _ -1) \elim js
+    | pinl u => ctrColB u
+    | pinr pb => ctrP pb.1
+
+  \sfunc ctrSpine (sp : Spine) : Contr QsmallSplit => ctrJw0 (transport J (inv sp.2.1) sp.2.2)
+
+  \sfunc ctrRight (r : RightSplitP) : Contr (QsmallSplit \levels _ -1) \elim r
+    | pinl cr => TruncP.rec ctrQsProp cr.2 (\lam w => ctrW cr.1.1 cr.1.2 w)
+    | pinr p => ctrP p
+
+  \sfunc ctrBase (b : BaseSplit) : Contr (QsmallSplit \levels _ -1) \elim b
+    | pinl u => TruncP.rec ctrQsProp u.2 (\lam w => ctrW u.1.2 u.1.3 w)
+    | pinr d => ctrP d.2.1
+
+
+  \sfunc tipPathLC (lc : LeftCone \levels _ -1) : ctr0 = pinl (pinl lc) \elim lc
+    | pinl () => idp
+    | pinr js => viaCtr (ctrJSplit js) _
+    | pglue sp i => glueOver (ctrSpine sp) (\lam j => pinl (pinl (pglue sp j))) idp
+        (viaCtr (ctrJSplit (path-fun JSum=D (sp.1, sp.2.2))) _) @ i
+
+  \sfunc tipPathL (l : LsplitE \levels _ -1) : ctr0 = pinl l \elim l
+    | pinl lc => tipPathLC lc
+    | pinr r => viaCtr (ctrRight r) _
+    | pglue b i => glueOver (ctrBase b) (\lam j => pinl (pglue b j))
+        (tipPathLC (lExpl b)) (viaCtr (ctrRight (rExpl b)) _) @ i
+
+  \sfunc tipPath (xi : QsmallSplit \levels _ -1) : ctr0 = xi \elim xi
+    | pinl l => tipPathL l
+    | pinr p => viaCtr (ctrP p) _
+    | pglue cp i => glueOver (ctrP cp.2) (\lam j => pglue cp j)
+        (tipPathL (path-fun Lchar (diagPoint cp))) (viaCtr (ctrP cp.2) _) @ i
+
+  \sfunc QsmsEq : QsmallSplit \levels _ -1 = QsmallSplit => idp
+
+  \sfunc contrQsmallSplit-1 : Contr (QsmallSplit \levels _ -1) \cowith
+    | center => ctr0
+    | contraction => tipPath
+
+  \sfunc contrQsmallSplit : Contr QsmallSplit => rewriteI QsmsEq contrQsmallSplit-1
+}
+
+-- Encode-decode conclusion.  The contractible total space identifies the
+-- based loop space with the contractible base fiber of PathCode.Qhat.
+\sfunc z0Pathchar {A : \Set \lp} {x0 x1 x2 : A} :
+  (PathCode.z0 {A} {x0} {x1} {x2} = PathCode.z0 {A} {x0} {x1} {x2})
+    = PathCode.Qhat {A} {x0} {x1} {x2} (PathCode.z0 {A} {x0} {x1} {x2}) =>
+  fundamentalIP
+    {PathCode.gUT {A}}
+    {PathCode.z0 {A} {x0} {x1} {x2}}
+    {PathCode.z0 {A} {x0} {x1} {x2}}
+    {PathCode.Qhat {A} {x0} {x1} {x2}}
+    (pinl idp)
+    (contrQhat {A} {x0} {x1} {x2})

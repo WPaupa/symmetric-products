@@ -1,0 +1,190 @@
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import Data.Or
+\import Data.Fin
+\import Function.Meta
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Logic
+\import Logic.Unique
+\import Set
+\import Homotopy.Join
+\import Equiv
+\import Equiv.Sigma
+\import Equiv.Univalence
+\import Homotopy.Pushout
+\import SymmetricProducts.SP3
+\import Utilities.Equiv
+\import Utilities.PathFun
+\import Utilities.Paths
+\import Utilities.Pushout
+\import Experiments.SP3.Refactored.BaseFiber
+\import Experiments.SP3.Refactored.Collision
+\import Experiments.SP3.Refactored.StrictCollisionPaths
+\import Experiments.SP3.Refactored.Diagonal
+\import Experiments.SP3.Refactored.Utilities
+\import Utilities.Unit
+
+-- The encode-decode family at the Cartesian point z0 = [x0,x1,x2].
+-- Its base fiber is the finite permutation calculation of BaseFiber.
+\func PathCode (A : \Set \lp) (x0 x1 x2 : A) => Qhat z0 \where {
+  -- Fix the Cartesian basepoint represented by the ordered triple
+  -- (x0,x1,x2), together with the diagonal proposition P.
+  \func hUT : \oo-Type (\suc \lp) => borelXn 3 A
+  \func iUT : \oo-Type (\suc \lp) => SP3.step {A}
+  \func gUT : \oo-Type (\suc \lp) => SP3 A
+  \func C : \oo-Type (\suc \lp) => SP3.subspaceBS2
+
+  \func A21 : \oo-Type (\suc \lp) => \Sigma (b : BSn 2) (x y : A)
+
+  \func w0 : hUT => (BSnbase 3, recFin3 {\lam _ => A} x0 x1 x2)
+  \func y0 : iUT => pinl w0
+  \func z0 : gUT => pinl y0
+
+  \func P : \Prop => \Sigma (x0 = x1) (x1 = x2)
+
+
+  -- Collision certificates and the propositional join used at Borel points.
+  \func collision (x y : A) : hUT => Col.collision {A} x y
+  \func colAt (c : \Sigma A A) : \Prop => Col.colAt {A} {x0} {x1} {x2} c
+  \func colBoth (bv : hUT) : \Prop => Col.colBoth {A} {x0} {x1} {x2} bv
+  \sfunc fatToCol (a : A21) : TruncP (SP3.fatdiag a = collision a.2 a.3) => Col.fatToCol {A} a
+  \sfunc colDetect (a : A21) (p : w0 = SP3.fatdiag a) : colAt (a.2, a.3) =>
+    Col.colDetect {A} {x0} {x1} {x2} a p
+  \sfunc diagonalPinl (b : BSn 3) (x : A) (p : w0 = (b, \lam _ => x)) : \Sigma P (x = x0) =>
+    Col.diagonalPinl {A} {x0} {x1} {x2} b x p
+  \sfunc diagonalPinr (x : A) (p : w0 = collision x x) : \Sigma P (x = x0) =>
+    Col.diagonalPinr {A} {x0} {x1} {x2} x p
+  \func J (bv : hUT) : \oo-Type (\suc \lp) => Col.J {A} {x0} {x1} {x2} bv
+  \lemma JisProp (bv : hUT) : isProp (J bv) => Col.JisProp {A} {x0} {x1} {x2} bv
+
+
+  -- The diagonal certificate transported along the outer attaching map.
+  \sfunc diagT (a : \Sigma C A) (_ : a.2 = x0) : T {A} {x0} (SP3.diag a)
+    | (pinl b, x), ax => ext (\lam _ => ax)
+    | (pinr (), x), ax => (ax, ax)
+    | (pglue b i, x), ax =>
+      pathOver
+          {\lam i => T {A} {x0} (SP3.diag (pglue b i, x))}
+              {ext (\lam _ => ax)}
+          {ax, ax}
+          (TisProp {A} {x0} (SP3.diag (pinr (), x)) _ (ax, ax)) @ i
+  \sfunc diagTToEq (a : \Sigma C A) (_ : T {A} {x0} (SP3.diag a)) : a.2 = x0
+    | (pinl b, x), t => TruncP.rec prop-isProp (eltBSn b) (\lam y => pmap (__ y) t)
+    | (pinr (), x), t => t.1
+
+  \lemma colCodeIsProp (c : \Sigma A A) : isProp (Join (colAt c) (\Sigma P (T {A} {x0} (pinr c)))) =>
+    joinPropIsProp prop-isProp (\lam _ _ => SigmaPath prop-pi (TisProp {A} {x0} (pinr c) _ _))
+
+
+  -- Construction of the path code over the inner pushout SP3.step.
+  --
+  -- At a Borel point the left join factor is the honest Borel path w0 = bv;
+  -- at a collision point the code records collision or diagonal evidence.  The
+  -- inner glue identifies these propositional descriptions.
+  \func Ehat (s : iUT) : \oo-Type (\suc \lp) \elim s
+    | pinl bv => Join (w0 = bv) (J bv)
+    | pinr c => Join (colAt c) (\Sigma P (T {A} {x0} (pinr c)))
+    | pglue a i => innerGlue a i \where {
+
+
+    \sfunc pathToJ (a : A21) (p : w0 = SP3.fatdiag a) : J (SP3.fatdiag a) =>
+      pinl (TruncP.map (fatToCol a) (\lam fc => (a.2, a.3, (p *> fc, fc))))
+
+
+    \sfunc jToJ (a : A21) (j : Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a))) : J (SP3.fatdiag a) \elim j
+      | pinl p => pathToJ a p
+      | pinr q => q
+      | pglue (p, q) i => JisProp (SP3.fatdiag a) (pathToJ a p) q i
+
+    \sfunc condCtr (a : A21) (j : Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a)))
+      : Contr (Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a))) =>
+      Join_Contr (w0 = SP3.fatdiag a) (isProp=>isContr (JisProp (SP3.fatdiag a)) (jToJ a j))
+
+
+    \lemma toColAt (a : A21) (cb : colBoth (SP3.fatdiag a)) : colAt (a.2, a.3) =>
+      TruncP.rec prop-isProp cb
+          (\lam s => TruncP.map (fatToCol a) (\lam fc => s.3.1 *> inv s.3.2 *> fc))
+
+    \lemma fromColAt (a : A21) (ca : colAt (a.2, a.3)) : colBoth (SP3.fatdiag a) =>
+      TruncP.rec {_} {colBoth (SP3.fatdiag a)} prop-isProp ca
+          (\lam wc => TruncP.map (fatToCol a) (\lam fc => (a.2, a.3, (wc, fc))))
+
+
+    \sfunc tGlue (a : A21) (t : T {A} {x0} (pinl (SP3.fatdiag a))) : T {A} {x0} (pinr (a.2, a.3)) =>
+      transport (T {A} {x0}) (PushoutData.ppglue a) t
+    \sfunc tGlueInv (a : A21) (t : T {A} {x0} (pinr (a.2, a.3))) : T {A} {x0} (pinl (SP3.fatdiag a)) =>
+      transport (T {A} {x0}) (inv (PushoutData.ppglue a)) t
+
+    \func fwdJ (a : A21) (q : J (SP3.fatdiag a))
+      : Join (colAt (a.2, a.3)) (\Sigma P (T {A} {x0} (pinr (a.2, a.3)))) \elim q
+      | pinl cb => pinl (toColAt a cb)
+      | pinr pt => pinr (pt.1, tGlue a pt.2)
+      | pglue (cb, pt) i => colCodeIsProp (a.2, a.3) (pinl (toColAt a cb)) (pinr (pt.1, tGlue a pt.2)) i
+
+    \func fwd (a : A21) (j : Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a)))
+      : Join (colAt (a.2, a.3)) (\Sigma P (T {A} {x0} (pinr (a.2, a.3)))) \elim j
+      | pinl p => pinl (colDetect a p)
+      | pinr q => fwdJ a q
+      | pglue (p, q) i =>
+        colCodeIsProp (a.2, a.3) (pinl (colDetect a p)) (fwdJ a q) i
+
+
+    \func bwd (a : A21) (q : Join (colAt (a.2, a.3)) (\Sigma P (T {A} {x0} (pinr (a.2, a.3)))))
+      : Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a)) \elim q
+      | pinl ca => pinr (pinl (fromColAt a ca))
+      | pinr pt => pinr (pinr (pt.1, tGlueInv a pt.2))
+      | pglue (ca, pt) i => condCtrToProp (condCtr a)
+          (pinr (pinl (fromColAt a ca))) (pinr (pinr (pt.1, tGlueInv a pt.2))) i
+
+    \func innerGlue (a : A21)
+      : Join (w0 = SP3.fatdiag a) (J (SP3.fatdiag a))
+      = Join (colAt (a.2, a.3)) (\Sigma P (T {A} {x0} (pinr (a.2, a.3)))) =>
+      propExtEx (condCtrToProp (condCtr a)) (colCodeIsProp (a.2, a.3)) (fwd a) (bwd a)
+  }
+
+  -- Extend the code over the outer pushout SP3 A.  On a singleton point x the
+  -- code is P together with x = x0.
+  \func Qhat (_ : gUT) : \oo-Type (\suc \lp)
+    | pinl s => Ehat s
+    | pinr x => \Sigma P (x = x0)
+    | pglue a i => outerGlue a i \where {
+
+
+    \sfunc diagToEq (a : \Sigma C A) (e : Ehat (SP3.diag a)) : \Sigma P (a.2 = x0) \elim a
+      | (pinl b, x) => \case \elim e \with {
+        | pinl p => diagonalPinl b x p
+        | pinr q => \case \elim q \with {
+          | pinl cb => TruncP.rec prop-isProp cb
+              (\lam s => diagonalPinl b x (s.3.1 *> inv s.3.2))
+          | pinr pt => (pt.1, diagTToEq (pinl b, x) pt.2)
+        }
+      }
+      | (pinr (), x) => \case \elim e \with {
+        | pinl ca => TruncP.rec prop-isProp ca (\lam w => diagonalPinr x w)
+        | pinr pt => (pt.1, diagTToEq (pinr (), x) pt.2)
+      }
+
+
+    \sfunc diagCtrL (b : BSn 3) (x : A) (pe : \Sigma P (x = x0)) : Contr (Ehat (pinl (b, \lam _ => x))) =>
+      Join_Contr (w0 = (b, \lam _ => x))
+          (isProp=>isContr (JisProp (b, \lam _ => x)) (pinr (pe.1, diagT (pinl b, x) pe.2)))
+    \sfunc diagCtrR (x : A) (pe : \Sigma P (x = x0)) : Contr (Ehat (pinr (x, x))) =>
+      isProp=>isContr (colCodeIsProp (x, x)) (pinr (pe.1, diagT (pinr (), x) pe.2))
+
+    \sfunc diagCtr (a : \Sigma C A) (pe : \Sigma P (a.2 = x0)) : Contr (Ehat (SP3.diag a)) \elim a
+      | (pinl b, x) => diagCtrL b x pe
+      | (pinr (), x) => diagCtrR x pe
+
+    \func outerGlue (a : \Sigma C A) : Ehat (SP3.diag a) = (\Sigma P (a.2 = x0)) =>
+      propExtEx (condCtrToProp (\lam e => diagCtr a (diagToEq a e))) prop-isProp
+          (diagToEq a) (\lam pe => (diagCtr a pe).center)
+  }
+
+
+  -- Base-fiber lemma.  The fiber at z0 is contractible.  BaseFiber proves
+  -- this by the identity/transposition/three-cycle classification of Borel
+  -- loops.
+  \sfunc contrQz0 : Contr (Qhat z0) => Qz0.contr {A} {x0} {x1} {x2}
+}

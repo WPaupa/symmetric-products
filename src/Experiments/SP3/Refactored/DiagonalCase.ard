@@ -1,0 +1,265 @@
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import Data.Or
+\import Data.Fin
+\import Function.Meta
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Logic
+\import Logic.Unique
+\import Set
+\import Homotopy.Join
+\import Equiv
+\import Equiv.Sigma
+\import Equiv.Univalence
+\import Homotopy.Pushout
+\import SymmetricProducts.SP3
+\import Utilities.Equiv
+\import Utilities.PathFun
+\import Utilities.Paths
+\import Utilities.Pushout
+\import Experiments.SP3.Refactored.BaseFiber
+\import Experiments.SP3.Refactored.Collision
+\import Experiments.SP3.Refactored.StrictCollisionPaths
+\import Experiments.SP3.Refactored.Diagonal
+\import Experiments.SP3.Refactored.Utilities
+\import Utilities.Unit
+\import Experiments.SP3.Refactored.PathCode
+\import Experiments.SP3.Refactored.TotalSpaceModel
+
+-- The diagonal branch of the total-space contraction.
+-- An inhabitant of P contracts the diagonal locus and hence QsmallSplit.
+\sfunc ctrP {A : \Set \lp} {x0 x1 x2 : A}
+  (p : PathCode.P {A} {x0} {x1} {x2})
+  : Contr (TotalSpaceModel.QsmallSplit {A} {x0} {x1} {x2}) =>
+  transport Contr total=QsmallSplit (transport Contr (inv (totalEqDiag p)) contrDiagLocus)
+  \where {
+  -- Notation for the fixed Cartesian code.
+  \func hUT => PathCode.hUT {A}
+  \func iUT => PathCode.iUT {A}
+  \func gUT => PathCode.gUT {A}
+  \func C => PathCode.C
+  \func A21 => PathCode.A21 {A}
+  \func w0 => PathCode.w0 {A} {x0} {x1} {x2}
+  \func P => PathCode.P {A} {x0} {x1} {x2}
+  \func colAt => PathCode.colAt {A} {x0} {x1} {x2}
+  \func J => PathCode.J {A} {x0} {x1} {x2}
+  \func JisProp => PathCode.JisProp {A} {x0} {x1} {x2}
+  \func diagT => PathCode.diagT {A} {x0}
+  \func diagTToEq => PathCode.diagTToEq {A} {x0}
+  \func colCodeIsProp => PathCode.colCodeIsProp {A} {x0} {x1} {x2}
+  \func Ehat => PathCode.Ehat {A} {x0} {x1} {x2}
+  \func Qhat => PathCode.Qhat {A} {x0} {x1} {x2}
+
+  -- Notation for its normalized total-space model.
+  \func QsmallSplit => TotalSpaceModel.QsmallSplit {A} {x0} {x1} {x2}
+  \func Qflat=Q => TotalSpaceModel.Qflat=Q {A} {x0} {x1} {x2}
+  \func Qflat=Qsmall => TotalSpaceModel.Qflat=Qsmall {A} {x0} {x1} {x2}
+  \func Qsmall=QsmallSplit => TotalSpaceModel.Qsmall=QsmallSplit {A} {x0} {x1} {x2}
+
+
+  \func Tg (_ : gUT) : \Prop
+    | pinl s => T {A} {x0} s
+    | pinr x => x = x0
+    | pglue a i => tgGlue a i \where {
+    \func tgGlue (a : \Sigma C A) : T {A} {x0} (SP3.diag a) = (a.2 = x0) =>
+      propExtEx (TisProp {A} {x0} (SP3.diag a)) prop-isProp (diagTToEq a) (diagT a)
+  }
+
+
+  \func Tp (s : iUT) : \Prop => T {A} {x0} s
+
+
+  \sfunc ehatCtrFromT (p : P) (s : iUT) (t : Tp s) : Contr (Ehat s) \elim s
+    | pinl bv => Join_Contr (w0 = bv) (isProp=>isContr (JisProp bv) (pinr (p, t)))
+    | pinr c => isProp=>isContr (colCodeIsProp c) (pinr (p, t))
+
+
+  \sfunc borelToT (p : P) {bv : hUT} (h : w0 = bv) : Tp (pinl bv) =>
+    transport (\lam u => T {A} {x0} (pinl u)) h (Qz0.Ty0FromP {A} {x0} {x1} {x2} p)
+
+  \sfunc jToT (p : P) (bv : hUT) (j : J bv) : Tp (pinl bv) \elim j
+    | pinl cb => TruncP.rec (TisProp {A} {x0} (pinl bv)) cb
+        (\lam s => borelToT p (s.3.1 *> inv s.3.2))
+    | pinr pt => pt.2
+
+  \sfunc ehatToTL (p : P) (bv : hUT) (e : Join (w0 = bv) (J bv)) : Tp (pinl bv) \elim e
+    | pinl h => borelToT p h
+    | pinr j => jToT p bv j
+
+  \sfunc ehatToTR (p : P) (c : \Sigma A A) (e : Join (colAt c) (\Sigma P (T {A} {x0} (pinr c))))
+    : Tp (pinr c) \elim e
+    | pinl ca => TruncP.rec (TisProp {A} {x0} (pinr c)) ca
+        (\lam w => \let v => Col.colValsDet {A} (inv (Col.w0Diag {A} {x0} {x1} {x2} p) *> w)
+                   \in (inv v.1, inv v.2))
+    | pinr pt => pt.2
+
+  \sfunc ehatToT (p : P) (s : iUT) (e : Ehat s) : Tp s \elim s
+    | pinl bv => ehatToTL p bv e
+    | pinr c => ehatToTR p c e
+
+  \sfunc ehatCtr (p : P) (bv : hUT) (e : Join (w0 = bv) (J bv)) : Contr (Join (w0 = bv) (J bv)) =>
+    ehatCtrFromT p (pinl bv) (ehatToTL p bv e)
+
+  \lemma ehatIsProp (p : P) (s : iUT) : isProp (Ehat s) \elim s
+    | pinl bv => isContr'=>isProp (ehatCtr p bv)
+    | pinr c => colCodeIsProp c
+
+  \lemma qhatIsProp (p : P) (z : gUT) : isProp (Qhat z) \elim z
+    | pinl s => ehatIsProp p s
+    | pinr x => prop-isProp
+
+  \sfunc qhatToTg (p : P) (z : gUT) (e : Qhat z) : Tg z \elim z
+    | pinl s => ehatToT p s e
+    | pinr x => e.2
+
+  \sfunc tgCtrQhat (p : P) (z : gUT) (t : Tg z) : Contr (Qhat z) \elim z
+    | pinl s => ehatCtrFromT p s t
+    | pinr x => isProp=>isContr prop-isProp (p, t)
+
+
+  \sfunc qhatEqTg (p : P) (z : gUT) : Qhat z = (\Sigma P (Tg z)) =>
+    propExtEx (qhatIsProp p z) prop-isProp
+        (\lam e => (p, qhatToTg p z e)) (\lam t => (tgCtrQhat p z t.2).center)
+
+  \sfunc totalEqTg (p : P) : (\Sigma (z : gUT) (Qhat z)) = (\Sigma (z : gUT) (\Sigma P (Tg z))) =>
+    path (\lam i => \Sigma (z : gUT) (qhatEqTg p z i))
+
+  \sfunc regroupTg : (\Sigma (z : gUT) (\Sigma P (Tg z))) = (\Sigma P (\Sigma (z : gUT) (Tg z))) =>
+    iso to fro (\lam _ => idp) (\lam _ => idp) \where {
+    \func to (u : \Sigma (z : gUT) (\Sigma P (Tg z))) : \Sigma P (\Sigma (z : gUT) (Tg z)) =>
+      (u.2.1, (u.1, u.2.2))
+    \func fro (u : \Sigma P (\Sigma (z : gUT) (Tg z))) : \Sigma (z : gUT) (\Sigma P (Tg z)) =>
+      (u.2.1, (u.1, u.2.2))
+  }
+
+  \sfunc totalEqDiag (p : P) : (\Sigma (z : gUT) (Qhat z)) = (\Sigma (z : gUT) (Tg z)) =>
+    totalEqTg p *> regroupTg
+                     *> QEquiv-to-= (contr-left (isProp=>isContr prop-isProp p) {\lam _ => \Sigma (z : gUT) (Tg z)})
+
+  \sfunc total=QsmallSplit : (\Sigma (z : gUT) (Qhat z)) = QsmallSplit =>
+    inv Qflat=Q *> Qflat=Qsmall *> Qsmall=QsmallSplit
+
+  \func Base : \oo-Type (\suc \lp) => \Sigma (a : \Sigma C A) (Tp (SP3.diag a))
+  \func Mid : \oo-Type (\suc \lp) => \Sigma (s : iUT) (Tp s)
+  \func RightA : \Type \lp => \Sigma (x : A) (x = x0)
+
+  \func fLeg (q : Base) : Mid => (SP3.diag q.1, q.2)
+  \func gLeg (q : Base) : RightA => (q.1.2, transport Tg (PushoutData.ppglue q.1) q.2)
+
+  \sfunc locusFlat : PushoutData {Base} {Mid} {RightA} fLeg gLeg = (\Sigma (z : gUT) (Tg z)) =>
+    PushoutData.flattening Tg
+
+
+  \func rCdirect (s : iUT) : C \elim s
+    | pinl bv => pinl bv.1
+    | pinr c => pinr ()
+    | pglue a i => pglue a.1 i
+
+
+  \func baseC= : Base = C => iso to fro sec ret \where {
+    \func to (q : Base) : C => q.1.1
+    \func fro (c : C) : Base => ((c, x0), diagT (c, x0) idp)
+    \sfunc sec (q : Base) : fro (to q) = q =>
+      SigmaPropPath (\lam v => TisProp {A} {x0} (SP3.diag v))
+          (pmap (\lam (v : A) => (q.1.1, v)) (inv (diagTToEq q.1 q.2)))
+    \sfunc ret (c : C) : to (fro c) = c => idp
+  }
+
+  \func fC (c : C) : Mid => (SP3.diag (c, x0), diagT (c, x0) idp)
+  \func gC (c : C) : RightA => (x0, transport Tg (PushoutData.ppglue (c, x0)) (diagT (c, x0) idp))
+
+  \lemma rightAContr : Contr RightA => rsigma x0
+
+  \sfunc locusC : PushoutData {Base} {Mid} {RightA} fLeg gLeg = PushoutData {C} {Mid} {RightA} fC gC =>
+    pushout-equiv baseC= (idp : Mid = Mid) (idp : RightA = RightA) fLeg gLeg
+      *> pushout-eqv-fun _ _ _ _ pfC pgC \where {
+    \sfunc pfC : (\lam c => path-fun (idp : Mid = Mid) (fLeg (path-fun (inv baseC=) c))) = fC => run {
+      unfold baseC=,
+      rewrite (path-fun.beta-inv baseC=.to baseC=.fro baseC=.sec baseC=.ret),
+      idp
+    }
+
+    \sfunc pgC : (\lam c => path-fun (idp : RightA = RightA) (gLeg (path-fun (inv baseC=) c))) = gC =>
+      ext (\lam _ => isContr=>isProp rightAContr _ _)
+  }
+
+
+  \func rC (m : Mid) : C => rCdirect m.1
+
+
+  \sfunc retC (c : C) : rC (fC c) = c \elim c
+    | pinl b => idp
+    | pinr () => idp
+    | pglue b i => retCGlue b i
+
+
+  \sfunc retCGlueGen {b : BSn 2} {f0 f1 : Or b.1 (Fin 1) -> A} (q : f0 = f1)
+                     (e : pinl (extendBSn 1 b, f1) = {iUT} pinr (x0, x0))
+                     (h : Path (\lam i => rCdirect (e @ i) = pglue b i) idp idp)
+    : Path (\lam i => rCdirect (transportInv (\lam (f : Or b.1 (Fin 1) -> A) =>
+      pinl (extendBSn 1 b, f) = {iUT} pinr (x0, x0)) q e @ i) = pglue b i) idp idp \elim q
+    | idp => h
+
+  \sfunc retCGlue (b : BSn 2)
+    : Path (\lam i => rCdirect (SP3.diag (pglue b i, x0)) = pglue b i) idp idp =>
+    retCGlueGen (orConst x0) (path (pglue (b, x0, x0))) (path (\lam _ => idp))
+
+  \func pairPath {u v : \Sigma A A} (p : u.1 = v.1) (q : u.2 = v.2) : u = v =>
+    path (\lam j => (p j, q j))
+
+  \func diagTuple (b : BSn 2) (f : Or b.1 (Fin 1) -> A) : iUT => pinl (extendBSn 1 b, f)
+
+
+  \sfunc diagGlueSplit (b : BSn 2)
+    : path (\lam i => SP3.diag (pglue b i, x0))
+    = pmap (diagTuple b) (orConst x0) *> path (pglue (b, x0, x0)) =>
+    transportInvPath (diagTuple b) (pinr (x0, x0)) (orConst x0) (path (pglue (b, x0, x0)))
+
+
+  \sfunc secSquare (b : BSn 2) (x y : A) (qx : x = x0) (qy : y = x0)
+                   (tL : Tp (pinl (SP3.fatdiag (b, x, y))))
+    : inv (path (\lam i => SP3.diag (pglue b i, x0)))
+    *> pmap pinl (SigmaPath {BSn 3} {\lam (X : BSn 3) => X.1 -> A}
+      {(SP3.fatdiag (b, x, y)).1, \lam _ => x0} {SP3.fatdiag (b, x, y)} idp (inv tL))
+         *> path (pglue (b, x, y))
+    = pmap pinr (pairPath (inv qx) (inv qy)) \elim qx, qy
+    | idp, idp => run {
+      rewrite (diagGlueSplit b),
+      rewrite (set-pi {Or b.1 (Fin 1) -> A} {\lam _ => x0}
+          {Or.rec {b.1} {Fin 1} (\lam _ => x0) (\lam _ => x0)} {inv tL} {orConst x0}),
+      rewrite (sigmaFib {BSn 3} {\lam (X : BSn 3) => X.1 -> A} {extendBSn 1 b} (orConst x0)),
+      rewrite (pmap-comp (\lam (f : Or b.1 (Fin 1) -> A) => ((extendBSn 1 b, f) : hUT))
+          (\lam (bv : hUT) => (pinl bv : iUT)) (orConst x0)),
+      inv_*> _
+    }
+
+  \sfunc secGlue (a : A21)
+    : Path (\lam i => \Pi (t : Tp (pglue a i)) -> SP3.diag (pglue a.1 i, x0) = pglue a i)
+      (\lam t => pmap pinl (SigmaPath {BSn 3} {\lam (X : BSn 3) => X.1 -> A}
+          {(SP3.fatdiag a).1, \lam _ => x0} {SP3.fatdiag a} idp (inv t)))
+      (\lam t => pmap pinr (pairPath (inv t.1) (inv t.2))) =>
+    pathOver (coe_pi *> ext (\lam t => coe_path _ _ _ *> secSquare a.1 a.2 a.3 t.1 t.2 _))
+
+  \sfunc secBase (s : iUT) (t : Tp s) : (fC (rC (s, t))).1 = s \elim s
+    | pinl bv => pmap pinl (SigmaPath {BSn 3} {\lam (X : BSn 3) => X.1 -> A}
+        {bv.1, \lam _ => x0} {bv} idp (inv t))
+    | pinr c => pmap pinr (pairPath (inv t.1) (inv t.2))
+    | pglue a i => secGlue a i t
+
+  \sfunc secC (m : Mid) : fC (rC m) = m =>
+    SigmaPropPath (\lam s => TisProp {A} {x0} s) (secBase m.1 m.2)
+
+  \sfunc fCequiv : QEquiv fC \cowith
+    | ret => rC
+    | ret_f => retC
+    | f_sec => secC
+
+  \sfunc locusEq : (\Sigma (z : gUT) (Tg z)) = RightA =>
+    inv locusFlat *> locusC *> pushout-cobase-eqv fCequiv gC
+
+  \sfunc contrDiagLocus : Contr (\Sigma (z : gUT) (Tg z)) =>
+    transport Contr (inv locusEq) rightAContr
+
+}

@@ -1,0 +1,457 @@
+\import Equiv
+\import Equiv.Univalence
+\import Homotopy.Join
+\import Logic.Unique
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Logic
+\import Homotopy.Pushout
+\import Algebra.Group.Symmetric
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import Utilities.Equiv
+\import Utilities.PathFun
+\import Utilities.Paths
+\import Function.Meta
+\import Data.Or
+\import Set
+\import Homotopy.HLevel
+
+-- Technical lemmas used throughout the proof.
+--
+-- The first group identifies loops in BSn 3 with permutations of three
+-- coordinates and records the path computations needed to read those
+-- permutations on Borel tuples.
+\func recFin3 {A : Fin 3 -> \Type} (a : A 0) (b : A 1) (c : A 2) (x : Fin 3) : A x \elim x
+  | 0 => a
+  | 1 => b
+  | 2 => c
+\func transportBSnFun {A : \Type} {b b' : BSn 3} (p : b = b') (f : b.1 -> A) :
+  transport (\lam a => a.1 -> A) p f = transport (\lam X => X -> A) (pmap __.1 p) f \elim p
+  | idp => idp
+
+-- Elementary computations for transport along equalities of types.
+\func pathFunInvId {X Y : \Type} (p : X = Y) (x : X) : path-fun (inv p) (path-fun p x) = x \elim p
+  | idp => idp
+\func pathFunIdInv {X Y : \Type} (p : X = Y) (y : Y) : path-fun p (path-fun (inv p) y) = y \elim p
+  | idp => idp
+
+-- Coercion along an equality of types is injective.  The second lemma is the
+-- corresponding injectivity statement for the left summand of an Or-type.
+\func pathFunInvInj {X Y : \Type} (c : X = Y) {y y' : Y} (h : path-fun (inv c) y = path-fun (inv c) y') : y = y' =>
+  inv (pathFunIdInv c y) *> pmap (path-fun c) h *> pathFunIdInv c y'
+\func inlInj {X Y : \Type} {a a' : X} (p : inl {X} {Y} a = inl a') : a = a' =>
+  pmap (\lam (o : Or X Y) => \case o \with { | inl v => v | inr _ => a }) p
+\func pathFunInvComp {X Y Z : \Type} (p : X = Y) (q : Y = Z) (z : Z) :
+  path-fun (inv (p *> q)) z = path-fun (inv p) (path-fun (inv q) z) \elim p, q
+  | idp, idp => idp
+\func pmap-comp {A B C : \Type} (f : A -> B) (g : B -> C) {x y : A} (p : x = y) :
+  pmap g (pmap f p) = pmap (\lam a => g (f a)) p \elim p
+  | idp => idp
+\func pglue-nat {A B C : \Type} {f : A -> B} {g : A -> C} {a a' : A} (p : a = a') :
+  pmap (\lam x => pinl {A} {B} {C} {f} {g} (f x)) p *> path (pglue a') =
+  path (pglue a) *> pmap (\lam x => pinr {A} {B} {C} {f} {g} (g x)) p
+  \elim p
+  | idp => idp_*> _
+\func pathFunQEquivInv {X Y : \Type} (e : QEquiv {X} {Y}) :
+  path-fun (inv (QEquiv-to-= e)) = e.ret =>
+  path-fun.beta-inv e.f e.ret e.ret_f e.f_sec
+\func fin3EquivSize : (EquivFin.equiv_fin {3} {3}).1 = 6 => pmap __.1 (\peval EquivFin.equiv_fin {3} {3})
+\func fin3Equiv : Equiv {Equiv {Fin 3} {Fin 3}} {Fin 6} =>
+  transport (\lam n => Equiv {Equiv {Fin 3} {Fin 3}} {Fin n}) fin3EquivSize (EquivFin.equiv_fin {3} {3}).2
+\func base3PathCode : (BSnbase 3 = BSnbase 3) = Fin 6 =>
+  inv (BSnPathChar (BSnbase 3) (BSnbase 3)) *> QEquiv-to-= (univalence {Fin 3} {Fin 3}) *> Equiv-to-= fin3Equiv
+
+-- Every permutation of three coordinates is the identity, a transposition, or
+-- a three-cycle.  This trichotomy is the case split in the base-fiber proof.
+\data Fin3PermChar (e : Equiv {Fin 3} {Fin 3})
+  | fin3PermId (p : e = idEquiv)
+  | fin3PermTransposition (fixed : Fin 3)
+      (fixedPath : e fixed = fixed)
+      (moved : \Pi (i : Fin 3) -> i /= fixed -> e i /= i)
+  | fin3PermCycle (noFix : \Pi (i : Fin 3) -> e i /= i)
+      (cycle3 : e (e (e 0)) = 0)
+\func fin3PathEquiv (p : BSnbase 3 = BSnbase 3) : Equiv {Fin 3} {Fin 3}
+  => path-fun (inv (Equiv-to-= fin3Equiv)) (path-fun base3PathCode p)
+\func fin3_0_ne_1 : (0 : Fin 3) /= 1 => \case __
+\func fin3_0_ne_2 : (0 : Fin 3) /= 2 => \case __
+\func fin3_1_ne_2 : (1 : Fin 3) /= 2 => \case __
+\func fin3SameImageAbsurd {e : Equiv {Fin 3} {Fin 3}} {i j k : Fin 3}
+                                   (i/=j : i /= j) (p : e i = k) (q : e j = k) : Empty =>
+  i/=j (e.isInj (p *> inv q))
+\func fin3EquivChar (e : Equiv {Fin 3} {Fin 3}) : Fin3PermChar e =>
+  cases (e 0 arg addPath, e 1 arg addPath, e 2 arg addPath) \with {
+    | 0, e0, 1, e1, 2, e2 => fin3PermId (Equiv.equals $ ext \case \elim __ \with {
+      | 0 => e0
+      | 1 => e1
+      | 2 => e2
+    })
+    | 0, e0, 2, e1, 1, e2 => fin3PermTransposition 0 e0 \case \elim __ \with {
+      | 0 => \lam i/=0 _ => absurd (i/=0 idp)
+      | 1 => \lam _ p => \case inv e1 *> p \with {}
+      | 2 => \lam _ p => \case inv e2 *> p \with {}
+    }
+    | 1, e0, 0, e1, 2, e2 => fin3PermTransposition 2 e2 \case \elim __ \with {
+      | 0 => \lam _ p => \case inv e0 *> p \with {}
+      | 1 => \lam _ p => \case inv e1 *> p \with {}
+      | 2 => \lam i/=2 _ => absurd (i/=2 idp)
+    }
+    | 2, e0, 1, e1, 0, e2 => fin3PermTransposition 1 e1 \case \elim __ \with {
+      | 0 => \lam _ p => \case inv e0 *> p \with {}
+      | 1 => \lam i/=1 _ => absurd (i/=1 idp)
+      | 2 => \lam _ p => \case inv e2 *> p \with {}
+    }
+    | 1, e0, 2, e1, 0, e2 => fin3PermCycle (\case \elim __ \with {
+      | 0 => \lam p => \case inv e0 *> p \with {}
+      | 1 => \lam p => \case inv e1 *> p \with {}
+      | 2 => \lam p => \case inv e2 *> p \with {}
+    }) (rewrite (e0, e1) e2)
+    | 2, e0, 0, e1, 1, e2 => fin3PermCycle (\case \elim __ \with {
+      | 0 => \lam p => \case inv e0 *> p \with {}
+      | 1 => \lam p => \case inv e1 *> p \with {}
+      | 2 => \lam p => \case inv e2 *> p \with {}
+    }) (rewrite (e0, e2) e1)
+    | 0, e0, 0, e1, _, _ => absurd (fin3SameImageAbsurd fin3_0_ne_1 e0 e1)
+    | 0, e0, _, _, 0, e2 => absurd (fin3SameImageAbsurd fin3_0_ne_2 e0 e2)
+    | _, _, 0, e1, 0, e2 => absurd (fin3SameImageAbsurd fin3_1_ne_2 e1 e2)
+    | 1, e0, 1, e1, _, _ => absurd (fin3SameImageAbsurd fin3_0_ne_1 e0 e1)
+    | 1, e0, _, _, 1, e2 => absurd (fin3SameImageAbsurd fin3_0_ne_2 e0 e2)
+    | _, _, 1, e1, 1, e2 => absurd (fin3SameImageAbsurd fin3_1_ne_2 e1 e2)
+    | 2, e0, 2, e1, _, _ => absurd (fin3SameImageAbsurd fin3_0_ne_1 e0 e1)
+    | 2, e0, _, _, 2, e2 => absurd (fin3SameImageAbsurd fin3_0_ne_2 e0 e2)
+    | _, _, 2, e1, 2, e2 => absurd (fin3SameImageAbsurd fin3_1_ne_2 e1 e2)
+  }
+\func base3PathChar (p : BSnbase 3 = BSnbase 3) : Fin3PermChar (fin3PathEquiv p) =>
+  fin3EquivChar (fin3PathEquiv p)
+\func BSnPathChar-idp3 : path-fun (BSnPathChar (BSnbase 3) (BSnbase 3)) idp = idp => run {
+  unfold BSnPathChar,
+  rewrite (path-fun.beta
+      (\lam eq => BSnPath (BSnbase 3) (BSnbase 3) (=-to-Equiv eq))
+      (pmap __.1)
+      (\lam eq => (univalence {Fin 3} {Fin 3}).ret_f eq)
+      (\lam y => \let main => (univalence {Fin 3} {Fin 3}).ret_f (pmap __.1 y)
+                    | defs => pmap (SigmaPropPath {\Set} {\lam x => TruncP (Equiv {x} {Fin 3})}
+                    (\lam a x y i => truncP {Equiv {a} {Fin 3}} x y i) {BSnbase 3} {BSnbase 3} __) main
+                    | final => rewrite (SigmaPropPathBeta (\lam a x y i => truncP {Equiv {a} {Fin 3}} x y i) y) defs \in final)),
+  BSnPathBeta (BSnbase 3)
+}
+\sfunc BSnPathChar-inv-idp3 : path-fun (inv (BSnPathChar (BSnbase 3) (BSnbase 3))) idp = idp => run {
+  rewriteI BSnPathChar-idp3,
+  pathFunInvId (BSnPathChar (BSnbase 3) (BSnbase 3)) idp
+}
+\func BSnPathChar-inv3 (p : BSnbase 3 = BSnbase 3) :
+  path-fun (inv (BSnPathChar (BSnbase 3) (BSnbase 3))) p = pmap __.1 p => run {
+  unfold BSnPathChar,
+  rewrite (path-fun.beta-inv
+      (\lam eq => BSnPath (BSnbase 3) (BSnbase 3) (=-to-Equiv eq))
+      (pmap __.1)
+      (\lam eq => (univalence {Fin 3} {Fin 3}).ret_f eq)
+      (\lam y => \let main => (univalence {Fin 3} {Fin 3}).ret_f (pmap __.1 y)
+                    | defs => pmap (SigmaPropPath {\Set} {\lam x => TruncP (Equiv {x} {Fin 3})}
+                    (\lam a x y i => truncP {Equiv {a} {Fin 3}} x y i) {BSnbase 3} {BSnbase 3} __) main
+                    | final => rewrite (SigmaPropPathBeta (\lam a x y i => truncP {Equiv {a} {Fin 3}} x y i) y) defs \in final)),
+  idp
+}
+\sfunc base3PathCode-idp : path-fun base3PathCode idp = path-fun (Equiv-to-= fin3Equiv) idEquiv => run {
+  unfold base3PathCode,
+  rewrite (path-fun.beta-*> (inv (BSnPathChar (BSnbase 3) (BSnbase 3)))
+      (QEquiv-to-= (univalence {Fin 3} {Fin 3}) *> Equiv-to-= fin3Equiv)),
+  rewrite (path-fun.beta-*> (QEquiv-to-= (univalence {Fin 3} {Fin 3})) (Equiv-to-= fin3Equiv)),
+  rewrite BSnPathChar-inv-idp3,
+  rewrite (path-fun.beta =-to-Equiv Equiv-to-= (univalence {Fin 3} {Fin 3}).ret_f (univalence {Fin 3} {Fin 3}).f_sec),
+  idp
+}
+\sfunc base3PathId (p : BSnbase 3 = BSnbase 3) (e : fin3PathEquiv p = idEquiv) : p = idp =>
+  \let | equivCode => Equiv-to-= fin3Equiv
+       | codep => path-fun base3PathCode p \in
+  \have  codeEq : codep = path-fun base3PathCode idp => run {
+           rewrite base3PathCode-idp,
+           rewriteI (pathFunIdInv equivCode codep),
+           pmap (path-fun equivCode) e
+         }
+  \in inv (pathFunInvId base3PathCode p)
+     *> pmap (path-fun (inv base3PathCode)) codeEq
+     *> pathFunInvId base3PathCode idp
+\func fin3PathEquivBeta (p : BSnbase 3 = BSnbase 3) : fin3PathEquiv p = =-to-Equiv (pmap __.1 p) => run {
+  unfold fin3PathEquiv,
+  unfold base3PathCode,
+  rewrite (path-fun.beta-*> (inv (BSnPathChar (BSnbase 3) (BSnbase 3)))
+      (QEquiv-to-= (univalence {Fin 3} {Fin 3}) *> Equiv-to-= fin3Equiv)),
+  rewrite (path-fun.beta-*> (QEquiv-to-= (univalence {Fin 3} {Fin 3})) (Equiv-to-= fin3Equiv)),
+  rewrite (pathFunInvId (Equiv-to-= fin3Equiv)
+      (path-fun (QEquiv-to-= (univalence {Fin 3} {Fin 3}))
+        (path-fun (inv (BSnPathChar (BSnbase 3) (BSnbase 3))) p))),
+  rewrite (BSnPathChar-inv3 p),
+  rewrite (path-fun.beta =-to-Equiv Equiv-to-= (univalence {Fin 3} {Fin 3}).ret_f (univalence {Fin 3} {Fin 3}).f_sec),
+  idp
+}
+\func bsnPathCarrier {n : Nat} (a b : BSn n) (e : Equiv {a.1} {b.1}) :
+  pmap (\lam t => t.1) (BSnPath a b e) = Equiv-to-= e => idp
+\func pathFunEqTo {A B : \Type} (e : Equiv {A} {B}) : path-fun (Equiv-to-= e) = e.f => idp
+\func pathFunInvEqTo {A B : \Type} (e : Equiv {A} {B}) : path-fun (inv (Equiv-to-= e)) = e.ret =>
+  pathFunQEquivInv (QEquiv.fromEquiv e)
+\sfunc pathFunOrL {X Y K : \Type} (q : X = Y) (a : X) :
+  path-fun (pmap (\lam Z => Or Z K) q) (inl a) = {Or Y K} inl (path-fun q a) \elim q
+  | idp => idp
+\sfunc pathFunOrR {X Y K : \Type} (q : X = Y) (b : K) :
+  path-fun (pmap (\lam Z => Or Z K) q) (inr b) = {Or Y K} inr b \elim q
+  | idp => idp
+
+-- Explicit normal form for a transposition of Fin 3.
+\func swap3 (fixed x : Fin 3) : Fin 3 \elim fixed
+  | 0 => recFin3 {\lam _ => Fin 3} 0 2 1 x
+  | 1 => recFin3 {\lam _ => Fin 3} 2 1 0 x
+  | 2 => recFin3 {\lam _ => Fin 3} 1 0 2 x
+\func swap3Inv (fixed x : Fin 3) : swap3 fixed (swap3 fixed x) = x \elim fixed, x
+  | 0, 0 => idp | 0, 1 => idp | 0, 2 => idp
+  | 1, 0 => idp | 1, 1 => idp | 1, 2 => idp
+  | 2, 0 => idp | 2, 1 => idp | 2, 2 => idp
+\func swap3Equiv (fixed : Fin 3) : Equiv {Fin 3} {Fin 3} \cowith
+  | f => swap3 fixed
+  | ret => swap3 fixed
+  | ret_f => swap3Inv fixed
+  | sec => swap3 fixed
+  | f_sec => swap3Inv fixed
+\func swap3Fix (fixed : Fin 3) : swap3 fixed fixed = fixed \elim fixed
+  | 0 => idp | 1 => idp | 2 => idp
+\func thirdIs (fixed x v : Fin 3) (xf : x /= fixed) (vx : v /= x) (vf : v /= fixed) : v = swap3 fixed x =>
+  \case \elim fixed, \elim x, \elim v, xf, vx, vf \with {
+    | 0, 0, _, xf, _, _ => absurd (xf idp)
+    | 0, 1, 0, _, _, vf => absurd (vf idp)
+    | 0, 1, 1, _, vx, _ => absurd (vx idp)
+    | 0, 1, 2, _, _, _ => idp
+    | 0, 2, 0, _, _, vf => absurd (vf idp)
+    | 0, 2, 1, _, _, _ => idp
+    | 0, 2, 2, _, vx, _ => absurd (vx idp)
+    | 1, 0, 0, _, vx, _ => absurd (vx idp)
+    | 1, 0, 1, _, _, vf => absurd (vf idp)
+    | 1, 0, 2, _, _, _ => idp
+    | 1, 1, _, xf, _, _ => absurd (xf idp)
+    | 1, 2, 0, _, _, _ => idp
+    | 1, 2, 1, _, _, vf => absurd (vf idp)
+    | 1, 2, 2, _, vx, _ => absurd (vx idp)
+    | 2, 0, 0, _, vx, _ => absurd (vx idp)
+    | 2, 0, 1, _, _, _ => idp
+    | 2, 0, 2, _, _, vf => absurd (vf idp)
+    | 2, 1, 0, _, _, _ => idp
+    | 2, 1, 1, _, vx, _ => absurd (vx idp)
+    | 2, 1, 2, _, _, vf => absurd (vf idp)
+    | 2, 2, _, xf, _, _ => absurd (xf idp)
+  }
+\func transNFval (e : Equiv {Fin 3} {Fin 3}) (fixed : Fin 3) (ef : e fixed = fixed)
+                 (em : \Pi (i : Fin 3) -> i /= fixed -> e i /= i) (x : Fin 3) : e x = swap3 fixed x =>
+  \case decBSn.decFin x fixed \with {
+    | yes x=f => rewrite x=f (ef *> inv (swap3Fix fixed))
+    | no xf => thirdIs fixed x (e x) xf (em x xf) (\lam p => xf (e.isInj (p *> inv ef)))
+  }
+\func transNF (e : Equiv {Fin 3} {Fin 3}) (fixed : Fin 3) (ef : e fixed = fixed)
+              (em : \Pi (i : Fin 3) -> i /= fixed -> e i /= i) : e = swap3Equiv fixed =>
+  Equiv.equals $ ext (\lam x => transNFval e fixed ef em x)
+\func sigmaPathBase {A : \Type} {B : A -> \Type} {x y : \Sigma (a : A) (B a)}
+                    (p : x.1 = y.1) (q : transport B p x.2 = y.2) :
+  pmap (\lam t => t.1) (SigmaPath p q) = p => idp
+
+-- Route a chosen fixed coordinate to the singleton summand of
+-- Or (Fin 2) (Fin 1).  This turns a transposition into a binary collision.
+\func routeF (fixed x : Fin 3) : Or (Fin 2) (Fin 1) \elim fixed, x
+  | 0, 0 => inr 0 | 0, 1 => inl 0 | 0, 2 => inl 1
+  | 1, 0 => inl 0 | 1, 1 => inr 0 | 1, 2 => inl 1
+  | 2, 0 => inl 0 | 2, 1 => inl 1 | 2, 2 => inr 0
+\func routeR (fixed : Fin 3) (o : Or (Fin 2) (Fin 1)) : Fin 3 \elim fixed, o
+  | 0, inl 0 => 1 | 0, inl 1 => 2 | 0, inr b => 0
+  | 1, inl 0 => 0 | 1, inl 1 => 2 | 1, inr b => 1
+  | 2, inl 0 => 0 | 2, inl 1 => 1 | 2, inr b => 2
+\func routeInvFR (fixed x : Fin 3) : routeR fixed (routeF fixed x) = x \elim fixed, x
+  | 0, 0 => idp | 0, 1 => idp | 0, 2 => idp
+  | 1, 0 => idp | 1, 1 => idp | 1, 2 => idp
+  | 2, 0 => idp | 2, 1 => idp | 2, 2 => idp
+\func routeInvRF (fixed : Fin 3) (o : Or (Fin 2) (Fin 1)) : routeF fixed (routeR fixed o) = o \elim fixed, o
+  | 0, inl 0 => idp | 0, inl 1 => idp | 0, inr 0 => idp
+  | 1, inl 0 => idp | 1, inl 1 => idp | 1, inr 0 => idp
+  | 2, inl 0 => idp | 2, inl 1 => idp | 2, inr 0 => idp
+\func routeEq (fixed : Fin 3) : Equiv {Fin 3} {Or (Fin 2) (Fin 1)} \cowith
+  | f => routeF fixed
+  | ret => routeR fixed
+  | ret_f => routeInvFR fixed
+  | sec => routeR fixed
+  | f_sec => routeInvRF fixed
+\func swapMovedEq (fixed : Fin 3) : swap3 fixed (routeR fixed (inl 1)) = routeR fixed (inl 0) \elim fixed
+  | 0 => idp | 1 => idp | 2 => idp
+\func transportRouteTuple {A : \Type} (someEq : Equiv {Fin 3} {Or (Fin 2) (Fin 1)}) (f : Fin 3 -> A) :
+  transport (\lam a => a.1 -> A) (BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) someEq) f
+  = (\lam o => f (someEq.ret o)) => run {
+  rewrite (transportBSnFun (BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) someEq) f),
+  rewrite (path-fun.transport-fun f (pmap (\lam t => t.1) (BSnPath (BSnbase 3) (extendBSn 1 (BSnbase 2)) someEq))),
+  rewrite (pathFunInvEqTo someEq),
+  idp
+}
+
+-- Determinacy of paths in Sigma-types, BSn, and Borel constructions over a set.
+\func scFst {A : \Type} {B : A -> \Type} {x y : \Sigma (a : A) (B a)} (p : x = y) :
+  (SigmaPathChar x y p).1 = pmap (\lam t => t.1) p \elim p
+  | idp => idp
+\func sigmaLoopDet {A : \Type} {B : A -> \Type} (setB : \Pi (a : A) -> isSet (B a))
+                   {x y : \Sigma (a : A) (B a)} (p q : x = y)
+                   (h : pmap (\lam t => t.1) p = pmap (\lam t => t.1) q) : p = q =>
+  \let | baseEq : (SigmaPathChar x y p).1 = (SigmaPathChar x y q).1 => scFst p *> h *> inv (scFst q)
+       | fibEq : Path (\lam i => transport B (baseEq i) x.2 = y.2) (SigmaPathChar x y p).2 (SigmaPathChar x y q).2
+           => pathOver (setB y.1 _ _ _ _)
+  \in SigmaPathChar.eq p
+    *> SigmaPathBeta (SigmaPathChar x y p).1 (SigmaPathChar x y q).1 (SigmaPathChar x y p).2 (SigmaPathChar x y q).2 baseEq fibEq
+    *> inv (SigmaPathChar.eq q)
+\func bsnCar {n : Nat} {a b : BSn n} (p : a = b) : a.1 = {\Set \lp} b.1 =>
+  pmap {BSn n} {\Set \lp} (\lam (t : BSn n) => t.1) p
+\func borelBase {n : Nat} {A : \Set \lp} {u v : borelXn n A} (p : u = v) : u.1 = {BSn n} v.1 =>
+  pmap {borelXn n A} {BSn n} (\lam (t : borelXn n A) => t.1) p
+\lemma funIsSet {X A : \Set \lp} : isSet (X -> A) => \lam _ _ => prop-isProp
+\func bsnPathDet {n : Nat} {a b : BSn n} (p q : a = b) (h : bsnCar p = bsnCar q) : p = q =>
+  sigmaLoopDet {\Set \lp} {\lam (X : \Set \lp) => TruncP (Equiv {X} {Fin n})}
+      (\lam _ => isProp.=>isSet (\lam u v => path (truncP u v))) p q h
+\func borelPathDet {n : Nat} {A : \Set \lp} {u v : borelXn n A} (p q : u = v)
+                   (h : borelBase p = borelBase q) : p = q =>
+  sigmaLoopDet {BSn n} {\lam (X : BSn n) => X.1 -> A}
+      (\lam (X : BSn n) => funIsSet {X.1} {A}) p q h
+
+-- Joins of propositions and the contraction principle used by the path codes.
+\lemma joinPropIsProp {A B : \Type} (pa : isProp A) (pb : isProp B) : isProp (Join A B) =>
+  isContr'=>isProp {Join A B} (\case \elim __ \with {
+    | pinl a => transport (Contr __) (QEquiv-to-= (Join-sym B A)) (Join_Contr B (isProp=>isContr pa a))
+    | pinr b => Join_Contr A (isProp=>isContr pb b)
+  })
+\func joinEqLeftP {A B : \Type} (bP : isProp B) (ca : A)
+                  (pa : \Pi (a : A) -> pinl ca = {Join A B} pinl a) : Contr (Join A B) \cowith
+  | center => pinl ca
+  | contraction => \case \elim __ \with {
+    | pinl b => pa b
+    | pinr c => path (pglue (ca, c))
+    | pglue a i => joinEqLeftP.glueEqP bP ca pa a i
+  } \where {
+  \func glueEqP {A B : \Type} (bP : isProp B) (ca : A)
+                (pa : \Pi (a : A) -> pinl ca = {Join A B} pinl a) (a : \Sigma A B)
+    : Path (\lam i => pinl ca = pglue a i) (pa a.1) (path (pglue (ca, a.2))) => run {
+    pathOver,
+    isProp.=>isSet (isContr=>isProp (Join_Contr A (isProp=>isContr bP a.2))) _ _ _ _
+  }
+}
+
+-- Pushout calculations used to normalize the total space of the code.
+\sfunc pushout-id {A C : \Type} (g : A -> C) : PushoutData {A} {A} {C} idEquiv g = C =>
+  iso to fro sec ret \where {
+  \func to (_ : PushoutData {A} {A} {C} idEquiv g) : C
+    | pinl a => g a
+    | pinr c => c
+    | pglue a i => g a
+  \func fro (c : C) : PushoutData {A} {A} {C} idEquiv g => pinr c
+  \func sec (x : PushoutData {A} {A} {C} idEquiv g) : fro (to x) = x
+    | pinl a => inv (path (pglue a))
+    | pinr c => idp
+    | pglue a i => secGlue a i
+  \func secGlue (a : A)
+    : Path (\lam i => pinr (g a) = {PushoutData {A} {A} {C} idEquiv g} pglue a i)
+      (inv (path (pglue a))) idp => run {
+    pathOver,
+    *> (coe_path idp (inv (path (pglue a))) (path (pglue a))),
+    rewrite idp_*>,
+    inv_*> (path (pglue a))
+  }
+  \func ret (c : C) : to (fro c) = c => idp
+  \func beta (c : C) : path-fun (pushout-id g) (pinr c) = c => run {
+    rewrite (\peval pushout-id g),
+    pmap (\lam (h : PushoutData {A} {A} {C} idEquiv g -> C) => h (pinr c))
+        (path-fun.beta to fro sec ret)
+  }
+}
+\sfunc pushout-swap {A B C : \Type} (f : A -> B) (g : A -> C) : PushoutData f g = PushoutData g f => iso
+    (to {A} {B} {C} {f} {g}) (to {A} {C} {B} {g} {f}) (sec {A} {B} {C} {f} {g}) (sec {A} {C} {B} {g} {f}) \where {
+  \func to (_ : PushoutData f g) : PushoutData g f
+    | pinl b => pinr b
+    | pinr c => pinl c
+    | pglue a i => pglue a (invI i)
+  \func sec (x : PushoutData f g) : to {A} {C} {B} {g} {f} (to {A} {B} {C} {f} {g} x) = x
+    | pinl b => idp
+    | pinr c => idp
+    | pglue a i => secGlue a i
+  \func secGlue (a : A) : Path (\lam i => pglue {A} {B} {C} {f} {g} a (invI (invI i)) = pglue a i) idp idp => run {
+    pathOver,
+    coe_path (\lam i => pglue a (invI (invI i))) _ (path (pglue a)) *>,
+    rewrite idp_*>,
+    closeOut (path (\lam i => pglue a (invI (invI i)))) (path (pglue a)) (invLemma a)
+  }
+  \func closeOut {X : \Type} {a b : X} (p q : a = b) (r : p = q) : inv p *> q = idp \elim r
+    | idp => inv_*> p
+  \func invLemma (a : A) : path (\lam i => pglue a (invI (invI i))) = path (\lam i => pglue {A} {B} {C} {f} {g} a i) => run {
+    rewrite (invI.betaP (path (\lam i => pglue a (invI i)))),
+    rewrite (invI.betaP (path (pglue a))),
+    inv_inv _
+  }
+  \func beta : path-fun (pushout-swap f g) = to {A} {B} {C} {f} {g} => run {
+    rewrite (\peval pushout-swap f g),
+    path-fun.beta (to {A} {B} {C} {f} {g}) (to {A} {C} {B} {g} {f})
+        (sec {A} {B} {C} {f} {g}) (sec {A} {C} {B} {g} {f})
+  }
+  \func beta-pinl (b : B) : path-fun (pushout-swap f g) (pinl b) = pinr b =>
+    pmap (\lam (h : PushoutData f g -> PushoutData g f) => h (pinl b)) beta
+  \func beta-pinr (c : C) : path-fun (pushout-swap f g) (pinr c) = pinl c =>
+    pmap (\lam (h : PushoutData f g -> PushoutData g f) => h (pinr c)) beta
+}
+\sfunc pushout-cobase-path {A B C : \Type} (p : A = B) (g : A -> C)
+  : PushoutData {A} {B} {C} (=-to-Equiv p) g = C \elim p
+  | idp => pushout-id g
+  \where {
+  \func beta {A B C : \Type} (p : A = B) (g : A -> C) (c : C)
+    : path-fun (pushout-cobase-path p g) (pinr c) = c \elim p
+    | idp => rewrite (\peval pushout-cobase-path (idp {\Type} {A}) g) (pushout-id.beta {A} {C} {g} c)
+}
+\sfunc pushout-cobase-eqv {A B C : \Type} (e : Equiv {A} {B}) (g : A -> C)
+  : PushoutData {A} {B} {C} e g = C =>
+  transport (\lam (e' : Equiv {A} {B}) => PushoutData {A} {B} {C} e' g = C) (univalence.f_ret e)
+      (pushout-cobase-path (Equiv-to-= e) g) \where {
+  \func transportBeta {A B C : \Type} {e1 e2 : Equiv {A} {B}} (q : e1 = e2) (g : A -> C)
+      (X : PushoutData {A} {B} {C} e1 g = C) (c : C)
+    : path-fun (transport (\lam (e' : Equiv {A} {B}) => PushoutData {A} {B} {C} e' g = C) q X) (pinr c)
+    = path-fun X (pinr c) \elim q
+    | idp => idp
+  \func beta {A B C : \Type} (e : Equiv {A} {B}) (g : A -> C) (c : C)
+    : path-fun (pushout-cobase-eqv e g) (pinr c) = c => run {
+    rewrite (\peval pushout-cobase-eqv e g),
+    transportBeta (univalence.f_ret e) g (pushout-cobase-path (Equiv-to-= e) g) c
+      *> pushout-cobase-path.beta (Equiv-to-= e) g c
+  }
+  \sfunc right {A B C : \Type} (e : Equiv {A} {C}) (g : A -> B) : PushoutData {A} {B} {C} g e = B =>
+    pushout-swap g e *> pushout-cobase-eqv e g
+  \func betaInv {A B C : \Type} (e : Equiv {A} {B}) (g : A -> C) (c : C)
+    : path-fun (inv (pushout-cobase-eqv e g)) c = pinr c =>
+    pmap (path-fun (inv (pushout-cobase-eqv e g))) (inv (beta e g c))
+      *> pathFunInvId (pushout-cobase-eqv e g) (pinr c)
+  \func rightInvBeta {A B C : \Type} (e : Equiv {A} {C}) (g : A -> B) (b : B)
+    : path-fun (inv (right e g)) b = pinl b =>
+    pmap (path-fun (inv (right e g))) (inv (rightBeta e g b))
+      *> pathFunInvId (right e g) (pinl b)
+  \func rightBeta {A B C : \Type} (e : Equiv {A} {C}) (g : A -> B) (b : B)
+    : path-fun (right e g) (pinl b) = b => run {
+    rewrite (\peval right e g),
+    rewrite (path-fun.beta-*> (pushout-swap g e) (pushout-cobase-eqv e g)),
+    rewrite (pushout-swap.beta-pinl b),
+    beta e g b
+  }
+}
+
+-- Remaining transport computations used by the normalization proofs.
+\func sigmaFamPathFun {X : \Type} (F : X -> I -> \Type) (u : \Sigma (x : X) (F x left))
+  : path-fun (path (\lam i => \Sigma (x : X) (F x i))) u = (u.1, path-fun (path (F u.1)) u.2) =>
+  coe_sigma {\lam _ => X} (\lam i x => F x i) u right
+\func pathFunSigmaR {V X Y : \Type} (q : X = Y) (u : \Sigma V X) :
+  path-fun (pmap (\lam Z => \Sigma V Z) q) u = (u.1, path-fun q u.2) \elim q
+  | idp => idp
+\func transportInvPath {X Y : \Type} (u : X -> Y) (v : Y) {f0 f1 : X} (q : f0 = f1) (e : u f1 = v)
+  : transportInv (\lam f => u f = v) q e = pmap u q *> e \elim q
+  | idp => inv (idp_*> e)
+\func contrTransport {X Y : \oo-Type} (e : X = Y) (c : Contr Y) : Contr X \elim e
+  | idp => c
+\func invPathOver {X : \Type} {a b : X} (p : a = b) : Path (\lam i => b = p @ i) (inv p) idp \elim p
+  | idp => idp
+\func sigmaFib {X : \Type} {B : X -> \Type} {u : X} {f0 f1 : B u} (q : f0 = f1)
+  : SigmaPath {X} {B} {u, f0} {u, f1} idp q
+  = pmap (\lam (f : B u) => ((u, f) : \Sigma (x : X) (B x))) q \elim q
+  | idp => idp

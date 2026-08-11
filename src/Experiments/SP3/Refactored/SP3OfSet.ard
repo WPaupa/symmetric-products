@@ -1,0 +1,140 @@
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import SymmetricProducts.SP3
+\import Data.Fin
+\import Function.Meta
+\import Homotopy.Pushout
+\import Logic
+\import Logic.Unique
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Set
+\import Experiments.SP3.Refactored.PathCode
+\import Experiments.SP3.Refactored.TotalSpaceContraction (z0Pathchar \as totalZ0Pathchar)
+\import Experiments.SP3.Refactored.Utilities
+
+-- Lemma (Cartesian loop space).
+--
+-- Fix z0 = [x0,x1,x2].  PathCode.Qhat is an encode-decode family over
+-- SP3 A.  Its base fiber is contractible by the permutation calculation in
+-- BaseFiber.  Its total space is contractible by flattening the two pushouts
+-- and treating the resulting strata in two cases:
+--
+--   * a diagonal witness contracts the model by `ctrP`;
+--   * a strict collision path contracts it by `ctrW`.
+--
+-- Pushout induction assembles these cases, and the fundamental identity theorem
+-- identifies the loop space z0 = z0 with the base fiber.
+\func sp3LoopSpaceContr (A : \Set \lp) (x0 x1 x2 : A) : Contr (z0 = z0) =>
+  rewrite z0Pathchar contrQz0
+  \where {
+    \func z0 => PathCode.z0 {A} {x0} {x1} {x2}
+    \func contrQz0 => PathCode.contrQz0 {A} {x0} {x1} {x2}
+    \func z0Pathchar => totalZ0Pathchar {A} {x0} {x1} {x2}
+    \func gUT => PathCode.gUT {A}
+  }
+
+-- Theorem.  SP3 sends sets to sets.
+--
+-- Proof.  Every point of SP3 A is merely connected to a Cartesian Borel
+-- representative (or to the diagonal singleton representative).  The lemma
+-- above gives a contractible loop space at each such representative, and hence
+-- every identity type in SP3 A is a proposition.
+\sfunc SP3SetIsSet {A : \Set} : isSet (SP3 A) => run {
+  connSetChar {gUT},
+  connSetSP3
+} \where {
+  \func setChar {X : \Type} (p : X) (y : X) (pr : p = y)
+                (ctr : Contr (y = y)) (q : X) (a : p = q) :
+    \Pi (a' : p = q) -> a = a' \elim pr, a
+    | idp, idp => isContr=>isProp ctr idp
+
+  -- A type is a set when every point is merely connected to a point with
+  -- contractible loop space.
+  \lemma connSetChar {X : \Type}
+                     (cs : \Pi (x : X) ->
+                         TruncP (\Sigma (y : X) (x = y) (Contr (y = y))))
+                     (p q : X) : isProp (p = q) => run {
+      TruncP.rec (isProp.levelProp (p = q)) (cs p),
+      \lam eq,
+      setChar p eq.1 eq.2 eq.3 q
+  }
+
+  \func gUT => PathCode.gUT {A}
+
+  \func recFin3Beta
+    {A : Fin 3 -> \Type}
+    {f : A 0 -> A 1 -> A 2 -> \Pi (y : Fin 3) -> A y}
+    (a : A 0) (b : A 1) (c : A 2) (y : Fin 3) :
+    recFin3 {A}
+        (f a b c 0)
+        (f a b c 1)
+        (f a b c 2) y
+      = f a b c y \elim y
+    | 0 => idp
+    | 1 => idp
+    | 2 => idp
+
+  \func recFin3BetaSimp {A : \Type} (y : Fin 3 -> A) :
+    recFin3 {\lam _ => A} (y 0) (y 1) (y 2) = y =>
+    ext $ \lam x =>
+              recFin3Beta
+                  {\lam _ => A}
+                  {\lam _ _ _ => y}
+                  (y 0) (y 1) (y 2) x
+
+  \func recFin3BetaExt
+    {A : Fin 3 -> \Type}
+    {f : A 0 -> A 1 -> A 2 -> \Pi (y : Fin 3) -> A y} :
+    (\lam (a : A 0) (b : A 1) (c : A 2) =>
+        recFin3 {A}
+            (f a b c 0)
+            (f a b c 1)
+            (f a b c 2))
+      = f =>
+    ext recFin3Beta
+
+  \func recFin3Eta {A : \Type} (a : A) :
+    recFin3 a a a = \lam _ => a =>
+    pmap (__ a a a) $
+    recFin3BetaExt
+        {\lam _ => A}
+        {\lam _ _ _ _ => a}
+
+  -- Produce the required representative by the three point constructors of SP3.
+  \func connSetSP3 (x : gUT) :
+    TruncP (\Sigma (y : gUT) (x = y) (Contr (y = y)))
+    | pinl (pinl b) =>
+      TruncP.map (borelXnIsMerelyCartesian b) $ \lam y =>
+                                                    ( pinl (pinl (BSnbase 3, y.1))
+                                                    , pmap (\lam x => pinl (pinl x)) y.2
+                                                    , run {
+                                                      rewriteI recFin3BetaSimp,
+                                                      sp3LoopSpaceContr A
+                                                          (y.1 0) (y.1 1) (y.1 2)
+                                                    })
+
+    | pinl (pinr c) =>
+      TruncP.map
+          (borelXnIsMerelyCartesian
+              (SP3.fatdiag (BSnbase 2, c.1, c.2))) $ \lam y =>
+                                                         ( pinl (pinl (BSnbase 3, y.1))
+                                                         , pmap (\lam s => pinl s)
+                                                               (inv (path (pglue (BSnbase 2, c.1, c.2))))
+                                                             *> pmap (\lam b => pinl (pinl b)) y.2
+                                                         , run {
+                                                           rewriteI recFin3BetaSimp,
+                                                           sp3LoopSpaceContr A
+                                                               (y.1 0) (y.1 1) (y.1 2)
+                                                         })
+
+    | pinr c =>
+      inP
+          ( pinl (pinl (BSnbase 3, \lam _ => c))
+          , inv (path (pglue (pinl (BSnbase 3), c)))
+          , run {
+            rewriteI recFin3Eta,
+            sp3LoopSpaceContr A c c c
+          })
+}

@@ -1,0 +1,393 @@
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+\import Data.Or
+\import Data.Fin
+\import Function.Meta
+\import Meta
+\import Paths
+\import Paths.Meta
+\import Logic
+\import Logic.Unique
+\import Set
+\import Homotopy.Join
+\import Equiv
+\import Equiv.Sigma
+\import Equiv.Univalence
+\import Homotopy.Pushout
+\import SymmetricProducts.SP3
+\import Utilities.Equiv
+\import Utilities.PathFun
+\import Utilities.Paths
+\import Utilities.Pushout
+\import Experiments.SP3.Refactored.BaseFiber
+\import Experiments.SP3.Refactored.Collision
+\import Experiments.SP3.Refactored.StrictCollisionPaths
+\import Experiments.SP3.Refactored.Diagonal
+\import Experiments.SP3.Refactored.Utilities
+\import Utilities.Unit
+\import Experiments.SP3.Refactored.PathCode
+
+-- Flatten the two pushouts in the total space of PathCode.Qhat and
+-- separate the Borel, collision, and diagonal strata.
+\func TotalSpaceModel (A : \Set \lp) (x0 x1 x2 : A) => QsmallSplit \where {
+  -- Notation for the fixed Cartesian code used throughout the reduction.
+  \func hUT => PathCode.hUT {A}
+  \func iUT => PathCode.iUT {A}
+  \func gUT => PathCode.gUT {A}
+  \func C => PathCode.C
+  \func A21 => PathCode.A21 {A}
+  \func w0 => PathCode.w0 {A} {x0} {x1} {x2}
+  \func P => PathCode.P {A} {x0} {x1} {x2}
+  \func collision => PathCode.collision {A}
+  \func colAt => PathCode.colAt {A} {x0} {x1} {x2}
+  \func colBoth => PathCode.colBoth {A} {x0} {x1} {x2}
+  \func J => PathCode.J {A} {x0} {x1} {x2}
+  \func JisProp => PathCode.JisProp {A} {x0} {x1} {x2}
+  \func colCodeIsProp => PathCode.colCodeIsProp {A} {x0} {x1} {x2}
+  \func Ehat => PathCode.Ehat {A} {x0} {x1} {x2}
+  \func Qhat => PathCode.Qhat {A} {x0} {x1} {x2}
+  \func qhatDiagToEq => PathCode.Qhat.diagToEq {A} {x0} {x1} {x2}
+  \func qhatDiagCtr => PathCode.Qhat.diagCtr {A} {x0} {x1} {x2}
+  \func ehatFwd => PathCode.Ehat.fwd {A} {x0} {x1} {x2}
+  \func ehatBwd => PathCode.Ehat.bwd {A} {x0} {x1} {x2}
+  \func ehatCondCtr => PathCode.Ehat.condCtr {A} {x0} {x1} {x2}
+  \func ehatFromColAt => PathCode.Ehat.fromColAt {A} {x0} {x1} {x2}
+
+  -- Total-space lemma.  We prove that Sigma (z : SP3 A) (Qhat z) is
+  -- contractible.  First flatten both pushouts and identify the resulting
+  -- corners.
+  \func L : \oo-Type (\suc \lp) => \Sigma (s : iUT) (Ehat s)
+
+
+  -- Flatten the outer pushout and reduce its base and right corners.
+  \func Qflat : \oo-Type (\suc \lp) => PushoutData
+      {\Sigma (a : \Sigma C A) (Ehat (SP3.diag a))}
+      {L}
+      {\Sigma (x : A) (\Sigma P (x = x0))}
+      (\lam p => (SP3.diag p.1, p.2))
+      (\lam p => (p.1.2, transport Qhat (PushoutData.ppglue p.1) p.2))
+
+  \sfunc Qflat=Q : Qflat = (\Sigma (z : gUT) (Qhat z)) => PushoutData.flattening Qhat
+
+
+  \lemma rightCornerIsProp : isProp (\Sigma (x : A) (\Sigma P (x = x0))) =>
+    \lam u v => SigmaPropPath {A} {\lam (x : A) => \Sigma P (x = x0)} (\lam _ => prop-isProp) (u.2.2 *> inv v.2.2)
+
+  \sfunc rightCorner= : (\Sigma (x : A) (\Sigma P (x = x0))) = P => iso f g sec ret \where {
+    \sfunc f (u : \Sigma (x : A) (\Sigma P (x = x0))) : P => u.2.1
+    \sfunc g (p : P) : \Sigma (x : A) (\Sigma P (x = x0)) => (x0, (p, idp))
+    \sfunc sec (u : \Sigma (x : A) (\Sigma P (x = x0))) : g (f u) = u => rightCornerIsProp _ _
+    \lemma ret (p : P) : f (g p) = p => prop-pi
+  }
+
+
+  \func baseCorner= : (\Sigma (a : \Sigma C A) (Ehat (SP3.diag a))) = (\Sigma C P) =>
+    iso f g sec ret \where {
+    \func f (u : \Sigma (a : \Sigma C A) (Ehat (SP3.diag a))) : \Sigma C P =>
+      (u.1.1, (qhatDiagToEq u.1 u.2).1)
+    \func g (cp : \Sigma C P) : \Sigma (a : \Sigma C A) (Ehat (SP3.diag a)) =>
+      ((cp.1, x0), (qhatDiagCtr (cp.1, x0) (cp.2, idp)).center)
+    \sfunc sec (u : \Sigma (a : \Sigma C A) (Ehat (SP3.diag a))) : g (f u) = u =>
+      SigmaPath (ext (idp, inv (qhatDiagToEq u.1 u.2).2))
+          (isContr=>isProp (qhatDiagCtr u.1 (qhatDiagToEq u.1 u.2)) _ _)
+    \sfunc ret (cp : \Sigma C P) : f (g cp) = cp => SigmaPropPath {C} {\lam _ => P} (\lam _ => prop-isProp) idp
+  }
+
+
+  \func diagPoint (cp : \Sigma C P) : L =>
+    (SP3.diag (cp.1, x0), (qhatDiagCtr (cp.1, x0) (cp.2, idp)).center)
+
+  \func Qsmall : \oo-Type (\suc \lp) => PushoutData {\Sigma C P} {L} {P} diagPoint __.2
+
+  \sfunc Qflat=Qsmall : Qflat = Qsmall =>
+    pushout-equiv baseCorner= (idp : L = L) rightCorner= _ _
+      *> pushout-eqv-fun _ _ _ _ leftFun rightFun \where {
+    \sfunc leftFun :
+      (\lam cp => path-fun (idp : L = L)
+          (\let p => path-fun (inv baseCorner=) cp \in (SP3.diag p.1, p.2))) = diagPoint => run {
+      unfold baseCorner=,
+      rewrite (path-fun.beta-inv baseCorner=.f baseCorner=.g baseCorner=.sec baseCorner=.ret),
+      idp
+    }
+
+    \sfunc rightFun :
+      (\lam cp => path-fun rightCorner=
+          (\let p => path-fun (inv baseCorner=) cp \in (p.1.2, transport Qhat (PushoutData.ppglue p.1) p.2)))
+        = (\lam (cp : \Sigma C P) => cp.2) => ext
+  }
+
+
+  -- Flatten the inner pushout.
+  \func Bfat : \oo-Type (\suc \lp) => \Sigma (a : A21) (Ehat (pinl (SP3.fatdiag a)))
+  \func Lam : \oo-Type (\suc \lp) => \Sigma (bv : hUT) (Ehat (pinl bv))
+  \func Rho : \oo-Type (\suc \lp) => \Sigma (c : \Sigma A A) (Ehat (pinr c))
+
+  \func lfat (p : Bfat) : Lam => (SP3.fatdiag p.1, p.2)
+  \func rfat (p : Bfat) : Rho => ((p.1.2, p.1.3), transport Ehat (PushoutData.ppglue p.1) p.2)
+
+  \func Lflat : \oo-Type (\suc \lp) => PushoutData {Bfat} {Lam} {Rho} lfat rfat
+
+  \sfunc Lflat=L : Lflat = L => PushoutData.flattening Ehat
+
+
+  -- The honest path component of the Borel corner is contractible, so the
+  -- Borel corner is a cone on its certificate stratum.
+  \func Spine : \oo-Type (\suc \lp) => \Sigma (bv : hUT) (\Sigma (w0 = bv) (J bv))
+
+  \func leftSum : \oo-Type (\suc \lp) => PushoutData
+      {Spine} {\Sigma (bv : hUT) (w0 = bv)} {\Sigma (bv : hUT) (J bv)}
+      (\lam b => (b.1, b.2.1)) (\lam b => (b.1, b.2.2))
+
+  \sfunc left=leftSum : Lam = leftSum => pushout-sigma _ _
+
+
+  \sfunc leftSumBetaPinr (bv : hUT) (j : J bv) : path-fun left=leftSum (bv, pinr j) = pinr (bv, j) =>
+    rewrite (\peval left=leftSum) (pushout-sigma.beta-pinr {hUT}
+        {\lam bv' => \Sigma (w0 = bv') (J bv')} {\lam bv' => w0 = bv'} {J}
+        {\lam _ u => u.1} {\lam _ u => u.2} bv j)
+
+  \func leftCtr : \oo-Type (\suc \lp) => PushoutData
+      {Spine} {\Sigma} {\Sigma (bv : hUT) (J bv)}
+      (\lam _ => ()) (\lam b => (b.1, b.2.2))
+
+  \sfunc leftSum=leftCtr : leftSum = leftCtr => pushout-contr (lsigma w0) _ _
+
+  \sfunc leftCtrBetaPinr (u : \Sigma (bv : hUT) (J bv)) : path-fun leftSum=leftCtr (pinr u) = pinr u =>
+    rewrite (\peval leftSum=leftCtr) (pushout-contr.beta-pinr {Spine}
+        {\Sigma (bv : hUT) (w0 = bv)} {\Sigma (bv : hUT) (J bv)}
+        {lsigma w0} {\lam (b : Spine) => (b.1, b.2.1)} {\lam (b : Spine) => (b.1, b.2.2)} u)
+
+
+  -- Split the certificate strata into collision and diagonal pieces.
+  \func ColB : \oo-Type (\suc \lp) => \Sigma (bv : hUT) (colBoth bv)
+  \func Dl : \oo-Type (\suc \lp) => \Sigma (bv : hUT) (\Sigma P (T {A} {x0} (pinl bv)))
+  \func JOverlap : \oo-Type (\suc \lp) =>
+    \Sigma (bv : hUT) (\Sigma (colBoth bv) (\Sigma P (T {A} {x0} (pinl bv))))
+
+  \func jCol (b : JOverlap) : ColB => (b.1, b.2.1)
+  \func jDl (b : JOverlap) : Dl => (b.1, b.2.2)
+
+  \func JSplit : \oo-Type (\suc \lp) => PushoutData {JOverlap} {ColB} {Dl} jCol jDl
+
+  \sfunc JSum= : (\Sigma (bv : hUT) (J bv)) = JSplit => pushout-sigma _ _
+
+  \sfunc jSumBetaPinl (bv : hUT) (cb : colBoth bv) : path-fun JSum= (bv, pinl cb) = pinl (bv, cb) =>
+    rewrite (\peval JSum=) (pushout-sigma.beta-pinl {hUT}
+        {\lam bv' => \Sigma (colBoth bv') (\Sigma P (T {A} {x0} (pinl bv')))}
+        {colBoth} {\lam bv' => \Sigma P (T {A} {x0} (pinl bv'))}
+        {\lam _ u => u.1} {\lam _ u => u.2} bv cb)
+
+  \func Delta= : Dl = (\Sigma P (BSn 3)) =>
+    DeltaRegroup *> pmap (\lam (X : \Type (\suc \lp)) => \Sigma P X) (T.repr.left= {A} {x0}) \where {
+    \func DeltaRegroup : Dl = (\Sigma P (T.repr.leftT {A} {x0})) => iso to fro (\lam _ => idp) (\lam _ => idp)
+    \func to (u : Dl) : \Sigma P (T.repr.leftT {A} {x0}) => (u.2.1, (u.1, u.2.2))
+    \func fro (u : \Sigma P (T.repr.leftT {A} {x0})) : Dl => (u.2.1, (u.1, u.2.2))
+  }
+
+
+  \sfunc betaDelta (u : Dl) : path-fun Delta= u = (u.2.1, u.1.1) => run {
+    unfold Delta=,
+    rewrite (path-fun.beta-*> Delta=.DeltaRegroup
+        (pmap (\lam (X : \Type (\suc \lp)) => \Sigma P X) (T.repr.left= {A} {x0}))),
+    unfold Delta=.DeltaRegroup,
+    rewrite (path-fun.beta Delta=.to Delta=.fro (\lam _ => idp) (\lam _ => idp)),
+    rewrite (pathFunSigmaR (T.repr.left= {A} {x0}) (Delta=.to u)),
+    unfold T.repr.left=,
+    rewrite (path-fun.beta (T.repr.left=.f {A} {x0}) (T.repr.left=.g {A} {x0})
+        (T.repr.left=.sec {A} {x0}) (T.repr.left=.ret {A} {x0})),
+    idp
+  }
+
+  \lemma betaRightT (u : Dr) : path-fun rightT= u = u.2.1 => prop-pi
+
+
+  \func JSplitD : \oo-Type (\suc \lp) => PushoutData
+      {JOverlap} {ColB} {\Sigma P (BSn 3)} jCol (\lam b => (b.2.2.1, b.1.1))
+
+  \sfunc JSum=D : (\Sigma (bv : hUT) (J bv)) = JSplitD =>
+    JSum= *> pushout-equiv idp idp Delta= jCol jDl
+               *> pushout-eqv-fun _ _ _ _ idp (ext (\lam b => betaDelta (jDl b)))
+
+  -- On the collision stratum the splitting sends a certificate to the left
+  -- constructor.  The computation stays beside the strict equality JSum=D.
+  \sfunc jSumDBetaPinl (bv : hUT) (cb : colBoth bv)
+    : path-fun JSum=D (bv, pinl cb) = pinl (bv, cb) => run {
+    rewrite (\peval JSum=D),
+    rewrite (path-fun.beta-*> JSum= _),
+    rewrite (path-fun.beta-*> (pushout-equiv idp idp Delta= jCol jDl) _),
+    rewrite (jSumBetaPinl bv cb),
+    rewrite (pushout-equiv.beta-pinl idp idp Delta= jCol jDl (bv, cb)),
+    pushout-eqv-fun.beta-pinl {JOverlap} {ColB} {\Sigma P (BSn 3)} _ _ _ _ _ _ (bv, cb)
+  }
+
+
+  \func LeftCone : \oo-Type (\suc \lp) => PushoutData
+      {Spine} {\Sigma} {JSplitD}
+      (\lam _ => ()) (\lam b => path-fun JSum=D (b.1, b.2.2))
+
+  \sfunc left= : Lam = LeftCone =>
+    left=leftSum *> leftSum=leftCtr
+                      *> pushout-equiv idp idp JSum=D (\lam (_ : Spine) => ()) (\lam (b : Spine) => (b.1, b.2.2))
+
+  -- Consequently the non-spine collision constructor lands in the collision
+  -- corner of LeftCone.  Again, partial evaluation is local to this module.
+  \sfunc leftBetaPinrPinl (bv : hUT) (cb : colBoth bv)
+    : path-fun left= (bv, pinr (pinl cb)) = pinr (pinl (bv, cb)) => run {
+    rewrite (\peval left=),
+    rewrite (path-fun.beta-*> left=leftSum _),
+    rewrite (path-fun.beta-*> leftSum=leftCtr _),
+    rewrite (leftSumBetaPinr bv (pinl cb)),
+    rewrite (leftCtrBetaPinr ((bv, pinl cb) : \Sigma (bv' : hUT) (J bv'))),
+    rewrite (pushout-equiv.beta-pinr idp idp JSum=D
+        (\lam (_ : Spine) => ()) (\lam (s : Spine) => (s.1, s.2.2))
+        ((bv, pinl cb) : \Sigma (bv' : hUT) (J bv'))),
+    rewrite (jSumDBetaPinl bv cb),
+    idp
+  }
+
+
+  \func ColR : \oo-Type \lp => \Sigma (c : \Sigma A A) (colAt c)
+  \func Dr : \oo-Type \lp => \Sigma (c : \Sigma A A) (\Sigma P (T {A} {x0} (pinr c)))
+  \func ROverlap : \oo-Type \lp =>
+    \Sigma (c : \Sigma A A) (\Sigma (colAt c) (\Sigma P (T {A} {x0} (pinr c))))
+
+  \lemma ColRisProp : isProp ColR =>
+    \lam u v => SigmaPropPath {\Sigma A A} {\lam c => colAt c} (\lam _ => prop-isProp) (valsEq u v) \where {
+    \lemma valsEq (u v : ColR) : u.1 = v.1 =>
+      TruncP.rec prop-isProp u.2 (\lam wu => TruncP.rec prop-isProp v.2
+          (\lam wv => ext (Col.colValsDet {A} (inv wu *> wv))))
+  }
+
+  \func rCol (b : ROverlap) : ColR => (b.1, b.2.1)
+  \func rDr (b : ROverlap) : Dr => (b.1, b.2.2)
+
+  \func rightSplit : \oo-Type (\suc \lp) => PushoutData {ROverlap} {ColR} {Dr} rCol rDr
+
+  \sfunc rightSum= : Rho = rightSplit => pushout-sigma _ _
+
+  \sfunc rightT= : Dr = P =>
+    rightTRegroup *> pmap (\lam (X : \Type \lp) => \Sigma P X) (T.repr.right= {A} {x0}) *> unitRight \where {
+    \sfunc rightTRegroup : Dr = (\Sigma P (T.repr.rightT {A} {x0})) => iso to fro (\lam _ => idp) (\lam _ => idp)
+    \func to (u : Dr) : \Sigma P (T.repr.rightT {A} {x0}) => (u.2.1, (u.1, u.2.2))
+    \func fro (u : \Sigma P (T.repr.rightT {A} {x0})) : Dr => (u.2.1, (u.1, u.2.2))
+    \sfunc unitRight : (\Sigma P (\Sigma)) = P =>
+      iso (\lam u => u.1) (\lam p => (p, ())) (\lam _ => idp) (\lam _ => idp)
+  }
+
+
+  \func RightSplitP : \oo-Type (\suc \lp) => PushoutData
+      {ROverlap} {ColR} {P} rCol (\lam b => b.2.2.1)
+
+  \sfunc right= : Rho = RightSplitP =>
+    rightSum= *> pushout-equiv idp idp rightT= rCol rDr
+                   *> pushout-eqv-fun _ _ _ _ idp (ext (\lam b => betaRightT (rDr b)))
+
+
+  \sfunc cIsDiag (c : \Sigma A A) (t : T {A} {x0} (pinr c)) : c = (x0, x0) => ext (t.1, t.2)
+
+  \sfunc rhoColAt (c : \Sigma A A) (e : Ehat (pinr c)) : colAt c \elim e
+    | pinl ca => ca
+    | pinr pt => transport colAt (inv (cIsDiag c pt.2))
+        (inP (Col.w0Diag {A} {x0} {x1} {x2} pt.1))
+
+  \lemma rhoIsProp : isProp Rho =>
+    \lam u v => SigmaPropPath {\Sigma A A} {\lam c => Ehat (pinr c)} colCodeIsProp (rhoVals u v) \where {
+    \lemma rhoVals (u v : Rho) : u.1 = v.1 =>
+      TruncP.rec prop-isProp (rhoColAt u.1 u.2) (\lam wu => TruncP.rec prop-isProp (rhoColAt v.1 v.2)
+          (\lam wv => ext (Col.colValsDet {A} (inv wu *> wv))))
+  }
+
+  \lemma rightIsProp : isProp RightSplitP => transport isProp right= rhoIsProp
+
+  \sfunc colRof (c : \Sigma A A) (w : w0 = collision c.1 c.2) : ColR => (c, inP w)
+
+  \sfunc jOfCol (cr : ColR) : J w0 =>
+    pinl (TruncP.rec prop-isProp cr.2 (\lam w => Col.colBothOf {A} {x0} {x1} {x2} w0 cr.1 w w))
+  \sfunc jOfP (p : P) : J w0 => pinr (p, Qz0.Ty0FromP {A} {x0} {x1} {x2} p)
+
+  \sfunc jOf (r : RightSplitP) : J w0 \elim r
+    | pinl cr => jOfCol cr
+    | pinr p => jOfP p
+    | pglue b i => JisProp w0 (jOfCol (rCol b)) (jOfP b.2.2.1) i
+
+  \sfunc jTo (j : J w0) : RightSplitP \elim j
+    | pinl cb => pinl (TruncP.rec ColRisProp cb (\lam s => colRof (s.1, s.2) s.3.1))
+    | pinr pt => pinr pt.1
+    | pglue (cb, pt) i => rightIsProp
+        (pinl (TruncP.rec ColRisProp cb (\lam s => colRof (s.1, s.2) s.3.1))) (pinr pt.1) i
+
+
+  -- Split the base of the inner attachment in the same way.
+  \func BOverlap : \oo-Type (\suc \lp) =>
+    \Sigma (a : A21) (\Sigma (colAt (a.2, a.3)) (\Sigma P (T {A} {x0} (pinr (a.2, a.3)))))
+
+  \func BaseSplit : \oo-Type (\suc \lp) => PushoutData
+      {BOverlap}
+      {\Sigma (a : A21) (colAt (a.2, a.3))}
+      {\Sigma (a : A21) (\Sigma P (T {A} {x0} (pinr (a.2, a.3))))}
+      (\lam b => (b.1, b.2.1)) (\lam b => (b.1, b.2.2))
+
+  \func BaseP : \oo-Type (\suc \lp) => \Sigma (a : A21) (Ehat (pinr (a.2, a.3)))
+
+
+  \sfunc baseFib= : Bfat = BaseP => iso to fro sec ret \where {
+    \func to (u : Bfat) : BaseP => (u.1, ehatFwd u.1 u.2)
+    \func fro (v : BaseP) : Bfat => (v.1, ehatBwd v.1 v.2)
+    \sfunc sec (u : Bfat) : fro (to u) = u =>
+      SigmaPath idp (condCtrToProp (ehatCondCtr u.1) _ _)
+    \sfunc ret (v : BaseP) : to (fro v) = v =>
+      SigmaPath idp (colCodeIsProp (v.1.2, v.1.3) _ _)
+  }
+
+  \sfunc base= : Bfat = BaseSplit => baseFib= *> pushout-sigma _ _
+
+  -- The inverse base comparison sends a collision constructor back to the
+  -- corresponding collision code in Ehat.
+  \sfunc baseInvBetaPinl (u : \Sigma (a : A21) (colAt (a.2, a.3)))
+    : path-fun (inv base=) (pinl u)
+      = (u.1, pinr (pinl (ehatFromColAt u.1 u.2))) => run {
+    rewrite (\peval base=),
+    rewrite (pathFunInvComp baseFib= _ (pinl u)),
+    rewrite (pushout-sigma.beta-inv-pinl u),
+    rewrite (\peval baseFib=),
+    rewrite (path-fun.beta-inv baseFib=.to baseFib=.fro baseFib=.sec baseFib=.ret),
+    idp
+  }
+
+
+  -- The left attaching map is kept in transported form.  The collision-case
+  -- normalization evaluates it only on the collision constructor, avoiding a
+  -- separate two-dimensional computation on BaseSplit.pglue.
+  \func lExpl (u : BaseSplit) : LeftCone => path-fun left= (lfat (path-fun (inv base=) u))
+
+
+  \sfunc rExpl (u : BaseSplit) : RightSplitP \elim u
+    | pinl w => pinl ((w.1.2, w.1.3), w.2)
+    | pinr d => pinr d.2.1
+    | pglue b i => rightIsProp (pinl ((b.1.2, b.1.3), b.2.1)) (pinr b.2.2.1) i
+
+  \func Lsplit : \oo-Type (\suc \lp) => PushoutData {BaseSplit} {LeftCone} {RightSplitP}
+      (\lam a' => path-fun left= (lfat (path-fun (inv base=) a')))
+      (\lam a' => path-fun right= (rfat (path-fun (inv base=) a')))
+
+
+  \func LsplitE : \oo-Type (\suc \lp) => PushoutData {BaseSplit} {LeftCone} {RightSplitP} lExpl rExpl
+
+
+  \sfunc lFun : (\lam a' => path-fun left= (lfat (path-fun (inv base=) a'))) = lExpl => idp
+
+
+  \sfunc rFun : (\lam a' => path-fun right= (rfat (path-fun (inv base=) a'))) = rExpl =>
+    ext (\lam _ => rightIsProp _ _)
+
+  \sfunc Lsplit=LsplitE : Lsplit = LsplitE => pushout-eqv-fun _ _ _ _ lFun rFun
+
+  -- The total space over SP3.step is now the explicit pushout LsplitE.
+  \sfunc Lchar : L = LsplitE =>
+    inv Lflat=L *> pushout-equiv base= left= right= lfat rfat *> Lsplit=LsplitE
+
+  \func QsmallSplit : \oo-Type (\suc \lp) => PushoutData {\Sigma C P} {LsplitE} {P}
+      (\lam cp => path-fun Lchar (diagPoint cp)) __.2
+
+  \sfunc Qsmall=QsmallSplit : Qsmall = QsmallSplit => pushout-equiv idp Lchar idp diagPoint __.2
+}
