@@ -3,3 +3,5 @@ arend-lib
 bin
 .sig
 skills
+*.jar
+src/Scratch.ard
