@@ -1,0 +1,2110 @@
+\import Algebra.Group
+\import Algebra.Group.GroupCategory
+\import Algebra.Group.GroupHom
+\import Category \hiding (univalence)
+\import Data.Fin
+\import Data.Or
+\import Equiv
+\import Equiv.Univalence
+\import Meta
+\import Set
+\import Utilities.Paths
+\import Homotopy.Connected
+\import Homotopy.Pointed
+\import Homotopy.Pushout
+\import Logic
+\import Paths
+\import Paths.Meta
+\import SymmetricProducts.BSn
+\import SymmetricProducts.Borel
+
+\import Experiments.HomotopyGroup.GroupPushout
+\import Experiments.HomotopyGroup.HomotopyGroup
+\import Experiments.HomotopyGroup.VanKampen
+
+-- Pointed spaces and the two maps in the pushout defining SP2.
+
+\func BS2Pointed : Pointed (BSn 2) \cowith
+  | base => BSnbase 2
+
+\func SP2BoundaryPointed (A : Pointed) : Pointed (\Sigma A (BSn 2)) \cowith
+  | base => (A.base, BSnbase 2)
+
+\func BorelSquarePointed (A : Pointed) : Pointed (borelXn 2 A) \cowith
+  | base => (BSnbase 2, \lam _ => A.base)
+
+-- Projection to BS2 and its constant-section splitting.
+\func borelSquareProjection (A : Pointed) :
+  BorelSquarePointed A ->* BS2Pointed =>
+  (__.1, idp)
+
+\func borelSquareSection (A : Pointed) :
+  BS2Pointed ->* BorelSquarePointed A =>
+  (borelBaseCofib, idp)
+
+-- The preferred nontrivial loop of BS2. Its lift to the universal two-point
+-- family exchanges the two elements of Fin 2.
+\func bs2SwapLoop : BSnbase 2 = BSnbase 2 =>
+  BSnPath (BSnbase 2) (BSnbase 2) notBS2.notFin2Eq
+
+\func sp2Projection (A : Pointed) : SP2BoundaryPointed A ->* A =>
+  (__.1, idp)
+
+\func sp2BorelDiagonal (A : Pointed) :
+  SP2BoundaryPointed A ->* BorelSquarePointed A =>
+  (\lam p => (p.2, \lam _ => p.1), idp)
+
+\func SP2PushoutCarrier (A : \Type) : \Type =>
+  PushoutData {\Sigma A (BSn 2)} {A} {borelXn 2 A}
+      __.1 (\lam p => (p.2, \lam _ => p.1))
+
+-- This is definitionally the pointed pushout used by pushoutVanKampen.
+\func SP2Pointed (A : Pointed) : Pointed =>
+  pushoutVanKampen.PushoutPointed (sp2Projection A) (sp2BorelDiagonal A)
+
+\func sigmaConnected0 {A B : \Type}
+                      (connA : Connected0 A) (connB : Connected0 B) :
+  Connected0 (\Sigma A B) \cowith
+  | isInh => \case connA.isInh, connB.isInh \with {
+    | inP a, inP b => inP (a,b)
+  }
+  | isConn0 x y =>
+    \case connA.isConn0 x.1 y.1, connB.isConn0 x.2 y.2 \with {
+      | inP p, inP q => inP (path (\lam i => (p @ i, q @ i)))
+    }
+
+\func sp2BoundaryConnected {A : Pointed} (connA : Connected0 A) :
+  Connected0 (SP2BoundaryPointed A) =>
+  sigmaConnected0 connA (connBSn 2)
+
+-- ---------------------------------------------------------------------------
+-- Algebraic models
+-- ---------------------------------------------------------------------------
+
+-- A presentation of pi_1(A x BS2) = G x C2.
+-- `turn` is the nontrivial loop of BS2 and commutes with the G-factor.
+\func BorelBoundaryGroup (G : Group) : Group \cowith
+  | E => E
+  | ide => ide
+  | * => *
+  | *-assoc {x} {y} {z} => path (*-assoc x y z)
+  | inverse => inverse
+  | ide-left {x} => path (ide-left x)
+  | inverse-left {x} => path (inverse-left x)
+  \where {
+    \truncated \data E : \Set
+      | diag G
+      | turn
+
+      | ide
+      | \infix 7 * E E
+      | *-assoc (x y z : E) : (x * y) * z = x * (y * z)
+      | inverse E
+      | ide-left (x : E) : ide * x = x
+      | inverse-left (x : E) : inverse x * x = ide
+
+      | diag-* (x y : G) : diag (x G.* y) = diag x * diag y
+      | diag-ide : diag G.ide = ide
+      | turn-square : turn * turn = ide
+      | turn-diag (g : G) : turn * diag g = diag g * turn
+
+    \func recE {H : Group}
+               (h : GroupHom G H)
+               (t : H)
+               (t-square : t H.* t = H.ide)
+               (t-central : \Pi (g : G) -> t H.* h g = h g H.* t)
+               (x : E) : H \elim x
+      | diag g => h g
+      | turn => t
+      | ide => H.ide
+      | x * y => recE h t t-square t-central x H.* recE h t t-square t-central y
+      | *-assoc x y z i =>
+        H.*-assoc {recE h t t-square t-central x}
+            {recE h t t-square t-central y}
+            {recE h t t-square t-central z} i
+      | inverse x => H.inverse (recE h t t-square t-central x)
+      | ide-left x i => H.ide-left {recE h t t-square t-central x} i
+      | inverse-left x i => H.inverse-left {recE h t t-square t-central x} i
+      | diag-* x y i => h.func-* {x} {y} i
+      | diag-ide i => h.func-ide i
+      | turn-square i => t-square i
+      | turn-diag g i => t-central g i
+
+    \func recHom {H : Group}
+                 (h : GroupHom G H)
+                 (t : H)
+                 (t-square : t H.* t = H.ide)
+                 (t-central : \Pi (g : G) -> t H.* h g = h g H.* t) :
+      GroupHom (BorelBoundaryGroup G) H \cowith
+      | func x => recE h t t-square t-central x
+      | func-* => idp
+
+    -- Extensionality for homomorphisms out of the boundary presentation.
+    \func hom-ext {H : Group}
+                  (k l : GroupHom (BorelBoundaryGroup G) H)
+                  (onDiag : \Pi (g : G) -> k (diag g) = l (diag g))
+                  (onTurn : k turn = l turn) :
+      k = l
+      => exts (\lam x => pointwise x)
+      \where {
+        \func pointwise (x : E) : k x = l x \elim x
+          | diag g => onDiag g
+          | turn => onTurn
+          | ide => k.func-ide *> inv l.func-ide
+          | x * y =>
+            k.func-* {x} {y}
+              *> pmap2 (\lam x y => x H.* y) (pointwise x) (pointwise y)
+                   *> inv (l.func-* {x} {y})
+          | inverse x =>
+            k.func-inverse
+              *> pmap H.inverse (pointwise x)
+                   *> inv l.func-inverse
+      }
+
+    \func diagHom : GroupHom G (BorelBoundaryGroup G) \cowith
+      | func g => diag g
+      | func-* {x} {y} => path (diag-* x y)
+      | func-ide => path diag-ide
+  }
+
+-- A presentation of (G x G) semidirect C2, where C2 swaps the factors.
+-- This is the usual wreath-product description of pi_1((A x A)//S2).
+-- `diagonal` is included as a named generator only to make the boundary map
+-- compute definitionally; `diagonal-split` identifies it with left(g)right(g).
+\func BorelSquareGroup (G : Group) : Group \cowith
+  | E => E
+  | ide => ide
+  | * => *
+  | *-assoc {x} {y} {z} => path (*-assoc x y z)
+  | inverse => inverse
+  | ide-left {x} => path (ide-left x)
+  | inverse-left {x} => path (inverse-left x)
+  \where {
+    \truncated \data E : \Set
+      | left G
+      | right G
+      | diagonal G
+      | swap
+
+      | ide
+      | \infix 7 * E E
+      | *-assoc (x y z : E) : (x * y) * z = x * (y * z)
+      | inverse E
+      | ide-left (x : E) : ide * x = x
+      | inverse-left (x : E) : inverse x * x = ide
+
+      | left-* (x y : G) : left (x G.* y) = left x * left y
+      | left-ide : left G.ide = ide
+      | right-* (x y : G) : right (x G.* y) = right x * right y
+      | right-ide : right G.ide = ide
+      | diagonal-* (x y : G) : diagonal (x G.* y) = diagonal x * diagonal y
+      | diagonal-ide : diagonal G.ide = ide
+
+      | diagonal-split (g : G) : diagonal g = left g * right g
+      | factors-commute (x y : G) : left x * right y = right y * left x
+      | swap-square : swap * swap = ide
+      | swap-left (g : G) : (swap * left g) * swap = right g
+      | swap-diagonal (g : G) : swap * diagonal g = diagonal g * swap
+
+    \func recE {H : Group}
+               (hL hR hD : GroupHom G H)
+               (s : H)
+               (diagonal-split-coh : \Pi (g : G) -> hD g = hL g H.* hR g)
+               (factors-commute-coh : \Pi (x y : G) -> hL x H.* hR y = hR y H.* hL x)
+               (swap-square-coh : s H.* s = H.ide)
+               (swap-left-coh : \Pi (g : G) -> (s H.* hL g) H.* s = hR g)
+               (swap-diagonal-coh : \Pi (g : G) -> s H.* hD g = hD g H.* s)
+               (x : E) : H \elim x
+      | left g => hL g
+      | right g => hR g
+      | diagonal g => hD g
+      | swap => s
+      | ide => H.ide
+      | x * y =>
+        recE hL hR hD s diagonal-split-coh factors-commute-coh
+            swap-square-coh swap-left-coh swap-diagonal-coh x H.*
+        recE hL hR hD s diagonal-split-coh factors-commute-coh
+            swap-square-coh swap-left-coh swap-diagonal-coh y
+      | *-assoc x y z i =>
+        H.*-assoc
+            {recE hL hR hD s diagonal-split-coh factors-commute-coh
+                 swap-square-coh swap-left-coh swap-diagonal-coh x}
+            {recE hL hR hD s diagonal-split-coh factors-commute-coh
+                 swap-square-coh swap-left-coh swap-diagonal-coh y}
+            {recE hL hR hD s diagonal-split-coh factors-commute-coh
+                 swap-square-coh swap-left-coh swap-diagonal-coh z} i
+      | inverse x => H.inverse
+          (recE hL hR hD s diagonal-split-coh factors-commute-coh
+              swap-square-coh swap-left-coh swap-diagonal-coh x)
+      | ide-left x i => H.ide-left
+          {recE hL hR hD s diagonal-split-coh factors-commute-coh
+               swap-square-coh swap-left-coh swap-diagonal-coh x} i
+      | inverse-left x i => H.inverse-left
+          {recE hL hR hD s diagonal-split-coh factors-commute-coh
+               swap-square-coh swap-left-coh swap-diagonal-coh x} i
+      | left-* x y i => hL.func-* {x} {y} i
+      | left-ide i => hL.func-ide i
+      | right-* x y i => hR.func-* {x} {y} i
+      | right-ide i => hR.func-ide i
+      | diagonal-* x y i => hD.func-* {x} {y} i
+      | diagonal-ide i => hD.func-ide i
+      | diagonal-split g i => diagonal-split-coh g i
+      | factors-commute x y i => factors-commute-coh x y i
+      | swap-square i => swap-square-coh i
+      | swap-left g i => swap-left-coh g i
+      | swap-diagonal g i => swap-diagonal-coh g i
+
+    \func recHom {H : Group}
+                 (hL hR hD : GroupHom G H)
+                 (s : H)
+                 (diagonal-split-coh : \Pi (g : G) -> hD g = hL g H.* hR g)
+                 (factors-commute-coh : \Pi (x y : G) -> hL x H.* hR y = hR y H.* hL x)
+                 (swap-square-coh : s H.* s = H.ide)
+                 (swap-left-coh : \Pi (g : G) -> (s H.* hL g) H.* s = hR g)
+                 (swap-diagonal-coh : \Pi (g : G) -> s H.* hD g = hD g H.* s) :
+      GroupHom (BorelSquareGroup G) H \cowith
+      | func x => recE hL hR hD s diagonal-split-coh factors-commute-coh
+          swap-square-coh swap-left-coh swap-diagonal-coh x
+      | func-* => idp
+
+    -- Extensionality for homomorphisms out of the Borel-square presentation.
+    \func hom-ext {H : Group}
+                  (k l : GroupHom (BorelSquareGroup G) H)
+                  (onLeft : \Pi (g : G) -> k (left g) = l (left g))
+                  (onRight : \Pi (g : G) -> k (right g) = l (right g))
+                  (onDiagonal : \Pi (g : G) -> k (diagonal g) = l (diagonal g))
+                  (onSwap : k swap = l swap) :
+      k = l
+      => exts (\lam x => pointwise x)
+      \where {
+        \func pointwise (x : E) : k x = l x \elim x
+          | left g => onLeft g
+          | right g => onRight g
+          | diagonal g => onDiagonal g
+          | swap => onSwap
+          | ide => k.func-ide *> inv l.func-ide
+          | x * y =>
+            k.func-* {x} {y}
+              *> pmap2 (\lam x y => x H.* y) (pointwise x) (pointwise y)
+                   *> inv (l.func-* {x} {y})
+          | inverse x =>
+            k.func-inverse
+              *> pmap H.inverse (pointwise x)
+                   *> inv l.func-inverse
+      }
+
+    \func leftHom : GroupHom G (BorelSquareGroup G) \cowith
+      | func g => left g
+      | func-* {x} {y} => path (left-* x y)
+      | func-ide => path left-ide
+
+    \func rightHom : GroupHom G (BorelSquareGroup G) \cowith
+      | func g => right g
+      | func-* {x} {y} => path (right-* x y)
+      | func-ide => path right-ide
+
+    \func diagonalHom : GroupHom G (BorelSquareGroup G) \cowith
+      | func g => diagonal g
+      | func-* {x} {y} => path (diagonal-* x y)
+      | func-ide => path diagonal-ide
+  }
+
+-- On pi_1(A x BS2), projection forgets the C2-loop.
+\func boundaryProjectionHom (G : Group) :
+  GroupHom (BorelBoundaryGroup G) G =>
+  BorelBoundaryGroup.recHom (GroupHom.id {G}) G.ide
+      G.ide-left (\lam _ => G.ide-left *> inv G.ide-right)
+
+-- On pi_1, the extended diagonal sends (g,e) to ((g,g),e).
+\func boundaryBorelHom (G : Group) :
+  GroupHom (BorelBoundaryGroup G) (BorelSquareGroup G) =>
+  BorelBoundaryGroup.recHom (BorelSquareGroup.diagonalHom {G})
+      BorelSquareGroup.swap
+      (path BorelSquareGroup.swap-square)
+      (\lam g => path (BorelSquareGroup.swap-diagonal g))
+
+-- ---------------------------------------------------------------------------
+-- Loop normal forms used in the topological comparison
+-- ---------------------------------------------------------------------------
+
+\func pairPath {A B : \Type} {a a' : A} {b b' : B}
+               (p : a = a') (q : b = b') :
+  (a,b) = {\Sigma A B} (a',b') => path (\lam i => (p @ i, q @ i))
+
+\func pairPath-map1 {A B : \Type} {a a' : A} {b b' : B}
+                    (p : a = a') (q : b = b') :
+  pmap __.1 (pairPath p q) = p
+\elim p, q
+  | idp, idp => idp
+
+\func pairPath-map2 {A B : \Type} {a a' : A} {b b' : B}
+                    (p : a = a') (q : b = b') :
+  pmap __.2 (pairPath p q) = q
+\elim p, q
+  | idp, idp => idp
+
+\func pairPath-comp {A B : \Type}
+                    {a0 a1 a2 : A} {b0 b1 b2 : B}
+                    (p : a0 = a1) (q : b0 = b1)
+                    (r : a1 = a2) (s : b1 = b2) :
+  pairPath p q *> pairPath r s = pairPath (p *> r) (q *> s)
+\elim r, s
+  | idp, idp => idp
+
+\func pairPath-eta {A B : \Type}
+                   {x y : \Sigma A B} (p : x = y) :
+  pairPath (pmap __.1 p) (pmap __.2 p) = p
+\elim p
+  | idp => idp
+
+\func pairPath-idp {A B : \Type} {a : A} {b : B} :
+  pairPath (idp {A} {a}) (idp {B} {b}) = idp {\Sigma A B} {a, b} => idp
+
+-- The identity and the transposition are the two distinct loops of BS2.
+\func bs2IdNotSwap : idp {BSn 2} {BSnbase 2} /= {BSnbase 2 = BSnbase 2} bs2SwapLoop => run {
+  pmap-/= (pmap __.1),
+  unfold bs2SwapLoop,
+  unfold BSnPath,
+  rewrite (SigmaPropPathBeta2
+      (\lam A x y => path (truncP {Equiv {A} {Fin 2}} x y))
+      (Equiv-to-= notBS2.notFin2Eq)),
+  pmap-/= =-to-Equiv,
+  unfold pmap,
+  rewrite (univalence.f_ret notBS2.notFin2Eq :
+  =-to-Equiv (Equiv-to-= notBS2.notFin2Eq) = notBS2.notFin2Eq),
+  unfold =-to-Equiv,
+  unfold transport,
+  \lam e,
+  \case pmap (\lam (f : Equiv {Fin 2} {Fin 2}) => f fzero) e \with {}
+}
+
+\func bs2SwapNotIdp : bs2SwapLoop /= idp =>
+  \lam e => bs2IdNotSwap (inv e)
+
+\func bs2SwapSquare : bs2SwapLoop *> bs2SwapLoop = idp =>
+  \case base2PathChar.comp (bs2SwapLoop *> bs2SwapLoop) \with {
+    | inl e => e
+    | inr e => absurd (bs2SwapNotIdp
+        (*>-cancel bs2SwapLoop idp bs2SwapLoop
+            (e *> inv (idp_*> bs2SwapLoop))))
+  }
+
+-- A computational two-case recursor for loops of BS2.  The beta lemmas are
+-- proved separately because base2PathChar.comp is propositionally, rather
+-- than definitionally, normalized on the two canonical loops.
+\func bs2Parity {T : \Type (\suc \lp) _} (even odd : T)
+                (p : BSnbase 2 = BSnbase 2) : T =>
+  \case base2PathChar.comp p \with {
+    | inl _ => even
+    | inr _ => odd
+  }
+
+\func bs2Parity-idp {T : \Type (\suc \lp) _} (even odd : T) :
+  bs2Parity even odd idp = even =>
+  \case base2PathChar.comp idp \as x, idp : base2PathChar.comp idp = x \with {
+    | inl _, p => run {
+      unfold bs2Parity,
+      rewrite p idp
+    }
+    | inr e, _ => absurd (bs2IdNotSwap e)
+  }
+
+\func bs2Parity-swap {T : \Type (\suc \lp) _} (even odd : T) :
+  bs2Parity even odd bs2SwapLoop = odd =>
+  \case base2PathChar.comp bs2SwapLoop \as x,
+        idp : base2PathChar.comp bs2SwapLoop = x \with {
+    | inl e, _ => absurd (bs2SwapNotIdp e)
+    | inr _, p => run {
+      unfold bs2Parity,
+      rewrite p idp
+    }
+  }
+
+\func bs2Parity-mul {H : Group \levels (\suc \lp) _} (s : H)
+                    (s-square : s H.* s = H.ide)
+                    (p q : BSnbase 2 = BSnbase 2) :
+  bs2Parity H.ide s (p *> q) =
+  bs2Parity H.ide s p H.* bs2Parity H.ide s q =>
+  \case base2PathChar.comp p, base2PathChar.comp q \with {
+    | inl ep, inl eq => run {
+      rewrite (ep, eq),
+      rewrite (bs2Parity-idp H.ide s),
+      inv H.ide-left
+    }
+    | inl ep, inr eq => run {
+      rewrite (ep, eq),
+      rewrite (idp_*> bs2SwapLoop),
+      rewrite (bs2Parity-swap H.ide s),
+      rewrite (bs2Parity-idp H.ide s),
+      inv H.ide-left
+    }
+    | inr ep, inl eq => run {
+      rewrite (ep, eq),
+      rewrite (bs2Parity-swap H.ide s),
+      rewrite (bs2Parity-idp H.ide s),
+      inv H.ide-right
+    }
+    | inr ep, inr eq => run {
+      rewrite (ep, eq),
+      rewrite bs2SwapSquare,
+      rewrite (bs2Parity-idp H.ide s),
+      rewrite (bs2Parity-swap H.ide s),
+      inv s-square
+    }
+  }
+
+-- ---------------------------------------------------------------------------
+-- pi_1(A x BS2)
+-- ---------------------------------------------------------------------------
+
+\func boundaryDiagPiFun {A : Pointed}
+                        (g : pi_group \levels (\suc \lp) _ 0 A) :
+  pi_group 0 (SP2BoundaryPointed A)
+\elim g
+  | in0 p => in0 (pairPath p idp)
+
+\func boundaryDiagPiMul {A : Pointed}
+                        (x y : pi_group \levels (\suc \lp) _ 0 A) :
+  boundaryDiagPiFun {A} ((pi_group \levels (\suc \lp) _ 0 A).* x y) =
+  (pi_group 0 (SP2BoundaryPointed A)).*
+      (boundaryDiagPiFun {A} x) (boundaryDiagPiFun {A} y)
+\elim x, y
+  | in0 p, in0 q => pmap in0 (inv (pairPath-comp p idp q idp))
+
+\func boundaryDiagPiHom {A : Pointed} :
+  GroupHom (pi_group \levels (\suc \lp) _ 0 A) (pi_group 0 (SP2BoundaryPointed A)) \cowith
+  | func => boundaryDiagPiFun {A}
+  | func-* {x} {y} => boundaryDiagPiMul {A} x y
+
+\func boundaryTurn {A : Pointed} :
+  pi_group 0 (SP2BoundaryPointed A) =>
+  in0 (pairPath idp bs2SwapLoop)
+
+\func boundaryTurnSquare {A : Pointed} :
+  (pi_group 0 (SP2BoundaryPointed A)).* (boundaryTurn {A}) (boundaryTurn {A}) =
+  (pi_group 0 (SP2BoundaryPointed A)).ide =>
+  pmap in0 (
+    pairPath-comp idp bs2SwapLoop idp bs2SwapLoop
+      *> pmap (pairPath idp) bs2SwapSquare
+           *> pairPath-idp)
+
+\func boundaryTurnCentral {A : Pointed} (g : pi_group \levels (\suc \lp) _ 0 A) :
+  (pi_group 0 (SP2BoundaryPointed A)).*
+      (boundaryTurn {A}) (boundaryDiagPiHom g) =
+  (pi_group 0 (SP2BoundaryPointed A)).*
+      (boundaryDiagPiHom g) (boundaryTurn {A})
+\elim g
+  | in0 p => pmap in0 (
+    pairPath-comp idp bs2SwapLoop p idp
+      *> pmap (\lam r => pairPath r bs2SwapLoop) (idp_*> p)
+           *> pmap (pairPath p) (inv (idp_*> bs2SwapLoop))
+                *> inv (pairPath-comp p idp idp bs2SwapLoop))
+
+\func boundaryBack {A : Pointed} :
+  GroupHom (BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A))
+      (pi_group 0 (SP2BoundaryPointed A)) =>
+  BorelBoundaryGroup.recHom
+      (boundaryDiagPiHom {A})
+      (boundaryTurn {A})
+      (boundaryTurnSquare {A})
+      (boundaryTurnCentral {A})
+
+\func boundaryParityCentral (G : Group \levels (\suc \lp) _) (g : G)
+                            (p : BSnbase 2 = BSnbase 2) :
+  (BorelBoundaryGroup G).*
+      (bs2Parity (BorelBoundaryGroup G).ide BorelBoundaryGroup.turn p)
+      (BorelBoundaryGroup.diag g)
+    =
+  (BorelBoundaryGroup G).*
+      (BorelBoundaryGroup.diag g)
+      (bs2Parity (BorelBoundaryGroup G).ide BorelBoundaryGroup.turn p) =>
+  \case base2PathChar.comp p \with {
+    | inl e => run {
+      rewrite e,
+      rewrite (bs2Parity-idp
+              (BorelBoundaryGroup G).ide BorelBoundaryGroup.turn),
+      (BorelBoundaryGroup G).ide-left *>
+      inv (BorelBoundaryGroup G).ide-right
+    }
+    | inr e => run {
+      rewrite e,
+      rewrite (bs2Parity-swap
+              (BorelBoundaryGroup G).ide BorelBoundaryGroup.turn),
+      path (BorelBoundaryGroup.turn-diag g)
+    }
+  }
+
+\func boundaryForwardFun {A : Pointed}
+                         (z : pi_group 0 (SP2BoundaryPointed A)) :
+  BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)
+\elim z
+  | in0 p =>
+    (BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)).*
+        (BorelBoundaryGroup.diag (in0 (pmap __.1 p)))
+        (bs2Parity
+            (BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)).ide
+            BorelBoundaryGroup.turn
+            (pmap __.2 p))
+
+\func boundaryForwardMul {A : Pointed}
+                         (x y : pi_group 0 (SP2BoundaryPointed A)) :
+  boundaryForwardFun {A} ((pi_group 0 (SP2BoundaryPointed A)).* x y) =
+  (BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)).*
+      (boundaryForwardFun {A} x)
+      (boundaryForwardFun {A} y)
+\elim x, y
+  | in0 p, in0 q =>
+    \let
+      | H : Group => BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)
+      | dp => BorelBoundaryGroup.diag (in0 (pmap __.1 p))
+      | dq => BorelBoundaryGroup.diag (in0 (pmap __.1 q))
+      | tp => bs2Parity H.ide BorelBoundaryGroup.turn (pmap __.2 p)
+      | tq => bs2Parity H.ide BorelBoundaryGroup.turn (pmap __.2 q)
+      | splitDiag :
+        BorelBoundaryGroup.diag (in0 (pmap __.1 (p *> q))) =
+        dp H.* dq =>
+        pmap (\lam r => BorelBoundaryGroup.diag (in0 r))
+            (pmap_*>-comm __.1 p q)
+          *> path (BorelBoundaryGroup.diag-*
+            (in0 (pmap __.1 p)) (in0 (pmap __.1 q)))
+      | splitTurn :
+        bs2Parity H.ide BorelBoundaryGroup.turn
+            (pmap __.2 (p *> q)) = tp H.* tq =>
+        pmap (bs2Parity H.ide BorelBoundaryGroup.turn)
+            (pmap_*>-comm __.2 p q)
+          *> bs2Parity-mul BorelBoundaryGroup.turn
+                 (path BorelBoundaryGroup.turn-square)
+                 (pmap __.2 p) (pmap __.2 q)
+    \in
+      pmap2 (\lam x y => x H.* y) splitDiag splitTurn
+        *> H.*-assoc
+             *> pmap (dp H.*) (inv H.*-assoc)
+                  *> pmap (dp H.*)
+                         (pmap (__ H.* tq)
+                             (inv (boundaryParityCentral (pi_group \levels (\suc \lp) _ 0 A)
+                                 (in0 (pmap __.1 q)) (pmap __.2 p))))
+                       *> pmap (dp H.*) H.*-assoc
+                            *> inv H.*-assoc
+
+\func boundaryForward {A : Pointed} :
+  GroupHom (pi_group 0 (SP2BoundaryPointed A))
+      (BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)) \cowith
+  | func => boundaryForwardFun {A}
+  | func-* {x} {y} => boundaryForwardMul {A} x y
+
+\func boundaryForwardBackDiag {A : Pointed} (g : pi_group \levels (\suc \lp) _ 0 A) :
+  boundaryForward {A} (boundaryBack {A} (BorelBoundaryGroup.diag g)) =
+  BorelBoundaryGroup.diag g
+\elim g
+  | in0 p =>
+    pmap2 (\lam x y => x BorelBoundaryGroup.* y)
+        (pmap (\lam r => BorelBoundaryGroup.diag {pi_group \levels (\suc \lp) _ 0 A} (in0 r))
+            (pairPath-map1 p (idp {BSn 2} {BSnbase 2})))
+        (pmap (bs2Parity (BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)).ide
+                   BorelBoundaryGroup.turn)
+             (pairPath-map2 p (idp {BSn 2} {BSnbase 2}))
+          *> bs2Parity-idp (BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)).ide
+                 BorelBoundaryGroup.turn)
+      *> (BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)).ide-right
+
+\func boundaryForwardBackTurn {A : Pointed} :
+  boundaryForward {A} (boundaryBack {A} BorelBoundaryGroup.turn) =
+  BorelBoundaryGroup.turn =>
+  pmap2 (\lam x y => x BorelBoundaryGroup.* y)
+      (pmap (\lam r => BorelBoundaryGroup.diag {pi_group \levels (\suc \lp) _ 0 A} (in0 r))
+           (pairPath-map1 (idp {A.E} {A.base}) bs2SwapLoop)
+        *> path (BorelBoundaryGroup.diag-ide {pi_group \levels (\suc \lp) _ 0 A}))
+      (pmap (bs2Parity (BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)).ide
+                 BorelBoundaryGroup.turn)
+           (pairPath-map2 (idp {A.E} {A.base}) bs2SwapLoop)
+        *> bs2Parity-swap (BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)).ide
+               BorelBoundaryGroup.turn)
+    *> (BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)).ide-left
+
+\func boundaryForwardBackHom {A : Pointed} :
+  GroupHom.compose (boundaryForward {A}) (boundaryBack {A}) =
+  GroupHom.id {BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)} =>
+  BorelBoundaryGroup.hom-ext
+      (GroupHom.compose (boundaryForward {A}) (boundaryBack {A}))
+      (GroupHom.id {BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)})
+      (boundaryForwardBackDiag {A})
+      (boundaryForwardBackTurn {A})
+
+\func boundaryBackForward {A : Pointed}
+                          (z : pi_group 0 (SP2BoundaryPointed A)) :
+  boundaryBack {A} (boundaryForward {A} z) = z
+\elim z
+  | in0 p =>
+    \case base2PathChar.comp (pmap __.2 p) \with {
+      | inl e =>
+        pmap (\lam w => (pi_group 0 (SP2BoundaryPointed A)).*
+                  (boundaryDiagPiFun {A} (in0 (pmap __.1 p)))
+                  (boundaryBack {A} w))
+            (pmap (bs2Parity (BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)).ide
+                       BorelBoundaryGroup.turn) e
+              *> bs2Parity-idp (BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)).ide
+                     BorelBoundaryGroup.turn)
+          *> (pi_group 0 (SP2BoundaryPointed A)).ide-right
+               *> pmap in0 (
+                 inv (pmap (pairPath (pmap __.1 p)) e)
+                   *> pairPath-eta p)
+      | inr e =>
+        pmap (\lam w => (pi_group 0 (SP2BoundaryPointed A)).*
+                  (boundaryDiagPiFun {A} (in0 (pmap __.1 p)))
+                  (boundaryBack {A} w))
+            (pmap (bs2Parity (BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)).ide
+                       BorelBoundaryGroup.turn) e
+              *> bs2Parity-swap (BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)).ide
+                     BorelBoundaryGroup.turn)
+          *> pmap in0 (
+            pairPath-comp (pmap __.1 p) idp idp bs2SwapLoop
+              *> pmap (pairPath (pmap __.1 p)) (idp_*> bs2SwapLoop)
+                   *> inv (pmap (pairPath (pmap __.1 p)) e)
+                        *> pairPath-eta p)
+    }
+
+\func boundaryIso {A : Pointed} :
+  Iso {GroupCat} (boundaryForward {A}) \cowith
+  | hinv => boundaryBack {A}
+  | hinv_f => exts (boundaryBackForward {A})
+  | f_hinv => boundaryForwardBackHom {A}
+
+-- ---------------------------------------------------------------------------
+-- Explicit semidirect-product normal form
+-- ---------------------------------------------------------------------------
+
+\data BorelParity : \Set
+  | beven
+  | bodd
+
+\func parityToggle (e : BorelParity) : BorelParity \elim e
+  | beven => bodd
+  | bodd => beven
+
+\func normalPath {G : Group} {e : BorelParity}
+                 {x0 x1 y0 y1 : G}
+                 (p : x0 = y0) (q : x1 = y1) :
+  (e,(x0,x1)) = {\Sigma BorelParity (\Sigma G G)} (e,(y0,y1)) =>
+  path (\lam i => (e,(p @ i,q @ i)))
+
+\func normalMul (G : Group)
+                (x y : \Sigma BorelParity (\Sigma G G)) :
+  \Sigma BorelParity (\Sigma G G)
+\elim x, y
+  | (e,(x0,x1)), (beven,(y0,y1)) =>
+    (e,(x0 G.* y0,x1 G.* y1))
+  | (e,(x0,x1)), (bodd,(y0,y1)) =>
+    (parityToggle e,(x1 G.* y0,x0 G.* y1))
+
+\func normalInverse (G : Group)
+                    (x : \Sigma BorelParity (\Sigma G G)) :
+  \Sigma BorelParity (\Sigma G G)
+\elim x
+  | (beven,(x0,x1)) =>
+    (beven,(G.inverse x0,G.inverse x1))
+  | (bodd,(x0,x1)) =>
+    (bodd,(G.inverse x1,G.inverse x0))
+
+\func normalMulAssoc (G : Group)
+                     (x y z : \Sigma BorelParity (\Sigma G G)) :
+  normalMul G (normalMul G x y) z =
+  normalMul G x (normalMul G y z)
+\elim x, y, z
+  | (beven,(a,b)), (beven,(c,d)), (beven,(u,v)) =>
+    normalPath G.*-assoc G.*-assoc
+  | (bodd,(a,b)), (beven,(c,d)), (beven,(u,v)) =>
+    normalPath G.*-assoc G.*-assoc
+  | (beven,(a,b)), (bodd,(c,d)), (beven,(u,v)) =>
+    normalPath G.*-assoc G.*-assoc
+  | (bodd,(a,b)), (bodd,(c,d)), (beven,(u,v)) =>
+    normalPath G.*-assoc G.*-assoc
+  | (beven,(a,b)), (beven,(c,d)), (bodd,(u,v)) =>
+    normalPath G.*-assoc G.*-assoc
+  | (bodd,(a,b)), (beven,(c,d)), (bodd,(u,v)) =>
+    normalPath G.*-assoc G.*-assoc
+  | (beven,(a,b)), (bodd,(c,d)), (bodd,(u,v)) =>
+    normalPath G.*-assoc G.*-assoc
+  | (bodd,(a,b)), (bodd,(c,d)), (bodd,(u,v)) =>
+    normalPath G.*-assoc G.*-assoc
+
+\func normalIdeLeft (G : Group)
+                    (x : \Sigma BorelParity (\Sigma G G)) :
+  normalMul G (beven,(G.ide,G.ide)) x = x
+\elim x
+  | (beven,(x0,x1)) => normalPath G.ide-left G.ide-left
+  | (bodd,(x0,x1)) => normalPath G.ide-left G.ide-left
+
+\func normalInverseLeft (G : Group)
+                        (x : \Sigma BorelParity (\Sigma G G)) :
+  normalMul G (normalInverse G x) x =
+  (beven,(G.ide,G.ide))
+\elim x
+  | (beven,(x0,x1)) => normalPath G.inverse-left G.inverse-left
+  | (bodd,(x0,x1)) => normalPath G.inverse-left G.inverse-left
+
+\func BorelNormalGroup (G : Group) : Group \cowith
+  | E => \Sigma BorelParity (\Sigma G G)
+  | ide => (beven,(G.ide,G.ide))
+  | * => normalMul G
+  | *-assoc {x} {y} {z} => normalMulAssoc G x y z
+  | inverse => normalInverse G
+  | ide-left {x} => normalIdeLeft G x
+  | inverse-left {x} => normalInverseLeft G x
+
+\func normalLeftHom (G : Group) :
+  GroupHom G (BorelNormalGroup G) \cowith
+  | func g => (beven,(g,G.ide))
+  | func-* => normalPath idp (inv G.ide-left)
+  | func-ide => idp
+
+\func normalRightHom (G : Group) :
+  GroupHom G (BorelNormalGroup G) \cowith
+  | func g => (beven,(G.ide,g))
+  | func-* => normalPath (inv G.ide-left) idp
+  | func-ide => idp
+
+\func normalDiagonalHom (G : Group) :
+  GroupHom G (BorelNormalGroup G) \cowith
+  | func g => (beven,(g,g))
+  | func-* => idp
+  | func-ide => idp
+
+\func normalSwap (G : Group) : BorelNormalGroup G =>
+  (bodd,(G.ide,G.ide))
+
+\func normalDiagonalSplit (G : Group) (g : G) :
+  normalDiagonalHom G g =
+  (BorelNormalGroup G).* (normalLeftHom G g) (normalRightHom G g) =>
+  normalPath (inv G.ide-right) (inv G.ide-left)
+
+\func normalFactorsCommute (G : Group) (x y : G) :
+  (BorelNormalGroup G).* (normalLeftHom G x) (normalRightHom G y) =
+  (BorelNormalGroup G).* (normalRightHom G y) (normalLeftHom G x) =>
+  normalPath
+      (G.ide-right *> inv G.ide-left)
+      (G.ide-left *> inv G.ide-right)
+
+\func normalSwapSquare (G : Group) :
+  (BorelNormalGroup G).* (normalSwap G) (normalSwap G) =
+  (BorelNormalGroup G).ide =>
+  normalPath G.ide-left G.ide-left
+
+\func normalSwapLeft (G : Group) (g : G) :
+  (BorelNormalGroup G).*
+      ((BorelNormalGroup G).* (normalSwap G) (normalLeftHom G g))
+      (normalSwap G) =
+  normalRightHom G g =>
+  normalPath
+      (pmap (__ G.* G.ide) G.ide-left *> G.ide-right)
+      (pmap (__ G.* G.ide) G.ide-left *> G.ide-right)
+
+\func normalSwapDiagonal (G : Group) (g : G) :
+  (BorelNormalGroup G).* (normalSwap G) (normalDiagonalHom G g) =
+  (BorelNormalGroup G).* (normalDiagonalHom G g) (normalSwap G) =>
+  normalPath
+      (G.ide-left *> inv G.ide-right)
+      (G.ide-left *> inv G.ide-right)
+
+\func borelPresentationToNormal (G : Group) :
+  GroupHom (BorelSquareGroup G) (BorelNormalGroup G) =>
+  BorelSquareGroup.recHom
+      (normalLeftHom G)
+      (normalRightHom G)
+      (normalDiagonalHom G)
+      (normalSwap G)
+      (normalDiagonalSplit G)
+      (normalFactorsCommute G)
+      (normalSwapSquare G)
+      (normalSwapLeft G)
+      (normalSwapDiagonal G)
+
+
+\func bsgEven {G : Group} (x y : G) : BorelSquareGroup G =>
+  (BorelSquareGroup G).* (BorelSquareGroup.left x) (BorelSquareGroup.right y)
+
+\func bsgOdd {G : Group} (x y : G) : BorelSquareGroup G =>
+  (BorelSquareGroup G).*
+      ((BorelSquareGroup G).* BorelSquareGroup.swap (BorelSquareGroup.left x))
+      (BorelSquareGroup.right y)
+
+\func bsgSwapLeftMove (G : Group) (g : G) :
+  (BorelSquareGroup G).* BorelSquareGroup.swap (BorelSquareGroup.left g) =
+  (BorelSquareGroup G).* (BorelSquareGroup.right g) BorelSquareGroup.swap =>
+  \let
+    | H : Group => BorelSquareGroup G
+    | s => BorelSquareGroup.swap
+    | l => BorelSquareGroup.left g
+  \in
+    inv H.ide-right
+      *> pmap ((s H.* l) H.*) (inv (path BorelSquareGroup.swap-square))
+           *> inv H.*-assoc
+                *> pmap (__ H.* s) (path (BorelSquareGroup.swap-left g))
+
+\func bsgSwapRightConj (G : Group) (g : G) :
+  (BorelSquareGroup G).*
+      ((BorelSquareGroup G).* BorelSquareGroup.swap (BorelSquareGroup.right g))
+      BorelSquareGroup.swap =
+  BorelSquareGroup.left g =>
+  \let
+    | H : Group => BorelSquareGroup G
+    | s => BorelSquareGroup.swap
+    | l => BorelSquareGroup.left g
+    | r => BorelSquareGroup.right g
+  \in
+    pmap (\lam z => (s H.* z) H.* s)
+        (inv (path (BorelSquareGroup.swap-left g)))
+      *> pmap (__ H.* s) (inv (H.*-assoc {s} {s H.* l} {s}))
+           *> H.*-assoc
+                *> pmap ((s H.* (s H.* l)) H.*) (path BorelSquareGroup.swap-square)
+                     *> H.ide-right
+                          *> inv (H.*-assoc {s} {s} {l})
+                               *> pmap (__ H.* l) (path BorelSquareGroup.swap-square)
+                                    *> H.ide-left
+
+\func bsgSwapRightMove (G : Group) (g : G) :
+  (BorelSquareGroup G).* BorelSquareGroup.swap (BorelSquareGroup.right g) =
+  (BorelSquareGroup G).* (BorelSquareGroup.left g) BorelSquareGroup.swap =>
+  \let
+    | H : Group => BorelSquareGroup G
+    | s => BorelSquareGroup.swap
+    | r => BorelSquareGroup.right g
+  \in
+    inv H.ide-right
+      *> pmap ((s H.* r) H.*) (inv (path BorelSquareGroup.swap-square))
+           *> inv H.*-assoc
+                *> pmap (__ H.* s) (bsgSwapRightConj G g)
+
+\func bsgLeftSwap (G : Group) (g : G) :
+  (BorelSquareGroup G).* (BorelSquareGroup.left g) BorelSquareGroup.swap =
+  (BorelSquareGroup G).* BorelSquareGroup.swap (BorelSquareGroup.right g) =>
+  inv (bsgSwapRightMove G g)
+
+\func bsgRightSwap (G : Group) (g : G) :
+  (BorelSquareGroup G).* (BorelSquareGroup.right g) BorelSquareGroup.swap =
+  (BorelSquareGroup G).* BorelSquareGroup.swap (BorelSquareGroup.left g) =>
+  inv (bsgSwapLeftMove G g)
+
+\func bsgOddAsSwapEven (G : Group) (x y : G) :
+  bsgOdd x y =
+  (BorelSquareGroup G).* BorelSquareGroup.swap (bsgEven x y) =>
+  (BorelSquareGroup G).*-assoc
+
+\func bsgEvenEven (G : Group) (x y u v : G) :
+  bsgEven (x G.* u) (y G.* v) =
+  (BorelSquareGroup G).* (bsgEven x y) (bsgEven u v) =>
+  \let
+    | H : Group => BorelSquareGroup G
+    | lx => BorelSquareGroup.left x
+    | lu => BorelSquareGroup.left u
+    | ry => BorelSquareGroup.right y
+    | rv => BorelSquareGroup.right v
+  \in
+    pmap2 (\lam x y => x H.* y)
+        (path (BorelSquareGroup.left-* x u))
+        (path (BorelSquareGroup.right-* y v))
+      *> H.*-assoc
+           *> pmap (lx H.*) (inv (H.*-assoc {lu} {ry} {rv}))
+                *> pmap (lx H.*)
+                       (pmap (__ H.* rv) (path (BorelSquareGroup.factors-commute u y)))
+                     *> pmap (lx H.*) (H.*-assoc {ry} {lu} {rv})
+                          *> inv (H.*-assoc {lx} {ry} {lu H.* rv})
+
+\func bsgOddEven (G : Group) (x y u v : G) :
+  bsgOdd (x G.* u) (y G.* v) =
+  (BorelSquareGroup G).* (bsgOdd x y) (bsgEven u v) =>
+  \let
+    | H : Group => BorelSquareGroup G
+    | s => BorelSquareGroup.swap
+    | euv => bsgEven u v
+  \in
+    bsgOddAsSwapEven G (x G.* u) (y G.* v)
+      *> pmap (s H.*) (bsgEvenEven G x y u v)
+           *> inv (H.*-assoc {s} {bsgEven x y} {euv})
+                *> pmap (__ H.* euv) (inv (bsgOddAsSwapEven G x y))
+
+\func bsgPairSwap (G : Group) (x y : G) :
+  (BorelSquareGroup G).* (bsgEven x y) BorelSquareGroup.swap =
+  bsgOdd y x =>
+  \let
+    | H : Group => BorelSquareGroup G
+    | s => BorelSquareGroup.swap
+    | lx => BorelSquareGroup.left x
+    | ly => BorelSquareGroup.left y
+    | rx => BorelSquareGroup.right x
+    | ry => BorelSquareGroup.right y
+  \in
+    H.*-assoc
+      *> pmap (lx H.*) (bsgRightSwap G y)
+           *> inv (H.*-assoc {lx} {s} {ly})
+                *> pmap (__ H.* ly) (bsgLeftSwap G x)
+                     *> H.*-assoc
+                          *> pmap (s H.*) (inv (path (BorelSquareGroup.factors-commute y x)))
+                               *> inv (H.*-assoc {s} {ly} {rx})
+
+\func bsgOddSwap (G : Group) (x y : G) :
+  (BorelSquareGroup G).* (bsgOdd x y) BorelSquareGroup.swap =
+  bsgEven y x =>
+  \let
+    | H : Group => BorelSquareGroup G
+    | s => BorelSquareGroup.swap
+    | lx => BorelSquareGroup.left x
+    | ly => BorelSquareGroup.left y
+    | rx => BorelSquareGroup.right x
+    | ry => BorelSquareGroup.right y
+  \in
+    H.*-assoc
+      *> pmap ((s H.* lx) H.*) (bsgRightSwap G y)
+           *> inv (H.*-assoc {s H.* lx} {s} {ly})
+                *> pmap (__ H.* ly) (H.*-assoc {s} {lx} {s})
+                     *> pmap (__ H.* ly) (pmap (s H.*) (bsgLeftSwap G x))
+                          *> pmap (__ H.* ly) (inv (H.*-assoc {s} {s} {rx}))
+                               *> pmap (__ H.* ly)
+                                      (pmap (__ H.* rx) (path BorelSquareGroup.swap-square))
+                                    *> pmap (__ H.* ly) H.ide-left
+                                         *> inv (path (BorelSquareGroup.factors-commute y x))
+
+\func bsgEvenOddReassoc (G : Group) (x y u v : G) :
+  (BorelSquareGroup G).* (bsgEven x y) (bsgOdd u v) =
+  (BorelSquareGroup G).* (bsgOdd y x) (bsgEven u v) =>
+  \let
+    | H : Group => BorelSquareGroup G
+    | s => BorelSquareGroup.swap
+    | lu => BorelSquareGroup.left u
+    | rv => BorelSquareGroup.right v
+  \in
+    inv (H.*-assoc {bsgEven x y} {s H.* lu} {rv})
+      *> pmap (__ H.* rv)
+             (inv (H.*-assoc {bsgEven x y} {s} {lu}))
+           *> pmap (\lam z => (z H.* lu) H.* rv) (bsgPairSwap G x y)
+                *> H.*-assoc
+
+\func bsgOddOddReassoc (G : Group) (x y u v : G) :
+  (BorelSquareGroup G).* (bsgOdd x y) (bsgOdd u v) =
+  (BorelSquareGroup G).* (bsgEven y x) (bsgEven u v) =>
+  \let
+    | H : Group => BorelSquareGroup G
+    | s => BorelSquareGroup.swap
+    | lu => BorelSquareGroup.left u
+    | rv => BorelSquareGroup.right v
+  \in
+    inv (H.*-assoc {bsgOdd x y} {s H.* lu} {rv})
+      *> pmap (__ H.* rv)
+             (inv (H.*-assoc {bsgOdd x y} {s} {lu}))
+           *> pmap (\lam z => (z H.* lu) H.* rv) (bsgOddSwap G x y)
+                *> H.*-assoc
+
+\func borelNormalToPresentationFun (G : Group)
+                                   (x : BorelNormalGroup G) : BorelSquareGroup G
+\elim x
+  | (beven,(x0,x1)) => bsgEven x0 x1
+  | (bodd,(x0,x1)) => bsgOdd x0 x1
+
+\func borelNormalToPresentationMul (G : Group)
+                                   (x y : BorelNormalGroup G) :
+  borelNormalToPresentationFun G ((BorelNormalGroup G).* x y) =
+  (BorelSquareGroup G).*
+      (borelNormalToPresentationFun G x)
+      (borelNormalToPresentationFun G y)
+\elim x, y
+  | (beven,(x0,x1)), (beven,(y0,y1)) =>
+    bsgEvenEven G x0 x1 y0 y1
+  | (bodd,(x0,x1)), (beven,(y0,y1)) =>
+    bsgOddEven G x0 x1 y0 y1
+  | (beven,(x0,x1)), (bodd,(y0,y1)) =>
+    bsgOddEven G x1 x0 y0 y1
+      *> inv (bsgEvenOddReassoc G x0 x1 y0 y1)
+  | (bodd,(x0,x1)), (bodd,(y0,y1)) =>
+    bsgEvenEven G x1 x0 y0 y1
+      *> inv (bsgOddOddReassoc G x0 x1 y0 y1)
+
+\func borelNormalToPresentation (G : Group) :
+  GroupHom (BorelNormalGroup G) (BorelSquareGroup G) \cowith
+  | func => borelNormalToPresentationFun G
+  | func-* {x} {y} => borelNormalToPresentationMul G x y
+
+\func normalPresentationRetract (G : Group)
+                                (x : BorelNormalGroup G) :
+  borelPresentationToNormal G (borelNormalToPresentation G x) = x
+\elim x
+  | (beven,(x0,x1)) =>
+        (borelPresentationToNormal G).func-*
+            {BorelSquareGroup.left x0} {BorelSquareGroup.right x1}
+      *> normalPath G.ide-right G.ide-left
+  | (bodd,(x0,x1)) =>
+        (borelPresentationToNormal G).func-*
+            {(BorelSquareGroup G).* BorelSquareGroup.swap
+                (BorelSquareGroup.left x0)}
+            {BorelSquareGroup.right x1}
+      *> pmap
+             ((BorelNormalGroup G).* __
+                 (borelPresentationToNormal G (BorelSquareGroup.right x1)))
+             ((borelPresentationToNormal G).func-*
+                 {BorelSquareGroup.swap} {BorelSquareGroup.left x0})
+           *> normalPath
+                  (pmap (__ G.* G.ide) G.ide-left *> G.ide-right)
+                  (pmap (__ G.* x1) G.ide-left *> G.ide-left)
+
+-- Two equal homomorphisms are equal at every argument. Both homomorphisms are
+-- explicit: the expected type of an application homAt h l e x mentions h and l
+-- only under the projection of the underlying function, and such an equation
+-- cannot be solved for h and l. The lambda has to project explicitly as well,
+-- because a variable of a record type is not coerced to its underlying
+-- function.
+\func homAt {X Y : Group} (h l : GroupHom X Y) (e : h = l) (x : X) :
+  h x = l x =>
+  pmap (\lam (k : GroupHom X Y) => k x) e
+
+\func presentationNormalRetractHom (G : Group) :
+  GroupHom.compose (borelNormalToPresentation G)
+      (borelPresentationToNormal G) =
+  GroupHom.id {BorelSquareGroup G} =>
+  BorelSquareGroup.hom-ext
+      (GroupHom.compose (borelNormalToPresentation G)
+          (borelPresentationToNormal G))
+      (GroupHom.id {BorelSquareGroup G})
+      (\lam g =>
+          pmap ((BorelSquareGroup G).* (BorelSquareGroup.left g))
+              (path BorelSquareGroup.right-ide)
+            *> (BorelSquareGroup G).ide-right)
+      (\lam g =>
+          pmap ((BorelSquareGroup G).* __ (BorelSquareGroup.right g))
+              (path BorelSquareGroup.left-ide)
+            *> (BorelSquareGroup G).ide-left)
+      (\lam g => inv (path (BorelSquareGroup.diagonal-split g)))
+      (pmap
+          (\lam z => (BorelSquareGroup G).*
+              ((BorelSquareGroup G).* BorelSquareGroup.swap z)
+              (BorelSquareGroup.right G.ide))
+          (path BorelSquareGroup.left-ide)
+        *> pmap ((BorelSquareGroup G).* __ (BorelSquareGroup.right G.ide))
+               (BorelSquareGroup G).ide-right
+             *> pmap ((BorelSquareGroup G).* BorelSquareGroup.swap)
+                    (path BorelSquareGroup.right-ide)
+                  *> (BorelSquareGroup G).ide-right)
+
+-- The same retraction at a single element.
+\func presentationNormalRetractAt (G : Group) (x : BorelSquareGroup G) :
+  borelNormalToPresentation G (borelPresentationToNormal G x) = x =>
+  homAt (GroupHom.compose (borelNormalToPresentation G)
+      (borelPresentationToNormal G))
+      (GroupHom.id {BorelSquareGroup G})
+      (presentationNormalRetractHom G)
+      x
+
+\func borelPresentationNormalIso (G : Group) :
+  Iso {GroupCat} (borelPresentationToNormal G) \cowith
+  | hinv => borelNormalToPresentation G
+  | hinv_f => presentationNormalRetractHom G
+  | f_hinv => exts (normalPresentationRetract G)
+
+
+-- ---------------------------------------------------------------------------
+-- Coordinate loops in the Borel square
+-- ---------------------------------------------------------------------------
+
+\func borelConstTuple (A : Pointed) : Fin 2 -> A =>
+  \lam _ => A.base
+
+\func fin2PointPath {A : \Type} {f g : Fin 2 -> A}
+                    (p0 : f 0 = g 0) (p1 : f 1 = g 1)
+                    (x : Fin 2) : f x = g x
+\elim x
+  | 0 => p0
+  | 1 => p1
+
+\func fin2Path {A : \Type} {f g : Fin 2 -> A}
+               (p0 : f 0 = g 0) (p1 : f 1 = g 1) : f = g =>
+  path (\lam i x => fin2PointPath p0 p1 x @ i)
+
+-- Beta rules for fin2Path: both coordinates are read back definitionally.
+-- The function arguments of fin2Path have to be supplied explicitly: they
+-- cannot be recovered from the type f 0 = g 0 of a coordinate path.
+\func fin2Path-at0 {A : \Type} {f g : Fin 2 -> A}
+                   (p0 : f 0 = g 0) (p1 : f 1 = g 1) :
+  pmap (__ 0) (fin2Path {A} {f} {g} p0 p1) = p0 => idp
+
+\func fin2Path-at1 {A : \Type} {f g : Fin 2 -> A}
+                   (p0 : f 0 = g 0) (p1 : f 1 = g 1) :
+  pmap (__ 1) (fin2Path {A} {f} {g} p0 p1) = p1 => idp
+
+\func fin2PointPath-idp {A : \Type} {f : Fin 2 -> A} (x : Fin 2) :
+  fin2PointPath {A} {f} {f} (idp {A} {f 0}) (idp {A} {f 1}) x = idp
+\elim x
+  | 0 => idp
+  | 1 => idp
+
+\func fin2Path-idp {A : \Type} {f : Fin 2 -> A} :
+  fin2Path {A} {f} {f} (idp {A} {f 0}) (idp {A} {f 1}) = idp =>
+  path (\lam j => path (\lam i x => fin2PointPath-idp {A} {f} x j @ i))
+
+\func fin2Path-eta {A : \Type} {f g : Fin 2 -> A}
+                   (p : f = g) :
+  fin2Path {A} {f} {g} (pmap (__ 0) p) (pmap (__ 1) p) = p
+\elim p
+  | idp => fin2Path-idp {A} {f}
+
+\func fin2Path-comp {A : \Type} {f g h : Fin 2 -> A}
+                    (p0 : f 0 = g 0) (p1 : f 1 = g 1)
+                    (q0 : g 0 = h 0) (q1 : g 1 = h 1) :
+  fin2Path {A} {f} {g} p0 p1 *> fin2Path {A} {g} {h} q0 q1 =
+  fin2Path {A} {f} {h} (p0 *> q0) (p1 *> q1) =>
+  inv (fin2Path-eta {A} {f} {h}
+      (fin2Path {A} {f} {g} p0 p1 *> fin2Path {A} {g} {h} q0 q1))
+    *> pmap2 (fin2Path {A} {f} {h})
+           (pmap_*>-comm (__ 0)
+               (fin2Path {A} {f} {g} p0 p1) (fin2Path {A} {g} {h} q0 q1))
+           (pmap_*>-comm (__ 1)
+               (fin2Path {A} {f} {g} p0 p1) (fin2Path {A} {g} {h} q0 q1))
+
+\func fin2Loop {A : Pointed}
+               (p q : A.base = A.base) :
+  borelConstTuple A = borelConstTuple A =>
+  fin2Path p q
+
+\func fin2Loop-comp {A : Pointed}
+                    (p0 p1 q0 q1 : A.base = A.base) :
+  fin2Loop {A} (p0 *> q0) (p1 *> q1) =
+  fin2Loop {A} p0 p1 *> fin2Loop {A} q0 q1 =>
+  inv (fin2Path-comp {A} {borelConstTuple A} {borelConstTuple A}
+      {borelConstTuple A} p0 p1 q0 q1)
+
+\func fin2Loop-split {A : Pointed} (p : A.base = A.base) :
+  fin2Loop {A} p p =
+  fin2Loop {A} p idp *> fin2Loop {A} idp p =>
+  pmap (fin2Loop {A} p) (inv (idp_*> p))
+    *> fin2Loop-comp {A} p idp idp p
+
+\func fin2Loop-commute {A : Pointed}
+                       (p q : A.base = A.base) :
+  fin2Loop {A} p idp *> fin2Loop {A} idp q =
+  fin2Loop {A} idp q *> fin2Loop {A} p idp =>
+  inv (fin2Loop-comp {A} p idp idp q)
+    *> pmap (fin2Loop {A} p) (idp_*> q)
+         *> pmap (fin2Loop {A} __ q) (inv (idp_*> p))
+              *> fin2Loop-comp {A} idp q p idp
+
+\func borelFiberInclusion (A : Pointed) :
+  (Fin 2 -> A) -> borelXn 2 A =>
+  \lam f => (BSnbase 2,f)
+
+\func borelFiberPath {A : Pointed}
+                     (p q : A.base = A.base) :
+      (BorelSquarePointed A).base = (BorelSquarePointed A).base =>
+  pmap (borelFiberInclusion A) (fin2Loop {A} p q)
+
+\func borelFiberPath-comp {A : Pointed}
+                          (p0 p1 q0 q1 : A.base = A.base) :
+  borelFiberPath {A} (p0 *> q0) (p1 *> q1) =
+  borelFiberPath {A} p0 p1 *> borelFiberPath {A} q0 q1 =>
+  pmap (pmap (borelFiberInclusion A))
+      (fin2Loop-comp {A} p0 p1 q0 q1)
+    *> pmap_*>-comm (borelFiberInclusion A)
+           (fin2Loop {A} p0 p1) (fin2Loop {A} q0 q1)
+
+\func pmap-compose {X Y Z : \Type} (f : X -> Y) (g : Y -> Z)
+                   {x y : X} (p : x = y) :
+  pmap g (pmap f p) = pmap (\lam z => g (f z)) p
+\elim p
+  | idp => idp
+
+\func pmap-id {X : \Type} {x y : X} (p : x = y) :
+  pmap (\lam z => z) p = p
+\elim p
+  | idp => idp
+
+-- Transport in a function family is precomposition with the inverse
+-- equivalence represented by the type path.
+\func transportFunction {A X Y : \Type}
+                        (p : X = Y) (f : X -> A) :
+  transport (\lam Z => Z -> A) p f =
+  \lam y => f ((=-to-Equiv p).ret y)
+\elim p
+  | idp => idp
+
+\func bs2SwapCarrierPath :
+  pmap __.1 bs2SwapLoop = Equiv-to-= notBS2.notFin2Eq => run {
+  unfold bs2SwapLoop,
+  unfold BSnPath,
+  rewrite (SigmaPropPathBeta2
+      (\lam A x y => path (truncP {Equiv {A} {Fin 2}} x y))
+      (Equiv-to-= notBS2.notFin2Eq)),
+  idp
+}
+
+\func bs2SwapCarrierEquiv :
+  =-to-Equiv (pmap __.1 bs2SwapLoop) = notBS2.notFin2Eq =>
+  pmap =-to-Equiv bs2SwapCarrierPath
+    *> univalence.f_sec notBS2.notFin2Eq
+
+\func swapFiberMap {A : \Type} (f : Fin 2 -> A) (x : Fin 2) : A =>
+  f (notBS2.notFin2 x)
+
+\func swapIndexPath (x : Fin 2) :
+      (=-to-Equiv (pmap __.1 bs2SwapLoop)).ret x =
+  notBS2.notFin2 x =>
+  pmap (\lam (e : Equiv {Fin 2} {Fin 2}) => e.ret x) bs2SwapCarrierEquiv
+
+\func swapFiberPoint {A : \Type} (f : Fin 2 -> A) (x : Fin 2) :
+  f ((=-to-Equiv (pmap __.1 bs2SwapLoop)).ret x) =
+  swapFiberMap f x =>
+  pmap f (swapIndexPath x)
+
+\func swapTransportEq {A : \Type} (f : Fin 2 -> A) :
+  transport (\lam (X : BSn 2) => X.1 -> A) bs2SwapLoop f =
+  swapFiberMap f =>
+  transportBorelFun bs2SwapLoop f
+    *> transportFunction (pmap __.1 bs2SwapLoop) f
+         *> ext (swapFiberPoint f)
+
+\func transportFunctionConst {A X Y : \Type}
+                             (p : X = Y) (a : A) :
+  transportFunction p (\lam _ => a) = transportConst p a
+\elim p
+  | idp => idp
+
+\func swapTransportConst {A : Pointed} :
+  swapTransportEq (borelConstTuple A) =
+  pmapd {BSn 2} {\lam (X : BSn 2) => X.1 -> A.E} (\lam _ _ => A.base) bs2SwapLoop => run {
+  unfold swapTransportEq,
+  rewrite (transportFunctionConst (pmap __.1 bs2SwapLoop) A.base),
+  \let
+    | q => bs2SwapLoop
+    | c : \Pi (X : BSn 2) -> X.1 -> A => \lam _ _ => A.base
+  \in
+    Jl
+        (\lam _ q' =>
+            transportBorelFun q' (c (BSnbase 2))
+              *> transportConst (pmap __.1 q') A.base
+              = pmapd c q')
+        idp q
+}
+
+\func swapFiberPath {A : \Type} {f g : Fin 2 -> A}
+                    (p : f = g) :
+  pmap swapFiberMap p =
+  fin2Path {A} {swapFiberMap {A} f} {swapFiberMap {A} g}
+      (pmap (__ 1) p) (pmap (__ 0) p)
+\elim p
+  | idp => inv (fin2Path-idp {A} {swapFiberMap {A} f})
+
+\func borelSwapAt {A : Pointed} (f : Fin 2 -> A) :
+  borelFiberInclusion A f =
+  borelFiberInclusion A (swapFiberMap f) =>
+  SigmaPath bs2SwapLoop (swapTransportEq f)
+
+\func borelSwapPath {A : Pointed} :
+      (BorelSquarePointed A).base = (BorelSquarePointed A).base =>
+  SigmaPath bs2SwapLoop
+      (pmapd {BSn 2} {\lam (X : BSn 2) => X.1 -> A.E} (\lam _ _ => A.base) bs2SwapLoop)
+
+\func borelSwapAtBase {A : Pointed} :
+  borelSwapAt {A} (borelConstTuple A) = borelSwapPath {A} =>
+  pmap (SigmaPath bs2SwapLoop) (swapTransportConst {A})
+
+\func borelSectionPath {A : Pointed}
+                       (p : BSnbase 2 = BSnbase 2) :
+      (BorelSquarePointed A).base = (BorelSquarePointed A).base =>
+  SigmaPath p (pmapd {BSn 2} {\lam (X : BSn 2) => X.1 -> A.E} (\lam _ _ => A.base) p)
+
+\func borelSectionPath-is-pmap {A : Pointed} {X Y : BSn 2}
+                               (p : X = Y) :
+  SigmaPath p
+      (pmapd {BSn 2} {\lam (Z : BSn 2) => Z.1 -> A.E} (\lam _ _ => A.base) p) =
+  pmap (borelBaseCofib {2} {A}) p
+\elim p
+  | idp => idp
+
+\func borelSwapSquare {A : Pointed} :
+  borelSwapPath {A} *> borelSwapPath {A} = idp =>
+  pmap2 (*>)
+      (borelSectionPath-is-pmap bs2SwapLoop)
+      (borelSectionPath-is-pmap bs2SwapLoop)
+    *> inv (pmap_*>-comm borelBaseCofib bs2SwapLoop bs2SwapLoop)
+         *> pmap (pmap borelBaseCofib) bs2SwapSquare
+
+\func borelFiberSwap {A : Pointed}
+                     (l : borelConstTuple A = borelConstTuple A) :
+  pmap (borelFiberInclusion A) l *> borelSwapPath {A} =
+  borelSwapPath {A} *>
+  pmap (borelFiberInclusion A) (pmap swapFiberMap l) =>
+  inv (pmap (\lam z => pmap (borelFiberInclusion A) l *> z)
+      (borelSwapAtBase {A}))
+    *> homotopy-isNatural
+           (borelFiberInclusion A)
+           (\lam f => borelFiberInclusion A (swapFiberMap f))
+           (borelSwapAt {A}) l
+         *> pmap (borelSwapAt {A} (borelConstTuple A) *>)
+                (inv (pmap-compose swapFiberMap (borelFiberInclusion A) l))
+              *> pmap (\lam z => z *> pmap (borelFiberInclusion A)
+                                          (pmap swapFiberMap l))
+                     (borelSwapAtBase {A})
+
+\func borelFiberSwapCoordinates {A : Pointed}
+                                (p q : A.base = A.base) :
+  borelFiberPath {A} p q *> borelSwapPath {A} =
+  borelSwapPath {A} *> borelFiberPath {A} q p =>
+  borelFiberSwap (fin2Loop {A} p q)
+    *> pmap (borelSwapPath {A} *>)
+           (pmap (pmap (borelFiberInclusion A))
+               (swapFiberPath (fin2Loop {A} p q)
+                 *> pmap2 (fin2Path {A} {borelConstTuple A} {borelConstTuple A})
+                        (fin2Path-at1 {A} {borelConstTuple A}
+                            {borelConstTuple A} p q)
+                        (fin2Path-at0 {A} {borelConstTuple A}
+                            {borelConstTuple A} p q)))
+
+
+\func borelFiberPath-split {A : Pointed}
+                           (p : A.base = A.base) :
+  borelFiberPath {A} p p =
+  borelFiberPath {A} p idp *> borelFiberPath {A} idp p =>
+  pmap (pmap (borelFiberInclusion A)) (fin2Loop-split {A} p)
+    *> pmap_*>-comm (borelFiberInclusion A)
+           (fin2Loop {A} p idp) (fin2Loop {A} idp p)
+
+\func borelFiberPath-commute {A : Pointed}
+                             (p q : A.base = A.base) :
+  borelFiberPath {A} p idp *> borelFiberPath {A} idp q =
+  borelFiberPath {A} idp q *> borelFiberPath {A} p idp =>
+  inv (pmap_*>-comm (borelFiberInclusion A)
+      (fin2Loop {A} p idp) (fin2Loop {A} idp q))
+    *> pmap (pmap (borelFiberInclusion A))
+           (fin2Loop-commute {A} p q)
+         *> pmap_*>-comm (borelFiberInclusion A)
+                (fin2Loop {A} idp q) (fin2Loop {A} p idp)
+
+\func borelLeftPiFun {A : Pointed}
+                     (g : pi_group \levels (\suc \lp) _ 0 A) :
+  pi_group 0 (BorelSquarePointed A)
+\elim g
+  | in0 p => in0 (borelFiberPath {A} p idp)
+
+\func borelLeftPiMul {A : Pointed}
+                     (x y : pi_group \levels (\suc \lp) _ 0 A) :
+  borelLeftPiFun {A} ((pi_group \levels (\suc \lp) _ 0 A).* x y) =
+  (pi_group 0 (BorelSquarePointed A)).* (borelLeftPiFun {A} x) (borelLeftPiFun {A} y)
+\elim x, y
+  | in0 p, in0 q =>
+    pmap in0 (borelFiberPath-comp {A} p idp q idp)
+
+\func borelLeftPiHom {A : Pointed} :
+  GroupHom (pi_group \levels (\suc \lp) _ 0 A) (pi_group 0 (BorelSquarePointed A)) \cowith
+  | func => borelLeftPiFun {A}
+  | func-* {x} {y} => borelLeftPiMul {A} x y
+
+\func borelRightPiFun {A : Pointed}
+                      (g : pi_group \levels (\suc \lp) _ 0 A) :
+  pi_group 0 (BorelSquarePointed A)
+\elim g
+  | in0 p => in0 (borelFiberPath {A} idp p)
+
+\func borelRightPiMul {A : Pointed}
+                      (x y : pi_group \levels (\suc \lp) _ 0 A) :
+  borelRightPiFun {A} ((pi_group \levels (\suc \lp) _ 0 A).* x y) =
+  (pi_group 0 (BorelSquarePointed A)).* (borelRightPiFun {A} x) (borelRightPiFun {A} y)
+\elim x, y
+  | in0 p, in0 q =>
+    pmap in0 (borelFiberPath-comp {A} idp p idp q)
+
+\func borelRightPiHom {A : Pointed} :
+  GroupHom (pi_group \levels (\suc \lp) _ 0 A) (pi_group 0 (BorelSquarePointed A)) \cowith
+  | func => borelRightPiFun {A}
+  | func-* {x} {y} => borelRightPiMul {A} x y
+
+\func borelDiagonalPiFun {A : Pointed}
+                         (g : pi_group \levels (\suc \lp) _ 0 A) :
+  pi_group 0 (BorelSquarePointed A)
+\elim g
+  | in0 p => in0 (borelFiberPath {A} p p)
+
+\func borelDiagonalPiMul {A : Pointed}
+                         (x y : pi_group \levels (\suc \lp) _ 0 A) :
+  borelDiagonalPiFun {A} ((pi_group \levels (\suc \lp) _ 0 A).* x y) =
+  (pi_group 0 (BorelSquarePointed A)).* (borelDiagonalPiFun {A} x) (borelDiagonalPiFun {A} y)
+\elim x, y
+  | in0 p, in0 q =>
+    pmap in0 (borelFiberPath-comp {A} p p q q)
+
+\func borelDiagonalPiHom {A : Pointed} :
+  GroupHom (pi_group \levels (\suc \lp) _ 0 A) (pi_group 0 (BorelSquarePointed A)) \cowith
+  | func => borelDiagonalPiFun {A}
+  | func-* {x} {y} => borelDiagonalPiMul {A} x y
+
+\func borelSwapPi {A : Pointed} :
+  pi_group 0 (BorelSquarePointed A) =>
+  in0 (borelSwapPath {A})
+
+\func borelDiagonalSplitPi {A : Pointed}
+                           (g : pi_group \levels (\suc \lp) _ 0 A) :
+  borelDiagonalPiHom g =
+  (pi_group 0 (BorelSquarePointed A)).* (borelLeftPiHom g) (borelRightPiHom g)
+\elim g
+  | in0 p => pmap in0 (borelFiberPath-split {A} p)
+
+\func borelFactorsCommutePi {A : Pointed}
+                            (x y : pi_group \levels (\suc \lp) _ 0 A) :
+  (pi_group 0 (BorelSquarePointed A)).* (borelLeftPiHom x) (borelRightPiHom y) =
+  (pi_group 0 (BorelSquarePointed A)).* (borelRightPiHom y) (borelLeftPiHom x)
+\elim x, y
+  | in0 p, in0 q => pmap in0 (borelFiberPath-commute {A} p q)
+
+\func borelSwapSquarePi {A : Pointed} :
+  (pi_group 0 (BorelSquarePointed A)).* (borelSwapPi {A}) (borelSwapPi {A}) =
+  (pi_group 0 (BorelSquarePointed A)).ide =>
+  pmap in0 (borelSwapSquare {A})
+
+\func borelRightSwapPi {A : Pointed}
+                       (g : pi_group \levels (\suc \lp) _ 0 A) :
+  (pi_group 0 (BorelSquarePointed A)).* (borelRightPiHom g) (borelSwapPi {A}) =
+  (pi_group 0 (BorelSquarePointed A)).* (borelSwapPi {A}) (borelLeftPiHom g)
+\elim g
+  | in0 p => pmap in0 (borelFiberSwapCoordinates {A} idp p)
+
+\func borelLeftSwapPi {A : Pointed}
+                      (g : pi_group \levels (\suc \lp) _ 0 A) :
+  (pi_group 0 (BorelSquarePointed A)).* (borelLeftPiHom g) (borelSwapPi {A}) =
+  (pi_group 0 (BorelSquarePointed A)).* (borelSwapPi {A}) (borelRightPiHom g)
+\elim g
+  | in0 p => pmap in0 (borelFiberSwapCoordinates {A} p idp)
+
+\func borelSwapLeftPi {A : Pointed}
+                      (g : pi_group \levels (\suc \lp) _ 0 A) :
+  (pi_group 0 (BorelSquarePointed A)).* ((pi_group 0 (BorelSquarePointed A)).* (borelSwapPi {A}) (borelLeftPiHom g)) (borelSwapPi {A}) =
+  borelRightPiHom g =>
+  pmap ((pi_group 0 (BorelSquarePointed A)).* __ (borelSwapPi {A})) (inv (borelRightSwapPi g))
+    *> (pi_group 0 (BorelSquarePointed A)).*-assoc
+         *> pmap ((pi_group 0 (BorelSquarePointed A)).* (borelRightPiHom g)) (borelSwapSquarePi {A})
+              *> (pi_group 0 (BorelSquarePointed A)).ide-right
+
+\func borelSwapDiagonalPi {A : Pointed}
+                          (g : pi_group \levels (\suc \lp) _ 0 A) :
+  (pi_group 0 (BorelSquarePointed A)).* (borelSwapPi {A}) (borelDiagonalPiHom g) =
+  (pi_group 0 (BorelSquarePointed A)).* (borelDiagonalPiHom g) (borelSwapPi {A})
+\elim g
+| in0 p => inv (pmap in0 (borelFiberSwapCoordinates {A} p p))
+
+\func borelPresentationBack {A : Pointed} :
+  GroupHom (BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A))
+      (pi_group 0 (BorelSquarePointed A)) =>
+  BorelSquareGroup.recHom
+      (borelLeftPiHom {A})
+      (borelRightPiHom {A})
+      (borelDiagonalPiHom {A})
+      (borelSwapPi {A})
+      (borelDiagonalSplitPi {A})
+      (borelFactorsCommutePi {A})
+      (borelSwapSquarePi {A})
+      (borelSwapLeftPi {A})
+      (borelSwapDiagonalPi {A})
+
+\func borelNormalBack {A : Pointed} :
+  GroupHom (BorelNormalGroup (pi_group \levels (\suc \lp) _ 0 A))
+      (pi_group 0 (BorelSquarePointed A)) =>
+  GroupHom.compose (borelPresentationBack {A})
+      (borelNormalToPresentation (pi_group \levels (\suc \lp) _ 0 A))
+
+\func borelNormalBackEven {A : Pointed}
+                          (g h : pi_group \levels (\suc \lp) _ 0 A) :
+  borelNormalBack (beven,(g,h)) =
+  (pi_group 0 (BorelSquarePointed A)).* (borelLeftPiHom g) (borelRightPiHom h) =>
+  (borelPresentationBack {A}).func-*
+      {BorelSquareGroup.left g} {BorelSquareGroup.right h}
+
+\func borelNormalBackOdd {A : Pointed}
+                         (g h : pi_group \levels (\suc \lp) _ 0 A) :
+  borelNormalBack (bodd,(g,h)) =
+  (pi_group 0 (BorelSquarePointed A)).* ((pi_group 0 (BorelSquarePointed A)).* (borelSwapPi {A}) (borelLeftPiHom g)) (borelRightPiHom h) =>
+  (borelPresentationBack {A}).func-*
+      {(BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)).* BorelSquareGroup.swap
+          (BorelSquareGroup.left g)}
+      {BorelSquareGroup.right h}
+    *> pmap ((pi_group 0 (BorelSquarePointed A)).* __ (borelRightPiHom h))
+           ((borelPresentationBack {A}).func-*
+               {BorelSquareGroup.swap} {BorelSquareGroup.left g})
+
+\func borelLeftRightPath {A : Pointed}
+                         (p q : A.base = A.base) :
+  (pi_group 0 (BorelSquarePointed A)).* (borelLeftPiHom (in0 p)) (borelRightPiHom (in0 q)) =
+  in0 (borelFiberPath {A} p q) =>
+  pmap in0 (
+    inv (pmap_*>-comm (borelFiberInclusion A)
+        (fin2Loop {A} p idp) (fin2Loop {A} idp q))
+      *> pmap (pmap (borelFiberInclusion A))
+             (fin2Path-comp {A} {borelConstTuple A} {borelConstTuple A}
+                 {borelConstTuple A} p idp idp q)
+           *> pmap (\lam z => pmap (borelFiberInclusion A) (fin2Loop {A} p z))
+                  (idp_*> q))
+
+\func borelNormalBackEvenPath {A : Pointed}
+                              (p q : A.base = A.base) :
+  borelNormalBack (beven,(in0 p,in0 q)) =
+  in0 (borelFiberPath {A} p q) =>
+  borelNormalBackEven (in0 p) (in0 q)
+    *> borelLeftRightPath {A} p q
+
+\func borelNormalBackOddPath {A : Pointed}
+                             (p q : A.base = A.base) :
+  borelNormalBack (bodd,(in0 p,in0 q)) =
+  in0 (borelSwapPath {A} *> borelFiberPath {A} p q) =>
+  borelNormalBackOdd (in0 p) (in0 q)
+    *> pmap in0 (*>-assoc (borelSwapPath {A})
+           (borelFiberPath {A} p idp) (borelFiberPath {A} idp q))
+         *> pmap ((pi_group 0 (BorelSquarePointed A)).* (borelSwapPi {A}))
+                (borelLeftRightPath {A} p q)
+
+
+-- ---------------------------------------------------------------------------
+-- Normalizing arbitrary loops in the Borel square
+-- ---------------------------------------------------------------------------
+
+\func sigmaPathCharSigma {X : \Type} {F : X -> \Type}
+                         {x1 y1 : X} {x2 : F x1} {y2 : F y1}
+                         (q : x1 = y1)
+                         (r : transport F q x2 = y2) :
+  SigmaPathChar (x1,x2) (y1,y2)
+      (SigmaPath {X} {F} {x1,x2} {y1,y2} q r) = (q,r)
+\elim q, r
+  | idp, idp => idp
+
+\func sigmaPathChangeBase {X : \Type} {F : X -> \Type}
+                          {x y : \Sigma (z : X) (F z)}
+                          {q q' : x.1 = y.1}
+                          (e : q = q')
+                          (r : transport F q x.2 = y.2) :
+  SigmaPath q r =
+  SigmaPath q'
+      (transport
+          (\lam t => transport F t x.2 = y.2) e r)
+\elim e
+  | idp => idp
+
+\func sigmaPathCompRight {X : \Type} {F : X -> \Type}
+                         {x y : X} {u : F x} {v w : F y}
+                         (q : x = y)
+                         (r : transport F q u = v)
+                         (s : v = w) :
+  SigmaPath {X} {F} {x,u} {y,v} q r *> SigmaPath {X} {F} {y,v} {y,w} idp s =
+  SigmaPath {X} {F} {x,u} {y,w} q (r *> s)
+\elim q, s
+  | idp, idp => idp
+
+\func borelFiberPath-isSigma {A : Pointed} {f g : Fin 2 -> A}
+                             (l : f = g) :
+  pmap (borelFiberInclusion A) l =
+  SigmaPath {BSn 2} {\lam (X : BSn 2) => X.1 -> A.E}
+      {BSnbase 2,f} {BSnbase 2,g} idp l
+\elim l
+  | idp => idp
+
+\func borelFiberPath-eta {A : Pointed}
+                         (l : borelConstTuple A = borelConstTuple A) :
+  borelFiberPath {A} (pmap (__ 0) l) (pmap (__ 1) l) =
+  SigmaPath idp l =>
+  pmap (pmap (borelFiberInclusion A)) (fin2Path-eta l)
+    *> borelFiberPath-isSigma l
+
+\func cancelSectionFiber {X : \Type} {x y : X}
+                         (d r : x = y) :
+  d *> (inv d *> r) = r =>
+  inv (*>-assoc d (inv d) r)
+    *> pmap (__ *> r) (*>_inv d)
+         *> idp_*> r
+
+\func borelOddPath-eta {A : Pointed}
+                       (r : transport
+                           (\lam (X : BSn 2) => X.1 -> A)
+                           bs2SwapLoop (borelConstTuple A)
+                         = borelConstTuple A) :
+  borelSwapPath {A} *>
+  borelFiberPath {A}
+      (pmap (__ 0)
+          (inv (pmapd {BSn 2} {\lam (X : BSn 2) => X.1 -> A.E} (\lam _ _ => A.base) bs2SwapLoop) *> r))
+      (pmap (__ 1)
+          (inv (pmapd {BSn 2} {\lam (X : BSn 2) => X.1 -> A.E} (\lam _ _ => A.base) bs2SwapLoop) *> r))
+    = SigmaPath bs2SwapLoop r =>
+  \let
+    | d => pmapd {BSn 2} {\lam (X : BSn 2) => X.1 -> A.E} (\lam _ _ => A.base) bs2SwapLoop
+    | l => inv d *> r
+  \in
+    pmap (borelSwapPath {A} *>) (borelFiberPath-eta {A} l)
+      *> sigmaPathCompRight bs2SwapLoop d l
+           *> pmap (SigmaPath bs2SwapLoop) (cancelSectionFiber d r)
+
+\func borelFiberFamily (A : Pointed)
+                       (q : BSnbase 2 = BSnbase 2) : \Type =>
+  transport (\lam (X : BSn 2) => X.1 -> A) q (borelConstTuple A) =
+  borelConstTuple A
+
+\func cancelFiberSection {X : \Type} {x y z : X}
+                         (d : x = y) (r : y = z) :
+  inv d *> (d *> r) = r =>
+  inv (*>-assoc (inv d) d r)
+    *> pmap (__ *> r) (inv_*> d)
+         *> idp_*> r
+
+\func borelNormalForwardPath {A : Pointed}
+                             (p : (BorelSquarePointed A).base = (BorelSquarePointed A).base) :
+  BorelNormalGroup (pi_group \levels (\suc \lp) _ 0 A) =>
+  \let
+    | c => SigmaPathChar (BorelSquarePointed A).base
+            (BorelSquarePointed A).base p
+  \in
+    \case base2PathChar.comp c.1 \with {
+      | inl e =>
+        \let | l => transport (borelFiberFamily A) e c.2
+        \in (beven,(in0 (pmap (__ 0) l),in0 (pmap (__ 1) l)))
+      | inr e =>
+        \let
+          | r => transport (borelFiberFamily A) e c.2
+          | d => pmapd {BSn 2} {\lam (X : BSn 2) => X.1 -> A.E} (\lam _ _ => A.base) bs2SwapLoop
+          | l => inv d *> r
+        \in (bodd,(in0 (pmap (__ 0) l),in0 (pmap (__ 1) l)))
+    }
+
+\func borelNormalForwardFun {A : Pointed}
+                            (z : pi_group 0 (BorelSquarePointed A)) :
+  BorelNormalGroup (pi_group \levels (\suc \lp) _ 0 A)
+\elim z
+  | in0 p => borelNormalForwardPath {A} p
+
+\func borelNormalBackForwardPath {A : Pointed}
+                                 (p : (BorelSquarePointed A).base = (BorelSquarePointed A).base) :
+  borelNormalBack (borelNormalForwardPath {A} p) = in0 p =>
+  \let
+    | c => SigmaPathChar (BorelSquarePointed A).base
+            (BorelSquarePointed A).base p
+  \in
+    run {
+      unfold borelNormalForwardPath,
+      mcases \with {
+        | inl e =>
+          \let | l => transport (borelFiberFamily A) e c.2
+          \in
+            borelNormalBackEvenPath
+                (pmap (__ 0) l) (pmap (__ 1) l)
+              *> pmap in0 (borelFiberPath-eta {A} l)
+                   *> pmap in0 (inv (sigmaPathChangeBase e c.2))
+                        *> pmap in0 (inv (SigmaPathChar.eq p))
+        | inr e =>
+          \let
+            | r => transport (borelFiberFamily A) e c.2
+            | d => pmapd {BSn 2} {\lam (X : BSn 2) => X.1 -> A.E} (\lam _ _ => A.base) bs2SwapLoop
+            | l => inv d *> r
+          \in
+            borelNormalBackOddPath
+                (pmap (__ 0) l) (pmap (__ 1) l)
+              *> pmap in0 (borelOddPath-eta {A} r)
+                   *> pmap in0 (inv (sigmaPathChangeBase e c.2))
+                        *> pmap in0 (inv (SigmaPathChar.eq p))
+      }
+    }
+
+\func borelNormalBackForward {A : Pointed}
+                             (z : pi_group 0 (BorelSquarePointed A)) :
+  borelNormalBack (borelNormalForwardFun {A} z) = z
+\elim z
+  | in0 p => borelNormalBackForwardPath {A} p
+
+\func borelNormalForwardEvenPath {A : Pointed}
+                                 (p q : A.base = A.base) :
+  borelNormalForwardPath {A} (borelFiberPath {A} p q) =
+  (beven,(in0 p,in0 q)) =>
+  pmap (borelNormalForwardPath {A}) (borelFiberPath-isSigma (fin2Loop {A} p q))
+    *> run {
+    unfold borelNormalForwardPath,
+    rewrite (sigmaPathCharSigma idp (fin2Loop {A} p q)),
+    mcases \with {
+      | inl e => run {
+        rewrite (set-pi {BSnbase 2 = BSnbase 2} {idp} {idp} {e} {idp}),
+        normalPath {pi_group \levels (\suc \lp) _ 0 A} {beven}
+            (pmap in0 (fin2Path-at0 {A} {borelConstTuple A}
+                {borelConstTuple A} p q))
+            (pmap in0 (fin2Path-at1 {A} {borelConstTuple A}
+                {borelConstTuple A} p q))
+      }
+      | inr e => absurd (bs2IdNotSwap e)
+    }
+  }
+
+\func borelOddCanonicalPath {A : Pointed}
+                            (p q : A.base = A.base) :
+  borelSwapPath {A} *> borelFiberPath {A} p q =
+  SigmaPath bs2SwapLoop
+      (pmapd {BSn 2} {\lam (X : BSn 2) => X.1 -> A.E} (\lam _ _ => A.base) bs2SwapLoop
+        *> fin2Loop {A} p q) =>
+  pmap (borelSwapPath {A} *>) (borelFiberPath-isSigma (fin2Loop {A} p q))
+    *> sigmaPathCompRight
+           bs2SwapLoop
+           (pmapd {BSn 2} {\lam (X : BSn 2) => X.1 -> A.E} (\lam _ _ => A.base) bs2SwapLoop)
+           (fin2Loop {A} p q)
+
+\func borelNormalForwardOddPath {A : Pointed}
+                                (p q : A.base = A.base) :
+  borelNormalForwardPath {A}
+      (borelSwapPath {A} *> borelFiberPath {A} p q) =
+  (bodd,(in0 p,in0 q)) =>
+  pmap (borelNormalForwardPath {A}) (borelOddCanonicalPath {A} p q)
+    *> run {
+    unfold borelNormalForwardPath,
+    rewrite (sigmaPathCharSigma
+        bs2SwapLoop
+        (pmapd {BSn 2} {\lam (X : BSn 2) => X.1 -> A.E} (\lam _ _ => A.base) bs2SwapLoop
+          *> fin2Loop {A} p q)),
+    mcases \with {
+      | inl e => absurd (bs2SwapNotIdp e)
+      | inr e => run {
+        rewrite (set-pi {BSnbase 2 = BSnbase 2} {bs2SwapLoop} {bs2SwapLoop}
+            {e} {idp}),
+        rewrite (cancelFiberSection
+            (pmapd {BSn 2} {\lam (X : BSn 2) => X.1 -> A.E} (\lam _ _ => A.base) bs2SwapLoop)
+            (fin2Loop {A} p q)),
+        normalPath {pi_group \levels (\suc \lp) _ 0 A} {bodd}
+            (pmap in0 (fin2Path-at0 {A} {borelConstTuple A}
+                {borelConstTuple A} p q))
+            (pmap in0 (fin2Path-at1 {A} {borelConstTuple A}
+                {borelConstTuple A} p q))
+      }
+    }
+  }
+
+\func borelNormalForwardBack {A : Pointed}
+                             (x : BorelNormalGroup (pi_group \levels (\suc \lp) _ 0 A)) :
+  borelNormalForwardFun {A} (borelNormalBack x) = x
+\elim x
+  | (beven,(g,h)) =>
+    \case \elim g, \elim h \with {
+      | in0 p, in0 q =>
+        pmap (borelNormalForwardFun {A})
+            (borelNormalBackEvenPath {A} p q)
+          *> borelNormalForwardEvenPath {A} p q
+    }
+  | (bodd,(g,h)) =>
+    \case \elim g, \elim h \with {
+      | in0 p, in0 q =>
+        pmap (borelNormalForwardFun {A})
+            (borelNormalBackOddPath {A} p q)
+          *> borelNormalForwardOddPath {A} p q
+    }
+
+\func borelNormalForwardMul {A : Pointed}
+                            (x y : pi_group 0 (BorelSquarePointed A)) :
+  borelNormalForwardFun {A} ((pi_group 0 (BorelSquarePointed A)).* x y) =
+  (BorelNormalGroup (pi_group \levels (\suc \lp) _ 0 A)).* (borelNormalForwardFun {A} x) (borelNormalForwardFun {A} y) =>
+  \let
+    | b => borelNormalBack {A}
+    | f => borelNormalForwardFun {A}
+    | bx : b (f x) = x => borelNormalBackForward x
+    | by : b (f y) = y => borelNormalBackForward y
+    | bxy : b (f ((pi_group 0 (BorelSquarePointed A)).* x y)) = (pi_group 0 (BorelSquarePointed A)).* x y =>
+      borelNormalBackForward ((pi_group 0 (BorelSquarePointed A)).* x y)
+    | imageEq :
+      b (f ((pi_group 0 (BorelSquarePointed A)).* x y)) =
+      b ((BorelNormalGroup (pi_group \levels (\suc \lp) _ 0 A)).* (f x) (f y)) =>
+      bxy
+        *> pmap2 (pi_group 0 (BorelSquarePointed A)).* (inv bx) (inv by)
+             *> inv (b.func-* {f x} {f y})
+  \in
+    pmap f (inv bxy)
+      *> pmap f imageEq
+           *> borelNormalForwardBack
+                  ((BorelNormalGroup (pi_group \levels (\suc \lp) _ 0 A)).* (f x) (f y))
+
+\func borelNormalForward {A : Pointed} :
+  GroupHom (pi_group 0 (BorelSquarePointed A))
+      (BorelNormalGroup (pi_group \levels (\suc \lp) _ 0 A)) \cowith
+  | func => borelNormalForwardFun {A}
+  | func-* {x} {y} => borelNormalForwardMul {A} x y
+
+\func borelNormalIso {A : Pointed} :
+  Iso {GroupCat} (borelNormalForward {A}) \cowith
+  | hinv => borelNormalBack {A}
+  | hinv_f => exts (borelNormalBackForward {A})
+  | f_hinv => exts (borelNormalForwardBack {A})
+
+\func borelSquareForward {A : Pointed} :
+  GroupHom (pi_group 0 (BorelSquarePointed A))
+      (BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)) =>
+  GroupHom.compose (borelNormalToPresentation (pi_group \levels (\suc \lp) _ 0 A))
+      (borelNormalForward {A})
+
+\func borelSquareBack {A : Pointed} :
+  GroupHom (BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A))
+      (pi_group 0 (BorelSquarePointed A)) =>
+  borelPresentationBack {A}
+
+-- The retraction is proved pointwise: borelNormalBack is by definition
+-- borelPresentationBack after borelNormalToPresentation, so the normal-form
+-- retraction can be inserted around borelNormalForwardBack.
+\func borelSquareForwardBackHom {A : Pointed} :
+  GroupHom.compose (borelSquareForward {A}) (borelSquareBack {A}) =
+  GroupHom.id {BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)} =>
+  exts (\lam (z : BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)) =>
+      pmap (\lam (w : BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)) =>
+                borelNormalToPresentation (pi_group \levels (\suc \lp) _ 0 A)
+                    (borelNormalForwardFun {A}
+                        (borelPresentationBack {A} w)))
+          (inv (presentationNormalRetractAt (pi_group \levels (\suc \lp) _ 0 A) z))
+        *> pmap (borelNormalToPresentation (pi_group \levels (\suc \lp) _ 0 A))
+               (borelNormalForwardBack
+                   (borelPresentationToNormal (pi_group \levels (\suc \lp) _ 0 A) z))
+             *> presentationNormalRetractAt (pi_group \levels (\suc \lp) _ 0 A) z)
+
+\func borelSquareForwardBackAt {A : Pointed}
+                              (z : BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)) :
+  borelSquareForward {A} (borelSquareBack {A} z) = z =>
+  homAt (GroupHom.compose (borelSquareForward {A}) (borelSquareBack {A}))
+      (GroupHom.id {BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)})
+      (borelSquareForwardBackHom {A})
+      z
+
+\func borelSquareBackForwardHom {A : Pointed} :
+  GroupHom.compose (borelSquareBack {A}) (borelSquareForward {A}) =
+  GroupHom.id {pi_group 0 (BorelSquarePointed A)} =>
+  exts (borelNormalBackForward {A})
+
+\func borelSquareBackForwardAt {A : Pointed}
+                              (z : pi_group 0 (BorelSquarePointed A)) :
+  borelSquareBack {A} (borelSquareForward {A} z) = z =>
+  homAt (GroupHom.compose (borelSquareBack {A}) (borelSquareForward {A}))
+      (GroupHom.id {pi_group 0 (BorelSquarePointed A)})
+      (borelSquareBackForwardHom {A})
+      z
+
+\func borelSquareIso {A : Pointed} :
+  Iso {GroupCat} (borelSquareForward {A}) \cowith
+  | hinv => borelSquareBack {A}
+  | hinv_f => borelSquareBackForwardHom {A}
+  | f_hinv => borelSquareForwardBackHom {A}
+
+
+-- ---------------------------------------------------------------------------
+-- Naturality for the two maps in the SP2 pushout
+-- ---------------------------------------------------------------------------
+
+-- The second component of a pointed map can only be idp if the target is
+-- pointed by the image of the base point; the Pointed instance of the target
+-- is therefore built here, and the one of the source cannot be recovered from
+-- the type of h and has to be supplied at every use.
+\func piFunctorIdp {X : Pointed} {Y : \Type}
+                   (h : X -> Y)
+                   (p : X.base = X.base) :
+  pi_functor-hom {0} {X} {\new Pointed Y (h X.base)} (h,idp) (in0 p) =
+  in0 (pmap h p) =>
+  pmap in0 (idp_*> (pmap h p))
+
+\func boundaryProjectionBackDiag {A : Pointed}
+                                 (g : pi_group \levels (\suc \lp) _ 0 A) :
+  pi_functor-hom {0} (sp2Projection A)
+      (boundaryBack {A} (BorelBoundaryGroup.diag {pi_group \levels (\suc \lp) _ 0 A} g)) = g
+\elim g
+  | in0 p =>
+    piFunctorIdp {SP2BoundaryPointed A} (sp2Projection A).1
+        (pairPath p (idp {BSn 2} {BSnbase 2}))
+      *> pmap in0 (pairPath-map1 p (idp {BSn 2} {BSnbase 2}))
+
+\func boundaryProjectionBackTurn {A : Pointed} :
+  pi_functor-hom {0} (sp2Projection A)
+      (boundaryBack {A} BorelBoundaryGroup.turn) = (pi_group \levels (\suc \lp) _ 0 A).ide =>
+  piFunctorIdp {SP2BoundaryPointed A} (sp2Projection A).1
+      (pairPath (idp {A.E} {A.base}) bs2SwapLoop)
+    *> pmap in0 (pairPath-map1 (idp {A.E} {A.base}) bs2SwapLoop)
+
+\func boundaryProjectionBackHom {A : Pointed} :
+  GroupHom.compose (pi_functor-hom {0} (sp2Projection A))
+      (boundaryBack {A}) = {GroupHom _ _}
+  boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A) =>
+  BorelBoundaryGroup.hom-ext
+      (GroupHom.compose (pi_functor-hom {0} (sp2Projection A))
+          (boundaryBack {A}))
+      (boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A))
+      (boundaryProjectionBackDiag {A})
+      (boundaryProjectionBackTurn {A})
+
+-- The generator-wise proofs are packaged by the pointwise part of hom-ext,
+-- rather than by applying the resulting equality of homomorphisms to an
+-- argument: the two groups of such an equality are inferred by instance
+-- resolution, and here they would be inferred at different universe levels.
+\func boundaryProjectionBack {A : Pointed}
+                             (w : BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)) :
+  pi_functor-hom {0} (sp2Projection A) (boundaryBack {A} w) =
+  boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A) w =>
+  BorelBoundaryGroup.hom-ext.pointwise {pi_group \levels (\suc \lp) _ 0 A} {_}
+      {GroupHom.compose (pi_functor-hom {0} (sp2Projection A)) (boundaryBack {A})}
+      {boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A)}
+      {boundaryProjectionBackDiag {A}} {boundaryProjectionBackTurn {A}} w
+
+-- Pointwise for the same reason as boundaryBorelForward below: the domain of
+-- the composite lives one universe level above its codomain.
+\func boundaryProjectionForward {A : Pointed}
+                                (z : pi_group 0 (SP2BoundaryPointed A)) :
+  boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A) (boundaryForward {A} z) =
+  pi_functor-hom {0} (sp2Projection A) z =>
+  inv (boundaryProjectionBack {A} (boundaryForward {A} z))
+    *> pmap (pi_functor-hom {0} (sp2Projection A)) (boundaryBackForward {A} z)
+
+-- The underlying function of sp2BorelDiagonal is used instead of a copy of its
+-- lambda: written out, the fiber component is \lam _ => z.1 at the type
+-- (z.2).1 -> A.E, which is not the type Fin 2 -> A.E of the right-hand side.
+\func sp2BorelDiagonalFiberPath {A : Pointed}
+                                {a b : A} (p : a = b) :
+  pmap (sp2BorelDiagonal A).1
+      (pairPath {A.E} {BSn 2} {a} {b} {BSnbase 2} {BSnbase 2} p idp) =
+  pmap (borelFiberInclusion (\new Pointed A.E a))
+      (fin2Path {A.E} {\lam _ => a} {\lam _ => b} p p)
+\elim p
+  | idp =>
+    inv (pmap (pmap (borelFiberInclusion (\new Pointed A.E a)))
+        (fin2Path-idp {A.E} {\lam _ => a}))
+
+\func sp2BorelDiagonalFiberLoop {A : Pointed}
+                                (p : A.base = A.base) :
+  pmap (sp2BorelDiagonal A).1
+      (pairPath {A.E} {BSn 2} {A.base} {A.base} {BSnbase 2} {BSnbase 2}
+          p idp) =
+  borelFiberPath {A} p p =>
+  sp2BorelDiagonalFiberPath {A} {A.base} {A.base} p
+
+-- A loop of BS2 cannot be eliminated, so the endpoints are generalized first.
+\func sp2BorelDiagonalSigmaPath {A : Pointed} {X Y : BSn 2}
+                                (q : X = Y) :
+  pmap (sp2BorelDiagonal A).1
+      (pairPath {A.E} {BSn 2} {A.base} {A.base} {X} {Y} idp q) =
+  SigmaPath {BSn 2} {\lam (Z : BSn 2) => Z.1 -> A.E}
+      {X, \lam _ => A.base} {Y, \lam _ => A.base}
+      q (pmapd {BSn 2} {\lam (Z : BSn 2) => Z.1 -> A.E} (\lam _ _ => A.base) q)
+\elim q
+  | idp => idp
+
+\func sp2BorelDiagonalSectionPath {A : Pointed}
+                                  (q : BSnbase 2 = BSnbase 2) :
+  pmap (sp2BorelDiagonal A).1
+      (pairPath {A.E} {BSn 2} {A.base} {A.base} {BSnbase 2} {BSnbase 2}
+          idp q) =
+  borelSectionPath {A} q =>
+  sp2BorelDiagonalSigmaPath {A} {BSnbase 2} {BSnbase 2} q
+
+\func borelSquareForwardLeft {A : Pointed}
+                             (g : pi_group \levels (\suc \lp) _ 0 A) :
+  borelSquareForward (borelLeftPiHom g) = BorelSquareGroup.left g
+\elim g
+  | in0 p =>
+    pmap (borelNormalToPresentation (pi_group \levels (\suc \lp) _ 0 A))
+        (borelNormalForwardEvenPath {A} p idp)
+      *> pmap ((BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)).*
+                  (BorelSquareGroup.left (in0 p)))
+             (path (BorelSquareGroup.right-ide {pi_group \levels (\suc \lp) _ 0 A}))
+           *> (BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)).ide-right
+
+\func borelSquareForwardRight {A : Pointed}
+                              (g : pi_group \levels (\suc \lp) _ 0 A) :
+  borelSquareForward (borelRightPiHom g) = BorelSquareGroup.right g
+\elim g
+  | in0 p =>
+    pmap (borelNormalToPresentation (pi_group \levels (\suc \lp) _ 0 A))
+        (borelNormalForwardEvenPath {A} idp p)
+      *> pmap ((BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)).* __
+                  (BorelSquareGroup.right (in0 p)))
+             (path (BorelSquareGroup.left-ide {pi_group \levels (\suc \lp) _ 0 A}))
+           *> (BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)).ide-left
+
+\func borelSquareForwardDiagonal {A : Pointed}
+                                 (g : pi_group \levels (\suc \lp) _ 0 A) :
+  borelSquareForward (borelDiagonalPiHom g) =
+  BorelSquareGroup.diagonal g
+\elim g
+  | in0 p =>
+    pmap (borelNormalToPresentation (pi_group \levels (\suc \lp) _ 0 A))
+        (borelNormalForwardEvenPath {A} p p)
+      *> inv (path (BorelSquareGroup.diagonal-split (in0 p)))
+
+-- borelFiberPath idp idp is not idp on the nose: fin2Path idp idp is only
+-- propositionally the identity path.
+\func borelFiberPath-idp {A : Pointed} :
+  borelFiberPath {A} idp idp = idp =>
+  pmap (pmap (borelFiberInclusion A))
+      (fin2Path-idp {A.E} {borelConstTuple A})
+
+\func borelSwapPathSplit {A : Pointed} :
+  borelSwapPath {A} *> borelFiberPath {A} idp idp = borelSwapPath {A} =>
+  pmap (borelSwapPath {A} *>) (borelFiberPath-idp {A})
+
+-- borelNormalForwardOddPath is stated for the canonical odd loop
+-- borelSwapPath *> borelFiberPath p q, so borelSwapPath itself has to be
+-- brought into that shape first.
+\func borelSquareForwardSwap {A : Pointed} :
+  borelSquareForward (borelSwapPi {A}) = BorelSquareGroup.swap =>
+  pmap (borelNormalToPresentation (pi_group \levels (\suc \lp) _ 0 A))
+      (pmap (borelNormalForwardPath {A}) (inv (borelSwapPathSplit {A}))
+        *> borelNormalForwardOddPath {A} idp idp)
+    *> pmap
+           (\lam z => (BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)).*
+               ((BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)).* BorelSquareGroup.swap z)
+               (BorelSquareGroup.right (pi_group \levels (\suc \lp) _ 0 A).ide))
+           (path (BorelSquareGroup.left-ide {pi_group \levels (\suc \lp) _ 0 A}))
+         *> pmap ((BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)).* __
+                     (BorelSquareGroup.right (pi_group \levels (\suc \lp) _ 0 A).ide))
+                (BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)).ide-right
+              *> pmap ((BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)).*
+                          BorelSquareGroup.swap)
+                     (path (BorelSquareGroup.right-ide {pi_group \levels (\suc \lp) _ 0 A}))
+                   *> (BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)).ide-right
+
+\func boundaryBorelBackDiag {A : Pointed}
+                            (g : pi_group \levels (\suc \lp) _ 0 A) :
+  pi_functor-hom {0} (sp2BorelDiagonal A)
+      (boundaryBack {A} (BorelBoundaryGroup.diag {pi_group \levels (\suc \lp) _ 0 A} g)) =
+  borelSquareBack (BorelSquareGroup.diagonal g)
+\elim g
+  | in0 p =>
+    piFunctorIdp {SP2BoundaryPointed A} (sp2BorelDiagonal A).1
+        (pairPath p (idp {BSn 2} {BSnbase 2}))
+      *> pmap in0 (sp2BorelDiagonalFiberLoop {A} p)
+
+\func boundaryBorelBackTurn {A : Pointed} :
+  pi_functor-hom {0} (sp2BorelDiagonal A)
+      (boundaryBack {A} BorelBoundaryGroup.turn) =
+  borelSquareBack BorelSquareGroup.swap =>
+  piFunctorIdp {SP2BoundaryPointed A} (sp2BorelDiagonal A).1
+      (pairPath (idp {A.E} {A.base}) bs2SwapLoop)
+    *> pmap in0 (sp2BorelDiagonalSectionPath {A} bs2SwapLoop)
+
+\func boundaryBorelBackHom {A : Pointed} :
+  GroupHom.compose (pi_functor-hom {0} (sp2BorelDiagonal A))
+      (boundaryBack {A}) =
+  GroupHom.compose (borelSquareBack {A})
+      (boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A)) =>
+  BorelBoundaryGroup.hom-ext
+      (GroupHom.compose (pi_functor-hom {0} (sp2BorelDiagonal A))
+          (boundaryBack {A}))
+      (GroupHom.compose (borelSquareBack {A})
+          (boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A)))
+      (boundaryBorelBackDiag {A})
+      (boundaryBorelBackTurn {A})
+
+\func boundaryBorelBackAt {A : Pointed}
+                          (w : BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)) :
+  pi_functor-hom {0} (sp2BorelDiagonal A) (boundaryBack {A} w) =
+  borelSquareBack {A} (boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A) w) =>
+  homAt (GroupHom.compose (pi_functor-hom {0} (sp2BorelDiagonal A))
+      (boundaryBack {A}))
+      (GroupHom.compose (borelSquareBack {A})
+          (boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A)))
+      (boundaryBorelBackHom {A})
+      w
+
+-- This direction of the naturality square is stated pointwise. As an equality
+-- of homomorphisms it would need a single universe level for its domain
+-- pi_group 0 (SP2BoundaryPointed A), which is one level up because BSn 2 is,
+-- and for its codomain BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A), which is not.
+\func boundaryBorelForward {A : Pointed}
+                           (z : pi_group 0 (SP2BoundaryPointed A)) :
+  borelSquareForward (pi_functor-hom {0} (sp2BorelDiagonal A) z) =
+  boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A) (boundaryForward {A} z) =>
+  inv (pmap (\lam (w : pi_group 0 (SP2BoundaryPointed A)) =>
+                 borelSquareForward
+                     (pi_functor-hom {0} (sp2BorelDiagonal A) w))
+      (boundaryBackForward {A} z))
+    *> pmap (borelSquareForward {A})
+           (boundaryBorelBackAt {A} (boundaryForward {A} z))
+         *> borelSquareForwardBackAt {A}
+                (boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A) (boundaryForward {A} z))

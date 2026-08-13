@@ -1,0 +1,64 @@
+\import Homotopy.Connected
+\import Homotopy.Pointed
+\import Paths
+\import Paths.Meta
+\import SymmetricProducts.SP2
+
+\import Experiments.HomotopyGroup.SP2.VanKampenModel
+\import Experiments.HomotopyGroup.HomotopyGroup
+\import Experiments.HomotopyGroup.VanKampen
+\import Experiments.HomotopyGroup.Abelianization
+\import Experiments.HomotopyGroup.SP2.BorelSquareFundamentalGroup
+\import Experiments.HomotopyGroup.SP2.FundamentalGroupTechnical
+
+-- Fundamental group of the second symmetric product.
+--
+-- A concrete basepoint is necessary: pi_group is defined for Pointed types.
+-- Connectedness is the hypothesis needed by pushoutVanKampen for the boundary
+-- A x BS2.
+\func pi1SP2 {A : Pointed} (connA : Connected0 A) :
+  pi_group 0 (SP2Pointed A) = Abelianization (pi_group 0 A)
+  =>
+    pushoutVanKampen
+        (sp2BoundaryConnected connA)
+        (sp2Projection A)
+        (sp2BorelDiagonal A)
+      *> sp2VanKampenDiagramModel connA
+           *> SP2AlgebraicPushoutIsAbelianization (pi_group 0 A)
+
+
+-- The repository also contains the HIT presentation `SymmetricProducts.SP2`.
+-- SP2Pushout sends `delta A.base` to `pinl A.base`, so it upgrades to an
+-- equality of pointed types. This is the only bridge needed when the HIT,
+-- rather than the pushout presentation, is used in a theorem statement.
+\func SP2HITPointed (A : Pointed) : Pointed (SP2 A) \cowith
+  | base => delta A.base
+
+\func SP2HITPointedEqualsPushout (A : Pointed) :
+  SP2HITPointed A = SP2Pointed A
+  => exts Pointed {
+    | E => SP2Pushout A
+    | base => idp
+  }
+
+\func pi1SP2HIT {A : Pointed} (connA : Connected0 A) :
+  pi_group 0 (SP2HITPointed A) = Abelianization (pi_group 0 A)
+  => pmap (pi_group 0) (SP2HITPointedEqualsPushout A) *> pi1SP2 connA
+
+-- Same statement starting from a plain type with an explicitly chosen point.
+\func pi1SP2OfType {A : \Type}
+                   (a0 : A)
+                   (connA : Connected0 A) :
+  pi_group 0 (SP2Pointed (Pointed.make a0)) =
+  Abelianization (pi_group 0 (Pointed.make a0))
+  => pi1SP2 connA
+
+-- Consequence under the above identification:
+--   * the diagonal stratum A -> SP2 A, a |-> (a,a), induces doubling
+--       [g] |-> [g] * [g];
+--   * the stabilization map a |-> {a,a0} induces the quotient map
+--       G -> G_ab.
+--
+-- These naturality statements require choosing the concrete equality supplied
+-- by SP2AlgebraicPushoutIsAbelianization, so they are best proved after that
+-- equality is implemented via a named GroupCat isomorphism.

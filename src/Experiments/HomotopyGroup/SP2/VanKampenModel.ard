@@ -1,0 +1,209 @@
+\import Algebra.Group
+\import Algebra.Group.GroupCategory
+\import Algebra.Group.GroupHom
+\import Category
+\import Experiments.HomotopyGroup.HomotopyGroup
+\import Experiments.HomotopyGroup.SP2.BorelSquareFundamentalGroup
+\import Experiments.HomotopyGroup.GroupPushout
+\import Homotopy.Connected
+\import Homotopy.Pointed
+\import Paths
+
+-- ---------------------------------------------------------------------------
+-- Universe levels in this module
+-- ---------------------------------------------------------------------------
+
+-- BSn quantifies over \Set, so `BSn 2` lives one predicative level above `A`.
+-- Hence for `A : Pointed \levels \lp _` the topological groups
+--   pi_group 0 (SP2BoundaryPointed A), pi_group 0 (BorelSquarePointed A)
+-- live at \suc \lp, and since pi_functor-hom places its domain and codomain at
+-- one level, the copy of pi_group 0 A occurring as the middle leg of the
+-- topological pushout lives at \suc \lp too.
+--
+-- A group pushout has all three of its groups at a single level, so the
+-- algebraic side of the comparison has to be built from `pi_group 0 A` taken at
+-- \suc \lp as well. That is why every algebraic occurrence below is written
+-- `pi_group \levels (\suc \lp) _ 0 A`, exactly as the imported comparison
+-- lemmas of BorelSquareFundamentalGroup now state it. The homotopy level is
+-- never constrained here, so it stays `_`.
+
+-- ---------------------------------------------------------------------------
+-- Congruence of the two group pushouts
+-- ---------------------------------------------------------------------------
+
+-- Neither of the two pushout maps can be recovered from an element of one of
+-- the two groups, so both are written out at every use of gpinl, gpinr, gpglue.
+\func sp2DiagramForwardCoh {A : Pointed}
+                           (a : pi_group 0 (SP2BoundaryPointed A)) :
+  GroupPushout.gpinl {_} {_} {_}
+      {boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A)}
+      {boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A)}
+      (pi_functor-hom {0} (sp2Projection A) a) =
+  GroupPushout.gpinr {_} {_} {_}
+      {boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A)}
+      {boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A)}
+      (borelSquareForward {A}
+          (pi_functor-hom {0} (sp2BorelDiagonal A) a)) =>
+  pmap (GroupPushout.gpinl {_} {_} {_}
+      {boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A)}
+      {boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A)})
+      (inv (boundaryProjectionForward {A} a))
+      *> path (GroupPushout.gpglue {_} {_} {_}
+      {boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A)}
+      {boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A)}
+      (boundaryForward {A} a))
+      *> pmap (GroupPushout.gpinr {_} {_} {_}
+      {boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A)}
+      {boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A)})
+      (inv (boundaryBorelForward {A} a))
+
+\func sp2DiagramForward {A : Pointed} :
+  GroupHom
+      (GroupPushout
+          (pi_functor-hom {0} (sp2Projection A))
+          (pi_functor-hom {0} (sp2BorelDiagonal A)))
+      (GroupPushout
+          (boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A))
+          (boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A))) =>
+  GroupPushout.recHom {_} {_} {_}
+      {pi_functor-hom {0} (sp2Projection A)}
+      {pi_functor-hom {0} (sp2BorelDiagonal A)}
+      (GroupPushout.gpinlHom {_} {_} {_}
+          {boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A)}
+          {boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A)})
+      (GroupHom.compose
+          (GroupPushout.gpinrHom {_} {_} {_}
+              {boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A)}
+              {boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A)})
+          (borelSquareForward {A}))
+      (sp2DiagramForwardCoh {A})
+
+\func sp2DiagramBackwardCoh {A : Pointed}
+                            (w : BorelBoundaryGroup
+                                     (pi_group \levels (\suc \lp) _ 0 A)) :
+  GroupPushout.gpinl {_} {_} {_}
+      {pi_functor-hom {0} (sp2Projection A)}
+      {pi_functor-hom {0} (sp2BorelDiagonal A)}
+      (boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A) w) =
+  GroupPushout.gpinr {_} {_} {_}
+      {pi_functor-hom {0} (sp2Projection A)}
+      {pi_functor-hom {0} (sp2BorelDiagonal A)}
+      (borelSquareBack {A}
+          (boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A) w)) =>
+  pmap (GroupPushout.gpinl {_} {_} {_}
+      {pi_functor-hom {0} (sp2Projection A)}
+      {pi_functor-hom {0} (sp2BorelDiagonal A)})
+      (inv (boundaryProjectionBack {A} w))
+      *> path (GroupPushout.gpglue {_} {_} {_}
+      {pi_functor-hom {0} (sp2Projection A)}
+      {pi_functor-hom {0} (sp2BorelDiagonal A)}
+      (boundaryBack {A} w))
+      *> pmap (GroupPushout.gpinr {_} {_} {_}
+      {pi_functor-hom {0} (sp2Projection A)}
+      {pi_functor-hom {0} (sp2BorelDiagonal A)})
+      (boundaryBorelBackAt {A} w)
+
+\func sp2DiagramBackward {A : Pointed} :
+  GroupHom
+      (GroupPushout
+          (boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A))
+          (boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A)))
+      (GroupPushout
+          (pi_functor-hom {0} (sp2Projection A))
+          (pi_functor-hom {0} (sp2BorelDiagonal A))) =>
+  GroupPushout.recHom {_} {_} {_}
+      {boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A)}
+      {boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A)}
+      (GroupPushout.gpinlHom {_} {_} {_}
+          {pi_functor-hom {0} (sp2Projection A)}
+          {pi_functor-hom {0} (sp2BorelDiagonal A)})
+      (GroupHom.compose
+          (GroupPushout.gpinrHom {_} {_} {_}
+              {pi_functor-hom {0} (sp2Projection A)}
+              {pi_functor-hom {0} (sp2BorelDiagonal A)})
+          (borelSquareBack {A}))
+      (sp2DiagramBackwardCoh {A})
+
+\func sp2DiagramBackwardForwardHom {A : Pointed} :
+  GroupHom.compose (sp2DiagramBackward {A}) (sp2DiagramForward {A}) =
+  GroupHom.id {GroupPushout
+                   (pi_functor-hom {0} (sp2Projection A))
+                   (pi_functor-hom {0} (sp2BorelDiagonal A))} =>
+  GroupPushout.hom-ext {_} {_} {_}
+      {pi_functor-hom {0} (sp2Projection A)}
+      {pi_functor-hom {0} (sp2BorelDiagonal A)}
+      (GroupHom.compose (sp2DiagramBackward {A}) (sp2DiagramForward {A}))
+      (GroupHom.id {GroupPushout
+                        (pi_functor-hom {0} (sp2Projection A))
+                        (pi_functor-hom {0} (sp2BorelDiagonal A))})
+      (\lam _ => idp)
+      (\lam z => pmap (GroupPushout.gpinr {_} {_} {_}
+          {pi_functor-hom {0} (sp2Projection A)}
+          {pi_functor-hom {0} (sp2BorelDiagonal A)})
+          (borelSquareBackForwardAt {A} z))
+
+\func sp2DiagramForwardBackwardHom {A : Pointed} :
+  GroupHom.compose (sp2DiagramForward {A}) (sp2DiagramBackward {A}) =
+  GroupHom.id {GroupPushout
+                   (boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A))
+                   (boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A))} =>
+  GroupPushout.hom-ext {_} {_} {_}
+      {boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A)}
+      {boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A)}
+      (GroupHom.compose (sp2DiagramForward {A}) (sp2DiagramBackward {A}))
+      (GroupHom.id {GroupPushout
+                        (boundaryProjectionHom
+                            (pi_group \levels (\suc \lp) _ 0 A))
+                        (boundaryBorelHom
+                            (pi_group \levels (\suc \lp) _ 0 A))})
+      (\lam _ => idp)
+      (\lam z => pmap (GroupPushout.gpinr {_} {_} {_}
+          {boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A)}
+          {boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A)})
+          (borelSquareForwardBackAt {A} z))
+
+\func sp2DiagramIso {A : Pointed} :
+  Iso {GroupCat} (sp2DiagramForward {A}) \cowith
+  | hinv => sp2DiagramBackward {A}
+  | hinv_f => sp2DiagramBackwardForwardHom {A}
+  | f_hinv => sp2DiagramForwardBackwardHom {A}
+
+-- ---------------------------------------------------------------------------
+-- Topological calculation interface
+-- ---------------------------------------------------------------------------
+
+-- Calculation of the boundary group:
+--   pi_1(A x BS2) = pi_1(A) x C2,
+-- with the generator normalization
+--   loop in A  |-> diag(g)
+--   bs2SwapLoop |-> turn.
+\func pi1BoundaryModel {A : Pointed} (_ : Connected0 A) :
+  pi_group 0 (SP2BoundaryPointed A) =
+  BorelBoundaryGroup (pi_group \levels (\suc \lp) _ 0 A)
+  => Cat.isotoid {GroupCat} (boundaryIso {A})
+
+-- Calculation of the Borel square:
+--   pi_1((A x A)//S2) = (G x G) semidirect C2,
+-- where the nontrivial element of C2 swaps the two copies of G, with the
+-- normalization
+--   first coordinate loop  |-> left(g)
+--   second coordinate loop |-> right(g)
+--   the BS2 generator      |-> swap.
+\func pi1BorelSquareModel {A : Pointed} (_ : Connected0 A) :
+  pi_group 0 (BorelSquarePointed A) =
+  BorelSquareGroup (pi_group \levels (\suc \lp) _ 0 A)
+  => Cat.isotoid {GroupCat} (borelSquareIso {A})
+
+-- This packages pi1BoundaryModel, pi1BorelSquareModel, and naturality of pi_1
+-- into exactly the equality of group pushouts consumed by the SP2 proof.
+-- Keeping the compatibility as one named interface avoids scattering transports
+-- along equalities of Group structures through the final theorem.
+\func sp2VanKampenDiagramModel {A : Pointed} (_ : Connected0 A) :
+  GroupPushout
+      (pi_functor-hom {0} (sp2Projection A))
+      (pi_functor-hom {0} (sp2BorelDiagonal A))
+    =
+  GroupPushout
+      (boundaryProjectionHom (pi_group \levels (\suc \lp) _ 0 A))
+      (boundaryBorelHom (pi_group \levels (\suc \lp) _ 0 A))
+  => Cat.isotoid {GroupCat} (sp2DiagramIso {A})

@@ -1,0 +1,493 @@
+\import Algebra.Group
+\import Algebra.Group.GroupCategory
+\import Algebra.Group.GroupHom
+\import Category
+\import Paths
+\import Paths.Meta
+
+\import Experiments.HomotopyGroup.GroupPushout
+\import Experiments.HomotopyGroup.Abelianization
+\import Experiments.HomotopyGroup.SP2.BorelSquareFundamentalGroup
+
+-- Algebraic pushout obtained after the two topological pi_1 calculations.
+\func SP2AlgebraicPushout (G : Group) : Group =>
+  GroupPushout (boundaryProjectionHom G) (boundaryBorelHom G)
+
+-- Named inclusions keep the implicit parameters of GroupPushout local: an
+-- element of G or of BorelSquareGroup G determines neither of the two pushout
+-- maps, so the maps are written out in this block and nowhere else.
+\func algebraicPinl (G : Group) (g : G) : SP2AlgebraicPushout G =>
+  GroupPushout.gpinl {_} {_} {_}
+      {boundaryProjectionHom G} {boundaryBorelHom G} g
+
+\func algebraicPinr (G : Group) (w : BorelSquareGroup G) :
+  SP2AlgebraicPushout G =>
+  GroupPushout.gpinr {_} {_} {_}
+      {boundaryProjectionHom G} {boundaryBorelHom G} w
+
+\func algebraicPinrHom (G : Group) :
+  GroupHom (BorelSquareGroup G) (SP2AlgebraicPushout G) =>
+  GroupPushout.gpinrHom {_} {_} {_}
+      {boundaryProjectionHom G} {boundaryBorelHom G}
+
+-- The pushout relation: the two maps out of the boundary group agree.
+\func algebraicGlue (G : Group) (x : BorelBoundaryGroup G) :
+  algebraicPinl G (boundaryProjectionHom G x) =
+  algebraicPinr G (boundaryBorelHom G x) =>
+  path (GroupPushout.gpglue {_} {_} {_}
+      {boundaryProjectionHom G} {boundaryBorelHom G} x)
+
+\func algebraicPinl-ide (G : Group) :
+  algebraicPinl G G.ide = (SP2AlgebraicPushout G).ide =>
+  path (GroupPushout.gpinl-ide {_} {_} {_}
+      {boundaryProjectionHom G} {boundaryBorelHom G})
+
+\func algebraicPinr-* (G : Group) (x y : BorelSquareGroup G) :
+  algebraicPinr G (BorelSquareGroup.* x y) =
+  (SP2AlgebraicPushout G).* (algebraicPinr G x) (algebraicPinr G y) =>
+  path (GroupPushout.gpinr-* {_} {_} {_}
+      {boundaryProjectionHom G} {boundaryBorelHom G} x y)
+
+\func algebraicPinr-ide (G : Group) :
+  algebraicPinr G BorelSquareGroup.ide = (SP2AlgebraicPushout G).ide =>
+  path (GroupPushout.gpinr-ide {_} {_} {_}
+      {boundaryProjectionHom G} {boundaryBorelHom G})
+
+\lemma algebraicPinr-inverse (G : Group) (x : BorelSquareGroup G) :
+  algebraicPinr G (BorelSquareGroup.inverse x) =
+  (SP2AlgebraicPushout G).inverse (algebraicPinr G x) =>
+  (algebraicPinrHom G).func-inverse {x}
+
+-- Elementary closure lemmas for central elements.  Keeping these separate
+-- makes the two nested HIT inductions below small and readable.
+\func commuteIde {H : Group} (x : H) :
+  H.ide H.* x = x H.* H.ide =>
+  H.ide-left *> inv H.ide-right
+
+\func commuteProductLeft {H : Group} (x y z : H)
+                         (px : x H.* z = z H.* x)
+                         (py : y H.* z = z H.* y) :
+  (x H.* y) H.* z = z H.* (x H.* y) =>
+  H.*-assoc
+    *> pmap (x H.*) py
+         *> inv H.*-assoc
+              *> pmap (__ H.* y) px
+                   *> H.*-assoc
+
+\func commuteInverseLeft {H : Group} (x z : H)
+                         (p : x H.* z = z H.* x) :
+  H.inverse x H.* z = z H.* H.inverse x =>
+  H.cancel_*-left x (
+    inv H.*-assoc
+      *> pmap (__ H.* z) H.inverse-right
+           *> H.ide-left
+                *> inv H.ide-right
+                     *> pmap (z H.*) (inv H.inverse-right)
+                          *> inv H.*-assoc
+                               *> pmap (__ H.* H.inverse x) (inv p)
+                                    *> H.*-assoc)
+
+\func commuteAlongLeft {H : Group} {x x' y : H}
+                       (e : x = x') (p : x' H.* y = y H.* x') :
+  x H.* y = y H.* x =>
+  pmap (__ H.* y) e *> p *> pmap (y H.*) (inv e)
+
+\func commuteAlongRight {H : Group} {x y y' : H}
+                        (e : y = y') (p : x H.* y' = y' H.* x) :
+  x H.* y = y H.* x =>
+  pmap (x H.*) e *> p *> pmap (__ H.* x) (inv e)
+
+-- The C2 generator is killed because its image under boundaryProjectionHom is 1.
+\func swapKilled (G : Group) :
+  algebraicPinr G BorelSquareGroup.swap = (SP2AlgebraicPushout G).ide =>
+  inv (algebraicGlue G BorelBoundaryGroup.turn) *> algebraicPinl-ide G
+
+-- Conjugation by swap exchanges the two coordinate copies. Since swap is
+-- trivial in the pushout, the two copies become equal.
+\func leftEqualsRight (G : Group) (g : G) :
+  algebraicPinr G (BorelSquareGroup.left g) =
+  algebraicPinr G (BorelSquareGroup.right g) =>
+  \let
+    | P => SP2AlgebraicPushout G
+    | s => algebraicPinr G BorelSquareGroup.swap
+    | l => algebraicPinr G (BorelSquareGroup.left g)
+    | sl => P.* s l
+  \in
+    inv P.ide-left
+      *> pmap (\lam x => P.* x l) (inv (swapKilled G))
+           *> inv P.ide-right
+                *> pmap (P.* sl) (inv (swapKilled G))
+                     *> pmap (\lam x => P.* x s)
+                            (inv (algebraicPinr-* G BorelSquareGroup.swap
+                                (BorelSquareGroup.left g)))
+                          *> inv (algebraicPinr-* G
+                                 (BorelSquareGroup.* BorelSquareGroup.swap
+                                     (BorelSquareGroup.left g))
+                                 BorelSquareGroup.swap)
+                               *> pmap (algebraicPinr G)
+                                      (path (BorelSquareGroup.swap-left g))
+
+-- The two factors commute in the wreath product; after identifying them this
+-- says that the surviving copy of G is abelian.
+\func leftGeneratorsCommute (G : Group) (x y : G) :
+      (SP2AlgebraicPushout G).*
+      (algebraicPinr G (BorelSquareGroup.left x))
+      (algebraicPinr G (BorelSquareGroup.left y))
+    =
+      (SP2AlgebraicPushout G).*
+      (algebraicPinr G (BorelSquareGroup.left y))
+      (algebraicPinr G (BorelSquareGroup.left x)) =>
+  \let
+    | P => SP2AlgebraicPushout G
+    | lx => algebraicPinr G (BorelSquareGroup.left x)
+    | ly => algebraicPinr G (BorelSquareGroup.left y)
+  \in
+    pmap (P.* lx) (leftEqualsRight G y)
+      *> inv (algebraicPinr-* G
+             (BorelSquareGroup.left x) (BorelSquareGroup.right y))
+           *> pmap (algebraicPinr G)
+                  (path (BorelSquareGroup.factors-commute x y))
+                *> algebraicPinr-* G
+                       (BorelSquareGroup.right y) (BorelSquareGroup.left x)
+                     *> pmap (\lam x => P.* x lx) (inv (leftEqualsRight G y))
+
+-- First stage of the centrality induction: a surviving left generator
+-- commutes with the image of every Borel-square word.
+\func leftCommutesBorel (G : Group) (g : G)
+                        (w : BorelSquareGroup G) :
+      (SP2AlgebraicPushout G).*
+      (algebraicPinr G (BorelSquareGroup.left g)) (algebraicPinr G w)
+    =
+      (SP2AlgebraicPushout G).*
+      (algebraicPinr G w) (algebraicPinr G (BorelSquareGroup.left g))
+\elim w
+  | BorelSquareGroup.left h => leftGeneratorsCommute G g h
+  | BorelSquareGroup.right h =>
+    pmap ((SP2AlgebraicPushout G).*
+        (algebraicPinr G (BorelSquareGroup.left g)))
+        (inv (leftEqualsRight G h))
+      *> leftGeneratorsCommute G g h
+           *> pmap ((SP2AlgebraicPushout G).* __
+               (algebraicPinr G (BorelSquareGroup.left g)))
+                  (leftEqualsRight G h)
+  | BorelSquareGroup.diagonal h =>
+    \let
+      | P : Group => SP2AlgebraicPushout G
+      | lg => algebraicPinr G (BorelSquareGroup.left g)
+      | lh => algebraicPinr G (BorelSquareGroup.left h)
+      | rh => algebraicPinr G (BorelSquareGroup.right h)
+      | d => algebraicPinr G (BorelSquareGroup.diagonal h)
+      | split : d = lh P.* rh =>
+        pmap (algebraicPinr G) (path (BorelSquareGroup.diagonal-split h))
+          *> algebraicPinr-* G
+                 (BorelSquareGroup.left h) (BorelSquareGroup.right h)
+      | rh-lg : rh P.* lg = lg P.* rh =>
+        pmap (__ P.* lg) (inv (leftEqualsRight G h))
+          *> leftGeneratorsCommute G h g
+               *> pmap (lg P.*) (leftEqualsRight G h)
+    \in
+      pmap (lg P.*) split
+        *> inv (commuteProductLeft lh rh lg
+          (leftGeneratorsCommute G h g) rh-lg)
+             *> pmap (__ P.* lg) (inv split)
+  | BorelSquareGroup.swap =>
+    pmap ((SP2AlgebraicPushout G).*
+        (algebraicPinr G (BorelSquareGroup.left g))) (swapKilled G)
+      *> (SP2AlgebraicPushout G).ide-right
+           *> inv (SP2AlgebraicPushout G).ide-left
+                *> pmap ((SP2AlgebraicPushout G).* __
+                    (algebraicPinr G (BorelSquareGroup.left g)))
+                       (inv (swapKilled G))
+  | BorelSquareGroup.ide =>
+    commuteAlongRight (algebraicPinr-ide G)
+        (inv (commuteIde (algebraicPinr G (BorelSquareGroup.left g))))
+  | BorelSquareGroup.* x y =>
+    \let
+      | P : Group => SP2AlgebraicPushout G
+      | lg => algebraicPinr G (BorelSquareGroup.left g)
+      | px => algebraicPinr G x
+      | py => algebraicPinr G y
+      | pxy => algebraicPinr G (BorelSquareGroup.* x y)
+      | mul : pxy = px P.* py => algebraicPinr-* G x y
+    \in
+      pmap (lg P.*) mul
+        *> inv (commuteProductLeft px py lg
+          (inv (leftCommutesBorel G g x))
+          (inv (leftCommutesBorel G g y)))
+             *> pmap (__ P.* lg) (inv mul)
+  | BorelSquareGroup.inverse x =>
+    \let
+      | P : Group => SP2AlgebraicPushout G
+      | lg => algebraicPinr G (BorelSquareGroup.left g)
+      | px => algebraicPinr G x
+      | pix => algebraicPinr G (BorelSquareGroup.inverse x)
+      | inv-map : pix = P.inverse px => algebraicPinr-inverse G x
+    \in
+      pmap (lg P.*) inv-map
+        *> inv (commuteInverseLeft px lg
+          (inv (leftCommutesBorel G g x)))
+             *> pmap (__ P.* lg) (inv inv-map)
+
+-- A surviving left generator commutes with every word in the group pushout.
+\func leftCommutesPushout (G : Group) (g : G)
+                          (y : SP2AlgebraicPushout G) :
+      (SP2AlgebraicPushout G).*
+      (algebraicPinr G (BorelSquareGroup.left g)) y
+    =
+      (SP2AlgebraicPushout G).*
+      y (algebraicPinr G (BorelSquareGroup.left g))
+\elim y
+  | GroupPushout.gpinl h =>
+    commuteAlongRight (algebraicGlue G (BorelBoundaryGroup.diag h))
+        (leftCommutesBorel G g (BorelSquareGroup.diagonal h))
+  | GroupPushout.gpinr w => leftCommutesBorel G g w
+  | GroupPushout.ide =>
+    inv (commuteIde (algebraicPinr G (BorelSquareGroup.left g)))
+  | GroupPushout.* x y =>
+    inv (commuteProductLeft x y
+        (algebraicPinr G (BorelSquareGroup.left g))
+        (inv (leftCommutesPushout G g x))
+        (inv (leftCommutesPushout G g y)))
+  | GroupPushout.inverse x =>
+    inv (commuteInverseLeft x
+        (algebraicPinr G (BorelSquareGroup.left g))
+        (inv (leftCommutesPushout G g x)))
+
+\func rightCommutesPushout (G : Group) (g : G)
+                           (y : SP2AlgebraicPushout G) :
+      (SP2AlgebraicPushout G).*
+      (algebraicPinr G (BorelSquareGroup.right g)) y
+    =
+      (SP2AlgebraicPushout G).*
+      y (algebraicPinr G (BorelSquareGroup.right g)) =>
+  commuteAlongLeft (inv (leftEqualsRight G g))
+      (leftCommutesPushout G g y)
+
+-- Second stage: every Borel-square word commutes with every pushout word.
+\func borelCommutesPushout (G : Group) (w : BorelSquareGroup G)
+                           (y : SP2AlgebraicPushout G) :
+      (SP2AlgebraicPushout G).* (algebraicPinr G w) y
+    =
+      (SP2AlgebraicPushout G).* y (algebraicPinr G w)
+\elim w
+  | BorelSquareGroup.left g => leftCommutesPushout G g y
+  | BorelSquareGroup.right g => rightCommutesPushout G g y
+  | BorelSquareGroup.diagonal g =>
+    \let
+      | P : Group => SP2AlgebraicPushout G
+      | l => algebraicPinr G (BorelSquareGroup.left g)
+      | r => algebraicPinr G (BorelSquareGroup.right g)
+      | d => algebraicPinr G (BorelSquareGroup.diagonal g)
+      | split : d = l P.* r =>
+        pmap (algebraicPinr G) (path (BorelSquareGroup.diagonal-split g))
+          *> algebraicPinr-* G
+                 (BorelSquareGroup.left g) (BorelSquareGroup.right g)
+    \in
+      commuteAlongLeft split
+          (commuteProductLeft l r y
+              (leftCommutesPushout G g y)
+              (rightCommutesPushout G g y))
+  | BorelSquareGroup.swap =>
+    commuteAlongLeft (swapKilled G) (commuteIde y)
+  | BorelSquareGroup.ide =>
+    commuteAlongLeft (algebraicPinr-ide G) (commuteIde y)
+  | BorelSquareGroup.* x z =>
+    \let
+      | P : Group => SP2AlgebraicPushout G
+      | px => algebraicPinr G x
+      | pz => algebraicPinr G z
+      | pxz => algebraicPinr G (BorelSquareGroup.* x z)
+      | mul : pxz = px P.* pz => algebraicPinr-* G x z
+    \in
+      commuteAlongLeft mul
+          (commuteProductLeft px pz y
+              (borelCommutesPushout G x y)
+              (borelCommutesPushout G z y))
+  | BorelSquareGroup.inverse x =>
+    \let
+      | P => SP2AlgebraicPushout G
+      | px => algebraicPinr G x
+      | pix => algebraicPinr G (BorelSquareGroup.inverse x)
+      | inv-map : pix = P.inverse px => algebraicPinr-inverse G x
+    \in
+      commuteAlongLeft inv-map
+          (commuteInverseLeft px y (borelCommutesPushout G x y))
+
+-- Extend commutativity from the surviving generators to every element of the
+-- group-pushout HIT.
+\func algebraicPushoutCommutes (G : Group)
+                               (x y : SP2AlgebraicPushout G) :
+      (SP2AlgebraicPushout G).* x y = (SP2AlgebraicPushout G).* y x
+\elim x
+  | GroupPushout.gpinl g =>
+    commuteAlongLeft (algebraicGlue G (BorelBoundaryGroup.diag g))
+        (borelCommutesPushout G (BorelSquareGroup.diagonal g) y)
+  | GroupPushout.gpinr w => borelCommutesPushout G w y
+  | GroupPushout.ide => commuteIde y
+  | GroupPushout.* x z =>
+    commuteProductLeft x z y
+        (algebraicPushoutCommutes G x y)
+        (algebraicPushoutCommutes G z y)
+  | GroupPushout.inverse x =>
+    commuteInverseLeft x y (algebraicPushoutCommutes G x y)
+
+\func SP2AlgebraicPushoutCGroup (G : Group) : CGroup \cowith
+  | Group => SP2AlgebraicPushout G
+  | *-comm {x} {y} => algebraicPushoutCommutes G x y
+
+-- The surviving coordinate map G -> P.
+\func leftIntoPushout (G : Group) :
+  GroupHom G (SP2AlgebraicPushout G) \cowith
+  | func g => algebraicPinr G (BorelSquareGroup.left g)
+  | func-* {x} {y} =>
+    pmap (algebraicPinr G) (path (BorelSquareGroup.left-* x y))
+      *> algebraicPinr-* G
+             (BorelSquareGroup.left x) (BorelSquareGroup.left y)
+  | func-ide =>
+    pmap (algebraicPinr G) (path BorelSquareGroup.left-ide)
+      *> algebraicPinr-ide G
+
+-- It therefore factors through G_ab.
+\func abelianizationToPushout (G : Group) :
+  GroupHom (Abelianization G) (SP2AlgebraicPushout G) =>
+  Abelianization.recHom {G} {SP2AlgebraicPushoutCGroup G}
+      (leftIntoPushout G)
+
+-- Doubling in a commutative target. This is the map induced by the pinl copy
+-- of A, because the boundary relation identifies g with diagonal(g)=(g,g).
+\func doubleHom (G : Group) :
+  GroupHom G (Abelianization G) \cowith
+  | func g => (Abelianization G).* (Abelianization.ab g) (Abelianization.ab g)
+  | func-* {x} {y} =>
+    \let
+      | A : CGroup => Abelianization G
+      | qx => Abelianization.ab x
+      | qy => Abelianization.ab y
+    \in
+      pmap2 (\lam x y => x A.* y)
+          (path (Abelianization.ab-* x y))
+          (path (Abelianization.ab-* x y))
+        *> A.*-assoc
+             *> pmap (qx A.*) (inv A.*-assoc)
+                  *> pmap (qx A.*)
+                         (pmap (__ A.* qy) A.*-comm)
+                       *> inv A.*-assoc
+                            *> pmap (__ A.* qy) (inv A.*-assoc)
+                                 *> A.*-assoc
+  | func-ide =>
+    pmap2 (Abelianization G).*
+        (path Abelianization.ab-ide)
+        (path Abelianization.ab-ide)
+      *> (Abelianization G).ide-left
+
+-- Map the Borel-square presentation to G_ab by
+-- left(g),right(g) |-> [g], diagonal(g) |-> 2[g], swap |-> 1.
+\func borelSquareToAbelianization (G : Group) :
+  GroupHom (BorelSquareGroup G) (Abelianization G) =>
+  BorelSquareGroup.recHom {G} {Abelianization G}
+      (Abelianization.quotientHom {G})
+      (Abelianization.quotientHom {G})
+      (doubleHom G)
+      (Abelianization G).ide
+      (\lam _ => idp)
+      (\lam _ _ => (Abelianization G).*-comm)
+      (Abelianization G).ide-left
+      (\lam _ => (Abelianization G).ide-right *>
+          (Abelianization G).ide-left)
+      (\lam _ => (Abelianization G).ide-left *>
+          inv (Abelianization G).ide-right)
+
+\func pushoutToAbelianizationCoh (G : Group)
+                                 (x : BorelBoundaryGroup G) :
+  doubleHom G (boundaryProjectionHom G x) =
+  borelSquareToAbelianization G (boundaryBorelHom G x) =>
+  homAt (GroupHom.compose (doubleHom G) (boundaryProjectionHom G))
+      (GroupHom.compose (borelSquareToAbelianization G) (boundaryBorelHom G))
+      (BorelBoundaryGroup.hom-ext
+          (GroupHom.compose (doubleHom G) (boundaryProjectionHom G))
+          (GroupHom.compose (borelSquareToAbelianization G)
+              (boundaryBorelHom G))
+          (\lam _ => idp)
+          (doubleHom G).func-ide)
+      x
+
+\func pushoutToAbelianization (G : Group) :
+  GroupHom (SP2AlgebraicPushout G) (Abelianization G) =>
+  GroupPushout.recHom {_} {_} {_} {boundaryProjectionHom G} {boundaryBorelHom G}
+      (doubleHom G)
+      (borelSquareToAbelianization G)
+      (pushoutToAbelianizationCoh G)
+
+-- The two maps above are inverse.
+\func abelianizationRetract (G : Group) (x : Abelianization G) :
+  pushoutToAbelianization G (abelianizationToPushout G x) = x =>
+  homAt (GroupHom.compose (pushoutToAbelianization G)
+      (abelianizationToPushout G))
+      (GroupHom.id {Abelianization G})
+      (Abelianization.hom-ext
+          (GroupHom.compose (pushoutToAbelianization G)
+              (abelianizationToPushout G))
+          (GroupHom.id {Abelianization G})
+          (\lam _ => idp))
+      x
+
+\func diagonalRetractPath (G : Group) (g : G) :
+  abelianizationToPushout G (doubleHom G g) =
+  algebraicPinr G (BorelSquareGroup.diagonal g) =>
+  pmap ((SP2AlgebraicPushout G).*
+      (algebraicPinr G (BorelSquareGroup.left g)))
+      (leftEqualsRight G g)
+    *> inv (algebraicPinr-* G
+           (BorelSquareGroup.left g) (BorelSquareGroup.right g))
+         *> pmap (algebraicPinr G)
+                (inv (path (BorelSquareGroup.diagonal-split g)))
+
+\func borelRetractHom (G : Group) :
+  GroupHom.compose (abelianizationToPushout G)
+      (borelSquareToAbelianization G)
+    = {GroupHom (BorelSquareGroup G) (SP2AlgebraicPushoutCGroup G)}
+  algebraicPinrHom G =>
+  BorelSquareGroup.hom-ext
+      (GroupHom.compose (abelianizationToPushout G)
+          (borelSquareToAbelianization G))
+      (algebraicPinrHom G)
+      (\lam _ => idp)
+      (leftEqualsRight G)
+      (diagonalRetractPath G)
+      ((abelianizationToPushout G).func-ide *> inv (swapKilled G))
+
+\func borelRetractAt (G : Group) (w : BorelSquareGroup G) :
+  abelianizationToPushout G (borelSquareToAbelianization G w) =
+  algebraicPinr G w =>
+  homAt (GroupHom.compose (abelianizationToPushout G)
+      (borelSquareToAbelianization G))
+      (algebraicPinrHom G)
+      (borelRetractHom G)
+      w
+
+\func pushoutRetract (G : Group) (x : SP2AlgebraicPushout G) :
+  abelianizationToPushout G (pushoutToAbelianization G x) = x =>
+  homAt (GroupHom.compose (abelianizationToPushout G)
+      (pushoutToAbelianization G))
+      (GroupHom.id {SP2AlgebraicPushout G})
+      (GroupPushout.hom-ext {_} {_} {_}
+          {boundaryProjectionHom G} {boundaryBorelHom G}
+          (GroupHom.compose (abelianizationToPushout G)
+              (pushoutToAbelianization G))
+          (GroupHom.id {SP2AlgebraicPushout G})
+          (\lam g =>
+              diagonalRetractPath G g
+                *> inv (algebraicGlue G (BorelBoundaryGroup.diag g)))
+          (borelRetractAt G))
+      x
+
+-- Purely algebraic heart of the SP2 computation.
+\func SP2AlgebraicPushoutIso (G : Group) :
+  Iso {GroupCat} (pushoutToAbelianization G) \cowith
+  | hinv => abelianizationToPushout G
+  | hinv_f => exts (pushoutRetract G)
+  | f_hinv => exts (abelianizationRetract G)
+
+\func SP2AlgebraicPushoutIsAbelianization (G : Group) :
+  SP2AlgebraicPushout G = Abelianization G
+  => Cat.isotoid {GroupCat} (SP2AlgebraicPushoutIso G)
